@@ -1,0 +1,19 @@
+# Mac_OS
+.DS_Store
+
+# Ignore build, install, and log directories
+build/
+install/
+log/
+
+# Ignore ROS 2 workspace files
+colcon/
+.colcon/
+
+# Ignore ROS 2 package directories
+.deps/
+.deps_install/
+
+# Ignore IDE-specific files
+.vscode/
+.idea/

@@ -1,0 +1,42 @@
+<launch>
+    <!-- Coordinates startup of multiple subsystems for rover:
+         - Provides websocket interface for communication over port 9090
+         - Configures robot to operate in driveMode via the Drive.launch file
+         - Launches sensors and cameras
+         - Controls servos based on the current operating mode
+         - Enables long-range communication using the 900MHz LoRa interface if LoRa_On = true -->
+    
+    <!-- Include rosbridge_websocket.launch from the rosbridge_server package -->
+    <include file="$(find-package-share rosbridge_server)/launch/rosbridge_websocket.launch.xml">
+        <arg name="port" value="9090"/>
+    </include>
+
+    <!-- Declare mode arguments -->
+    <arg name="scienceMode" default="false"/>
+    <arg name="driveMode" default="true"/>
+    <arg name="autoMode" default="false"/>
+    <arg name="LoRa_On" default="true"/>
+
+    <!-- Include Drive, Sensors, Cameras, and Servos launch files -->
+    <include file="$(find-package-share mavric)/launch/Drive.launch.xml">
+        <arg name="scienceMode" value="$(var scienceMode)"/>
+        <arg name="driveMode" value="$(var driveMode)"/>
+        <arg name="autoMode" value="$(var autoMode)"/>
+    </include>
+
+    <include file="$(find-package-share mavric)/launch/Sensors.launch.xml"/>
+
+    <include file="$(find-package-share mavric)/launch/Cameras.launch.xml"/>
+
+    <include file="$(find-package-share mavric)/launch/Servos.launch.xml">
+        <arg name="scienceMode" value="$(var scienceMode)"/>
+        <arg name="driveMode" value="$(var driveMode)"/>
+        <arg name="autoMode" value="$(var autoMode)"/>
+    </include>
+
+    <!-- Launch LoRa_Interface Node if LoRa_On is true -->
+    <node name="LoRa_Interface" pkg="mavric" exec="900MHz_Interface.py" output="screen" if="$(var LoRa_On)">
+        <remap from="Drive_Train" to="Drive/Drive_Command"/>
+        <remap from="Steer_Train" to="Drive/Steer_Command"/>
+    </node>
+</launch>
