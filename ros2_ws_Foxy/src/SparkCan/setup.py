@@ -18,6 +18,9 @@ setup(
     description='TODO: Package description',
     license='Apache-2.0',
     tests_require=['pytest'],
+    package_data={
+        package_name: ['msg/*.msg'],
+    }
     entry_points={
         'console_scripts': [
         ],

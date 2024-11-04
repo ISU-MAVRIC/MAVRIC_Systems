@@ -4,7 +4,7 @@
   <name>MAVRIC</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="golden@todo.todo">golden</maintainer>
+  <maintainer email="@todo.todo">name</maintainer>
   <license>Apache-2.0</license>
 
   <test_depend>ament_copyright</test_depend>
