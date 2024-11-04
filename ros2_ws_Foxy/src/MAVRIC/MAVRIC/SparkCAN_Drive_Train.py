@@ -3,6 +3,12 @@ Description: Reads arm and Drive topics and controlls the relevant motors
 Original Authors: Jacob Peskuski, Gabe Carlson, Nathan Logston
 Ported to ROS 2 by: ...
 
+###PLAN FOR IMPROVEMENT AND PORTING###
+    -Migrate to a class based system and node declaration
+    -Remove unnecessary global variables
+    -Add more comments and documentation
+    -Refactor code to remove duplicate code
+
 Topics:
     Publishers:
         SteerPosition
