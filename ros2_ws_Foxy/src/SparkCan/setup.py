@@ -3,7 +3,7 @@ from glob import glob
 from setuptools import find_packages, setup
 
 
-package_name = 'mavric'
+package_name = 'SparkCan'
 
 setup(
     name=package_name,

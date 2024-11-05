@@ -5,14 +5,14 @@
     <arg name="autoMode" default="false"/>
 
     <!-- Drivetrain_Control Node for regular mode -->
-    <node name="Drivetrain_Control" pkg="mavric" exec="SparkCAN_Drive_Train.py" output="screen" respawn="true">
+    <node name="Drivetrain_Control" pkg="SparkCan" exec="SparkCAN_Drive_Train.py" output="screen" respawn="true">
         <remap from="Drive_Train" to="Drive/Drive_Command"/>
         <remap from="Steer_Train" to="Drive/Steer_Command"/>
         <condition unless="$(var scienceMode)"/>
     </node>
 
     <!-- Scale_Startups Node for drive mode -->
-    <node name="Scale_Startups_Drive" pkg="mavric" exec="Scale_Startups.py" output="screen" respawn="false">
+    <node name="Scale_Startups_Drive" pkg="SparkCan" exec="Scale_Startups.py" output="screen" respawn="false">
         <param name="Drive_Sens" value="1.0"/>
         <param name="ShoulderRot" value="0.25"/>
         <param name="ShoulderPitch" value="0.75"/>
@@ -23,14 +23,14 @@
     </node>
 
     <!-- Drivetrain_Control Node for science mode -->
-    <node name="Drivetrain_Control" pkg="mavric" exec="SparkCAN_Drive_Train.py" output="screen" respawn="true">
+    <node name="Drivetrain_Control" pkg="SparkCan" exec="SparkCAN_Drive_Train.py" output="screen" respawn="true">
         <remap from="Drive_Train" to="Drive/Drive_Command"/>
         <remap from="Steer_Train" to="Drive/Steer_Command"/>
         <condition if="$(var scienceMode)"/>
     </node>
 
     <!-- Scale_Startups Node for science mode -->
-    <node name="Scale_Startups_Science" pkg="mavric" exec="Scale_Startups.py" output="screen" respawn="false">
+    <node name="Scale_Startups_Science" pkg="SparkCan" exec="Scale_Startups.py" output="screen" respawn="false">
         <param name="ShoulderRot" value="0.25"/>
         <param name="ShoulderPitch" value="0.50"/>
         <param name="ElbowPitch" value="0.0"/>
@@ -40,7 +40,7 @@
     </node>
 
     <!-- Scale_Startups Node for auto mode -->
-    <node name="Scale_Startups_Auto" pkg="mavric" exec="Scale_Startups.py" output="screen" respawn="false">
+    <node name="Scale_Startups_Auto" pkg="SparkCan" exec="Scale_Startups.py" output="screen" respawn="false">
         <param name="Drive_Sens" value="1.0"/>
         <param name="ShoulderRot" value="0.0"/>
         <param name="ShoulderPitch" value="0.0"/>
