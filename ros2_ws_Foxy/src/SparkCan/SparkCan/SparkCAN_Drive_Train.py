@@ -459,7 +459,7 @@ def talker(args=None):
         rosRate.sleep()
 
 
-class SparkCANDriveTrainTalker(Node):
+""" class SparkCANDriveTrainTalker(Node):
     def __init__(self):
         super().__init__('CAN_ATS')
 
@@ -512,7 +512,7 @@ class SparkCANDriveTrainTalker(Node):
         msg.data = self.i
         self.publisher_.publish(msg)
         self.get_logger().info('Publishing: "%d"' % msg.data)
-        self.i += 1
+        self.i += 1 """
 
 if __name__ == "__main___":
     talker()
