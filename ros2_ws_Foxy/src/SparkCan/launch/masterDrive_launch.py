@@ -30,7 +30,7 @@ def generate_launch_description():
     drive_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
-                get_package_share_directory('mavric'),
+                get_package_share_directory('SparkCan'),
                 'launch',
                 'Drive.launch.py'
             )
@@ -47,7 +47,7 @@ def generate_launch_description():
     sensors_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
-                get_package_share_directory('mavric'),
+                get_package_share_directory('SparkCan'),
                 'launch',
                 'Sensors.launch.py'
             )
@@ -58,7 +58,7 @@ def generate_launch_description():
     cameras_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
-                get_package_share_directory('mavric'),
+                get_package_share_directory('SparkCan'),
                 'launch',
                 'Cameras.launch.py'
             )
@@ -69,7 +69,7 @@ def generate_launch_description():
     servos_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
-                get_package_share_directory('mavric'),
+                get_package_share_directory('SparkCan'),
                 'launch',
                 'Servos.launch.py'
             )
@@ -84,7 +84,7 @@ def generate_launch_description():
 
     # Define LoRa_Interface node with condition and remappings
     lora_interface_node = Node(
-        package='mavric',
+        package='SparkCan',
         executable='900MHz_Interface.py',
         name='LoRa_Interface',
         remappings=[
