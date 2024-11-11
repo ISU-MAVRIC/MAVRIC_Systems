@@ -39,20 +39,20 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('scienceMode'))
     )
 
-    scale_startups_science = Node(
-        package='SparkCan',
-        executable='scale_startups',  # Remove .py extension
-        name='Scale_Startups_Science',
-        output='screen',
-        parameters=[{
-            'ShoulderRot': 0.25,
-            'ShoulderPitch': 0.50,
-            'ElbowPitch': 0.0,
-            'WristPitch': 0.75,
-            'WristRot': 0.05
-        }],
-        condition=IfCondition(LaunchConfiguration('scienceMode'))
-    )
+    # scale_startups_science = Node(
+    #     package='SparkCan',
+    #     executable='scale_startups',  # Remove .py extension
+    #     name='Scale_Startups_Science',
+    #     output='screen',
+    #     parameters=[{
+    #         'ShoulderRot': 0.25,
+    #         'ShoulderPitch': 0.50,
+    #         'ElbowPitch': 0.0,
+    #         'WristPitch': 0.75,
+    #         'WristRot': 0.05
+    #     }],
+    #     condition=IfCondition(LaunchConfiguration('scienceMode'))
+    # )
 
     scale_startups_auto = Node(
         package='SparkCan',
