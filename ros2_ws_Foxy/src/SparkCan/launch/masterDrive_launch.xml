@@ -7,7 +7,7 @@
          - Enables long-range communication using the 900MHz LoRa interface if LoRa_On = true -->
     
     <!-- Include rosbridge_websocket.launch from the rosbridge_server package -->
-    <include file="$(find-package-share rosbridge_server)/launch/rosbridge_websocket.launch.xml">
+    <include file="$(find-pkg-share rosbridge_server)/launch/rosbridge_websocket.launch.xml">
         <arg name="port" value="9090"/>
     </include>
 
@@ -18,17 +18,17 @@
     <arg name="LoRa_On" default="true"/>
 
     <!-- Include Drive, Sensors, Cameras, and Servos launch files -->
-    <include file="$(find-package-share SparkCan)/launch/Drive.launch.xml">
+    <include file="$(find-pkg-share SparkCan)/launch/Drive.launch.xml">
         <arg name="scienceMode" value="$(var scienceMode)"/>
         <arg name="driveMode" value="$(var driveMode)"/>
         <arg name="autoMode" value="$(var autoMode)"/>
     </include>
 
-    <include file="$(find-package-share SparkCan)/launch/Sensors.launch.xml"/>
+    <include file="$(find-pkg-share SparkCan)/launch/Sensors.launch.xml"/>
 
-    <include file="$(find-package-share SparkCan)/launch/Cameras.launch.xml"/>
+    <include file="$(find-pkg-share SparkCan)/launch/Cameras.launch.xml"/>
 
-    <include file="$(find-package-share SparkCan)/launch/Servos.launch.xml">
+    <include file="$(find-pkg-share SparkCan)/launch/Servos.launch.xml">
         <arg name="scienceMode" value="$(var scienceMode)"/>
         <arg name="driveMode" value="$(var driveMode)"/>
         <arg name="autoMode" value="$(var autoMode)"/>
