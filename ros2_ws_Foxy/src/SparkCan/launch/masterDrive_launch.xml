@@ -7,7 +7,7 @@
          - Enables long-range communication using the 900MHz LoRa interface if LoRa_On = true -->
     
     <!-- Include rosbridge_websocket.launch from the rosbridge_server package -->
-    <include file="$(find-pkg-share rosbridge_server)/launch/rosbridge_websocket.launch.xml">
+    <include file="$(find-pkg-share rosbridge_server)/launch/rosbridge_websocket_launch.xml">
         <arg name="port" value="9090"/>
     </include>
 
