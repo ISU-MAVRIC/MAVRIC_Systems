@@ -24,7 +24,8 @@ setup(
         "python-can",
         "numpy",
         "bson",
-        "PyYAML"
+        "PyYAML",
+        "bitstring"
     ],
     zip_safe=True,
     maintainer="golden",
