@@ -22,7 +22,8 @@ setup(
     install_requires=[
         "setuptools",
         "python-can>=3.3.4",
-    ],  # Added python-can requirement
+        "numpy",
+    ],
     zip_safe=True,
     maintainer="golden",
     maintainer_email="golden@todo.todo",
