@@ -32,7 +32,7 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 
 from std_msgs.msg import Float64
-from SparkCan import Steer, Drivetrain, Steertrain, ArmData
+from SparkCan.msg import Steer, Drivetrain, Steertrain, ArmData
 from SparkCAN import SparkBus
 
 

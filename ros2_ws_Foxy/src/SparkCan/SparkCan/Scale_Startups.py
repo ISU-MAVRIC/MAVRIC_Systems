@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 import time
 from std_msgs.msg import Float64
-from SparkCan import ArmData, ScaleFeedback
+from SparkCan.msg import ArmData, ScaleFeedback
 
 arm_values = ArmData()
 drive_value = Float64()
