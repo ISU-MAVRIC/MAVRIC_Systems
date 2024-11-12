@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 import time
 from std_msgs.msg import Float64
-from spark_can.msg import ArmData, ScaleFeedback
+from msg_drive.msg import ArmData, ScaleFeedback
 
 arm_values = ArmData()
 drive_value = Float64()
@@ -32,11 +32,11 @@ def main(args=None):
     node.declare_parameter("WristPitch", 1.0)
     node.declare_parameter("WristRot", 1.0)
     node.declare_parameter("Drive_Sens", 1.0)
-    arm_values.ShoulderRot = node.get_parameter("ShoulderRot").value
-    arm_values.ShoulderPitch = node.get_parameter("ShoulderPitch").value
-    arm_values.ElbowPitch = node.get_parameter("ElbowPitch").value
-    arm_values.WristPitch = node.get_parameter("WristPitch").value
-    arm_values.WristRot = node.get_parameter("WristRot").value
+    arm_values.shoulder_rot = node.get_parameter("ShoulderRot").value
+    arm_values.shoulder_pitch = node.get_parameter("ShoulderPitch").value
+    arm_values.elbow_pitch = node.get_parameter("ElbowPitch").value
+    arm_values.wrist_pitch = node.get_parameter("WristPitch").value
+    arm_values.wrist_rot = node.get_parameter("WristRot").value
     drive_value = node.get_parameter("Drive_Sens").value
     time.sleep(5)
     drive_sens.publish(Float64(data=drive_value))
@@ -44,11 +44,12 @@ def main(args=None):
     try:
         while rclpy.ok():
             values = ScaleFeedback()
-            values.Drive = drive_value
-            values.ShoulderPitch = arm_values.ShoulderPitch
-            values.ShoulderRot = arm_values.ShoulderRot
-            values.ElbowPitch = arm_values.ElbowPitch
-            values.WristRot = arm_values.WristPitch
+            values.drive = drive_value
+            values.shoulder_pitch = arm_values.shoulder_pitch
+            values.shoulder_rot = arm_values.shoulder_rot
+            values.elbow_pitch = arm_values.elbow_pitch
+            values.wrist_pitch = arm_values.wrist_pitch
+            values.wrist_rot = arm_values.wrist_rot
             feedback.publish(values)
             time.sleep(5)
     except KeyboardInterrupt:
@@ -73,11 +74,11 @@ if __name__ == "__main__":
 #         self.declare_parameter('Drive_Sens', 1.0)
 
 #         self.arm_values = ArmData()
-#         self.arm_values.ShoulderRot = self.get_parameter('ShoulderRot').get_parameter_value().double_value
-#         self.arm_values.ShoulderPitch = self.get_parameter('ShoulderPitch').get_parameter_value().double_value
-#         self.arm_values.ElbowPitch = self.get_parameter('ElbowPitch').get_parameter_value().double_value
-#         self.arm_values.WristPitch = self.get_parameter('WristPitch').get_parameter_value().double_value
-#         self.arm_values.WristRot = self.get_parameter('WristRot').get_parameter_value().double_value
+#         self.arm_values.shoulder_rot = self.get_parameter('ShoulderRot').get_parameter_value().double_value
+#         self.arm_values.shoulder_pitch = self.get_parameter('ShoulderPitch').get_parameter_value().double_value
+#         self.arm_values.elbow_pitch = self.get_parameter('ElbowPitch').get_parameter_value().double_value
+#         self.arm_values.wrist_pitch = self.get_parameter('WristPitch').get_parameter_value().double_value
+#         self.arm_values.wrist_rot = self.get_parameter('WristRot').get_parameter_value().double_value
 #         self.drive_value = self.get_parameter('Drive_Sens').get_parameter_value().double_value
 
 #         # Publishers
@@ -106,12 +107,12 @@ if __name__ == "__main__":
 
 #     def publish_feedback(self):
 #         values = ScaleFeedback()
-#         values.Drive = self.drive_value
-#         values.ShoulderPitch = self.arm_values.ShoulderPitch
-#         values.ShoulderRot = self.arm_values.ShoulderRot
-#         values.ElbowPitch = self.arm_values.ElbowPitch
-#         values.WristRot = self.arm_values.WristRot
-#         values.WristPitch = self.arm_values.WristPitch
+#         values.drive = self.drive_value
+#         values.shoulder_pitch = self.arm_values.shoulder_pitch
+#         values.shoulder_rot = self.arm_values.shoulder_rot
+#         values.elbow_pitch = self.arm_values.elbow_pitch
+#         values.wrist_pitch = self.arm_values.wrist_pitch
+#         values.wrist_rot = self.arm_values.wrist_rot
 #         self.feedback_pub.publish(values)
 
 # def main(args=None):

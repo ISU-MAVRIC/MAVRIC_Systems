@@ -19,17 +19,15 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/msg', glob('msg/*.msg')),
         ('share/' + package_name + '/launch', glob('launch/*.py')),
+        ('share/' + 'msg_drive' + '/msg', glob('msg/*.msg')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'msg_drive'],
     zip_safe=True,
     maintainer='golden',
     maintainer_email='golden@todo.todo',
     description='TODO: Package description',
     license='Apache-2.0',
     tests_require=['pytest'],
-    package_data={
-        package_name: ['msg/*.msg'],
-    },
     entry_points={
         'console_scripts': [
             'SparkCAN_Drive_Train = spark_can.SparkCAN_Drive_Train:main',

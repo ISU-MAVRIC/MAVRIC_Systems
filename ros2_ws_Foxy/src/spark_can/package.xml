@@ -24,6 +24,7 @@
   <!-- General dependencies -->
   <depend>launch_ros</depend>
   <depend>rclpy</depend>
+  <depend>msg_drive</depend>
 
   <!-- Interface generation -->
   <member_of_group>rosidl_interface_packages</member_of_group>

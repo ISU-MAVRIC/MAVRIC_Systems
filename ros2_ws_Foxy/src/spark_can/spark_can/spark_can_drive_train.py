@@ -33,8 +33,8 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 
 from std_msgs.msg import Float64
-from spark_can.msg import Steer, Drivetrain, Steertrain, ArmData
-from spark_can import SparkBus
+from msg_drive.msg import Steer, Drivetrain, Steertrain, ArmData
+from spark_can.spark_can import SparkBus
 
 
 # Drive Scales
@@ -130,17 +130,17 @@ def arm_feedback():
     Pos_msg = ArmData()
     Vel_msg = ArmData()
 
-    Pos_msg.ShoulderRot = spark_shoulderRot.position
-    Pos_msg.ShoulderPitch = spark_shoulderPitch.position
-    Pos_msg.ElbowPitch = spark_elbowPitch.position
-    Pos_msg.WristPitch = spark_wristPitch.position
-    Pos_msg.WristRot = spark_wristRot.position
+    Pos_msg.shoulder_rot = spark_shoulderRot.position
+    Pos_msg.shoulder_pitch = spark_shoulderPitch.position
+    Pos_msg.elbow_pitch = spark_elbowPitch.position
+    Pos_msg.wrist_pitch = spark_wristPitch.position
+    Pos_msg.wrist_rot = spark_wristRot.position
 
-    Vel_msg.ShoulderRot = spark_shoulderRot.velocity
-    Vel_msg.ShoulderPitch = spark_shoulderPitch.velocity
-    Vel_msg.ElbowPitch = spark_elbowPitch.velocity
-    Vel_msg.WristPitch = spark_wristPitch.velocity
-    Vel_msg.WristRot = spark_wristRot.velocity
+    Vel_msg.shoulder_rot = spark_shoulderRot.velocity
+    Vel_msg.shoulder_pitch = spark_shoulderPitch.velocity
+    Vel_msg.elbow_pitch = spark_elbowPitch.velocity
+    Vel_msg.wrist_pitch = spark_wristPitch.velocity
+    Vel_msg.wrist_rot = spark_wristRot.velocity
 
     Pos_pub.publish(Pos_msg)
     Vel_pub.publish(Vel_msg)
@@ -154,25 +154,25 @@ Then as a safety measure, makes sure the percent out is between the values -100 
 '''
 def strCallback(data):
   global slf, slb, srf, srb
-  slf = data.strLf
+  slf = data.str_lf
   if (slf > 100):
     slf = 100
   if (slf < -100):
     slf = -100
 
-  slb = data.strLb
+  slb = data.str_lb
   if (slb > 100):
     slb = 100
   if (slb < -100):
     slb = -100
 
-  srf = data.strRf
+  srf = data.str_rf
   if (srf > 100):
     srf = 100
   if (srf < -100):
     srf = -100
 
-  srb = data.strRb
+  srb = data.str_rb
   if (srb > 100):
     srb = 100
   if (srb < -100):
@@ -270,11 +270,11 @@ def WR_cb(data):
 
 def armSens_cb(data):
     global c_ShoulderRot, c_ShoulderPitch, c_ElbowPitch, c_WristPitch, c_WristRot
-    c_ShoulderRot = data.ShoulderRot
-    c_ShoulderPitch = data.ShoulderPitch
-    c_ElbowPitch = data.ElbowPitch
-    c_WristPitch = data.WristPitch
-    c_WristRot = data.WristRot
+    c_ShoulderRot = data.shoulder_rot
+    c_ShoulderPitch = data.shoulder_pitch
+    c_ElbowPitch = data.elbow_pitch
+    c_WristPitch = data.wrist_pitch
+    c_WristRot = data.wrist_rot
     if c_ShoulderRot > 1:
         c_ShoulderRot = 1
     elif c_ShoulderRot < 0:
