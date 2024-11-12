@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from can.interface import Bus
 from can import Message, CanError
 from threading import Thread
