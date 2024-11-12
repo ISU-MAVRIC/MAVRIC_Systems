@@ -4,7 +4,8 @@ from can import Message, CanError
 from threading import Thread
 import time
 
-from spark_controller import Controller
+# from spark_controller import Controller
+from .spark_controller import Controller
 
 
 """
