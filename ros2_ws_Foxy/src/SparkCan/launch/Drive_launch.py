@@ -1,80 +1,102 @@
-'''### Imports for ROS 2 Foxy ###'''
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, Node
-from launch.conditions import IfCondition
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
-
-# '''### Imports for ROS 2 Jazzy ###'''
-# from launch import LaunchDescription
-# from launch.actions import DeclareLaunchArgument
-# from launch.conditions import IfCondition
-# from launch.substitutions import LaunchConfiguration
-# from launch_ros.actions import Node  # Node moved to launch_ros in newer versions
+from launch.conditions import IfCondition
+from launch_ros.actions import Node
 
 def generate_launch_description():
-    # Launch Arguments
-    science_mode = DeclareLaunchArgument(
+    # Declare launch arguments
+    science_mode_arg = DeclareLaunchArgument(
         'scienceMode',
         default_value='false',
         description='Enable science mode'
     )
     
-    auto_mode = DeclareLaunchArgument(
+    drive_mode_arg = DeclareLaunchArgument(
+        'driveMode',
+        default_value='true',
+        description='Enable drive mode'
+    )
+    
+    auto_mode_arg = DeclareLaunchArgument(
         'autoMode',
         default_value='false',
         description='Enable auto mode'
     )
 
-    # Nodes
-    drivetrain_science = Node(
-        package='SparkCan',
-        executable='sparkcan_drive_train',  # Remove .py extension
-        name='Drivetrain_Control',
-        output='screen',
-        respawn=True,
-        remappings=[
-            ('Drive_Train', 'Drive/Drive_Command'),
-            ('Steer_Train', 'Drive/Steer_Command')
-        ],
-        condition=IfCondition(LaunchConfiguration('scienceMode'))
-    )
-
-    # scale_startups_science = Node(
-    #     package='SparkCan',
-    #     executable='scale_startups',  # Remove .py extension
-    #     name='Scale_Startups_Science',
-    #     output='screen',
-    #     parameters=[{
-    #         'ShoulderRot': 0.25,
-    #         'ShoulderPitch': 0.50,
-    #         'ElbowPitch': 0.0,
-    #         'WristPitch': 0.75,
-    #         'WristRot': 0.05
-    #     }],
-    #     condition=IfCondition(LaunchConfiguration('scienceMode'))
-    # )
-
-    scale_startups_auto = Node(
-        package='SparkCan',
-        executable='scale_startups',  # Remove .py extension
-        name='Scale_Startups_Auto',
-        output='screen',
-        parameters=[{
-            'Drive_Sens': 1.0,
-            'ShoulderRot': 0.0,
-            'ShoulderPitch': 0.0,
-            'ElbowPitch': 0.0,
-            'WristPitch': 0.0,
-            'WristRot': 0.0
-        }],
-        condition=IfCondition(LaunchConfiguration('autoMode'))
-    )
-
-    # Return LaunchDescription with all components
     return LaunchDescription([
-        science_mode,
-        auto_mode,
-        drivetrain_science,
-        scale_startups_science,
-        scale_startups_auto
+        science_mode_arg,
+        drive_mode_arg,
+        auto_mode_arg,
+        
+        # Drivetrain Control Node (non-science mode)
+        Node(
+            package='mavric',
+            executable='SparkCAN_Drive_Train.py',
+            name='Drivetrain_Control',
+            remappings=[
+                ('Drive_Train', 'Drive/Drive_Command'),
+                ('Steer_Train', 'Drive/Steer_Command')
+            ],
+            condition=IfCondition(LaunchConfiguration('scienceMode')).evaluate_inverse(),
+        ),
+        
+        # Scale Startups Drive Node
+        Node(
+            package='mavric',
+            executable='Scale_Startups.py',
+            name='Scale_Startups_Drive',
+            parameters=[{
+                'Drive_Sens': 1.0,
+                'ShoulderRot': 0.25,
+                'ShoulderPitch': 0.75,
+                'ElbowPitch': 0.75,
+                'WristPitch': 0.3,
+                'WristRot': 0.75
+            }],
+            condition=IfCondition(LaunchConfiguration('driveMode')),
+        ),
+        
+        # Drivetrain Control Node (science mode)
+        Node(
+            package='mavric',
+            executable='SparkCAN_Drive_Train.py',
+            name='Drivetrain_Control',
+            remappings=[
+                ('Drive_Train', 'Drive/Drive_Command'),
+                ('Steer_Train', 'Drive/Steer_Command')
+            ],
+            condition=IfCondition(LaunchConfiguration('scienceMode')),
+        ),
+        
+        # Scale Startups Science Node
+        Node(
+            package='mavric',
+            executable='Scale_Startups.py',
+            name='Scale_Startups_Science',
+            parameters=[{
+                'ShoulderRot': 0.25,
+                'ShoulderPitch': 0.50,
+                'ElbowPitch': 0.0,
+                'WristPitch': 0.75,
+                'WristRot': 0.05
+            }],
+            condition=IfCondition(LaunchConfiguration('scienceMode')),
+        ),
+        
+        # Scale Startups Auto Node
+        Node(
+            package='mavric',
+            executable='Scale_Startups.py',
+            name='Scale_Startups_Auto',
+            parameters=[{
+                'Drive_Sens': 1.0,
+                'ShoulderRot': 0.0,
+                'ShoulderPitch': 0.0,
+                'ElbowPitch': 0.0,
+                'WristPitch': 0.0,
+                'WristRot': 0.0
+            }],
+            condition=IfCondition(LaunchConfiguration('autoMode')),
+        ),
     ])

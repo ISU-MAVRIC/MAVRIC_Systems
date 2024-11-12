@@ -32,7 +32,7 @@ def generate_launch_description():
             os.path.join(
                 get_package_share_directory('SparkCan'),
                 'launch',
-                'Drive.launch.py'
+                'Drive_launch.py'
             )
         ),
         launch_arguments={
@@ -44,55 +44,55 @@ def generate_launch_description():
     )
 
     # Include Sensors.launch.py
-    sensors_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory('SparkCan'),
-                'launch',
-                'Sensors.launch.py'
-            )
-        )
-    )
+    # sensors_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(
+    #             get_package_share_directory('SparkCan'),
+    #             'launch',
+    #             'Sensors_launch.py'
+    #         )
+    #     )
+    # )
 
     # Include Cameras.launch.py
-    cameras_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory('SparkCan'),
-                'launch',
-                'Cameras.launch.py'
-            )
-        )
-    )
+    # cameras_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(
+    #             get_package_share_directory('SparkCan'),
+    #             'launch',
+    #             'Cameras_launch.py'
+    #         )
+    #     )
+    # )
 
     # Include Servos.launch.py with arguments
-    servos_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory('SparkCan'),
-                'launch',
-                'Servos.launch.py'
-            )
-        ),
-        launch_arguments={
-            'scienceMode': LaunchConfiguration('scienceMode'),
-            'driveMode': LaunchConfiguration('driveMode'),
-            'autoMode': LaunchConfiguration('autoMode'),
-            'LoRa_On': LaunchConfiguration('LoRa_On')
-        }.items()
-    )
+    # servos_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(
+    #             get_package_share_directory('SparkCan'),
+    #             'launch',
+    #             'Servos_launch.py'
+    #         )
+    #     ),
+    #     launch_arguments={
+    #         'scienceMode': LaunchConfiguration('scienceMode'),
+    #         'driveMode': LaunchConfiguration('driveMode'),
+    #         'autoMode': LaunchConfiguration('autoMode'),
+    #         'LoRa_On': LaunchConfiguration('LoRa_On')
+    #     }.items()
+    # )
 
     # Define LoRa_Interface node with condition and remappings
-    lora_interface_node = Node(
-        package='SparkCan',
-        executable='900MHz_Interface.py',
-        name='LoRa_Interface',
-        remappings=[
-            ('Drive_Train', 'Drive/Drive_Command'),
-            ('Steer_Train', 'Drive/Steer_Command')
-        ],
-        condition=IfCondition(LaunchConfiguration('LoRa_On'))
-    )
+    # lora_interface_node = Node(
+    #     package='SparkCan',
+    #     executable='900MHz_Interface.py',
+    #     name='LoRa_Interface',
+    #     remappings=[
+    #         ('Drive_Train', 'Drive/Drive_Command'),
+    #         ('Steer_Train', 'Drive/Steer_Command')
+    #     ],
+    #     condition=IfCondition(LaunchConfiguration('LoRa_On'))
+    # )
 
     return LaunchDescription([
         science_mode_arg,
@@ -101,8 +101,8 @@ def generate_launch_description():
         lora_on_arg,
         rosbridge_launch,
         drive_launch,
-        sensors_launch,
-        cameras_launch,
-        servos_launch,
-        lora_interface_node,
+        # sensors_launch,
+        # cameras_launch,
+        # servos_launch,
+        # lora_interface_node,
     ])
