@@ -17,7 +17,6 @@
   <!-- Execution dependencies -->
   <exec_depend>rosidl_default_runtime</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <exec_depend>spark_can</exec_depend>
 
   <!-- General dependencies -->
   <depend>launch_ros</depend>
