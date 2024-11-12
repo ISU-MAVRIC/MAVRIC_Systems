@@ -541,5 +541,5 @@ def talker(args=None):
         self.get_logger().info('Publishing: "%d"' % msg.data)
         self.i += 1 """
 
-if __name__ == "__main___":
+if __name__ == "__main__":
     talker()
