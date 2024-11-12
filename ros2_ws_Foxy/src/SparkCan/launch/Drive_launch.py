@@ -59,45 +59,45 @@ def generate_launch_description():
         ),
         
         # Drivetrain Control Node (science mode)
-        Node(
-            package='SparkCan',
-            executable='SparkCAN_Drive_Train.py',
-            name='Drivetrain_Control',
-            remappings=[
-                ('Drive_Train', 'Drive/Drive_Command'),
-                ('Steer_Train', 'Drive/Steer_Command')
-            ],
-            condition=IfCondition(LaunchConfiguration('scienceMode')),
-        ),
+        # Node(
+        #     package='SparkCan',
+        #     executable='SparkCAN_Drive_Train.py',
+        #     name='Drivetrain_Control',
+        #     remappings=[
+        #         ('Drive_Train', 'Drive/Drive_Command'),
+        #         ('Steer_Train', 'Drive/Steer_Command')
+        #     ],
+        #     condition=IfCondition(LaunchConfiguration('scienceMode')),
+        # ),
         
         # Scale Startups Science Node
-        Node(
-            package='SparkCan',
-            executable='Scale_Startups.py',
-            name='Scale_Startups_Science',
-            parameters=[{
-                'ShoulderRot': 0.25,
-                'ShoulderPitch': 0.50,
-                'ElbowPitch': 0.0,
-                'WristPitch': 0.75,
-                'WristRot': 0.05
-            }],
-            condition=IfCondition(LaunchConfiguration('scienceMode')),
-        ),
+        # Node(
+        #     package='SparkCan',
+        #     executable='Scale_Startups.py',
+        #     name='Scale_Startups_Science',
+        #     parameters=[{
+        #         'ShoulderRot': 0.25,
+        #         'ShoulderPitch': 0.50,
+        #         'ElbowPitch': 0.0,
+        #         'WristPitch': 0.75,
+        #         'WristRot': 0.05
+        #     }],
+        #     condition=IfCondition(LaunchConfiguration('scienceMode')),
+        # ),
         
         # Scale Startups Auto Node
-        Node(
-            package='SparkCan',
-            executable='Scale_Startups.py',
-            name='Scale_Startups_Auto',
-            parameters=[{
-                'Drive_Sens': 1.0,
-                'ShoulderRot': 0.0,
-                'ShoulderPitch': 0.0,
-                'ElbowPitch': 0.0,
-                'WristPitch': 0.0,
-                'WristRot': 0.0
-            }],
-            condition=IfCondition(LaunchConfiguration('autoMode')),
-        ),
+        # Node(
+        #     package='SparkCan',
+        #     executable='Scale_Startups.py',
+        #     name='Scale_Startups_Auto',
+        #     parameters=[{
+        #         'Drive_Sens': 1.0,
+        #         'ShoulderRot': 0.0,
+        #         'ShoulderPitch': 0.0,
+        #         'ElbowPitch': 0.0,
+        #         'WristPitch': 0.0,
+        #         'WristRot': 0.0
+        #     }],
+        #     condition=IfCondition(LaunchConfiguration('autoMode')),
+        # ),
     ])
