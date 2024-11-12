@@ -4,7 +4,7 @@ from can import Message, CanError
 from threading import Thread
 import time
 
-from ros2_ws_Foxy.src.spark_can.spark_can.spark_controller import Controller
+from spark_controller import Controller
 
 
 """
