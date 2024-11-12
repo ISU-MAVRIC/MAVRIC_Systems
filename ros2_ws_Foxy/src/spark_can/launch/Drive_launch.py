@@ -32,7 +32,7 @@ def generate_launch_description():
         # Drivetrain Control Node (non-science mode)
         Node(
             package='spark_can',
-            executable='SparkCAN_Drive_Train',
+            executable='SparkCAN_Drive_Train.py',
             name='Drivetrain_Control',
             remappings=[
                 ('Drive_Train', 'Drive/Drive_Command'),
@@ -44,7 +44,7 @@ def generate_launch_description():
         # Scale Startups Drive Node
         Node(
             package='spark_can',
-            executable='Scale_Startups',
+            executable='Scale_Startups.py',
             name='Scale_Startups_Drive',
             parameters=[{
                 'Drive_Sens': 1.0,
@@ -60,7 +60,7 @@ def generate_launch_description():
         # Drivetrain Control Node (science mode)
         Node(
             package='spark_can',
-            executable='SparkCAN_Drive_Train',
+            executable='SparkCAN_Drive_Train.py',
             name='Drivetrain_Control',
             remappings=[
                 ('Drive_Train', 'Drive/Drive_Command'),
@@ -72,7 +72,7 @@ def generate_launch_description():
         # Scale Startups Science Node
         Node(
             package='spark_can',
-            executable='Scale_Startups',
+            executable='Scale_Startups.py',
             name='Scale_Startups_Science',
             parameters=[{
                 'ShoulderRot': 0.25,
@@ -87,7 +87,7 @@ def generate_launch_description():
         # Scale Startups Auto Node
         Node(
             package='spark_can',
-            executable='Scale_Startups',
+            executable='Scale_Startups.py',
             name='Scale_Startups_Auto',
             parameters=[{
                 'Drive_Sens': 1.0,
