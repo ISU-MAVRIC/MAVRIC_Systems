@@ -1,7 +1,8 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
-from launch.conditions import IfCondition
+# from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.actions import Node
 
 def generate_launch_description():
@@ -38,7 +39,7 @@ def generate_launch_description():
                 ('Drive_Train', 'Drive/Drive_Command'),
                 ('Steer_Train', 'Drive/Steer_Command')
             ],
-            condition=IfCondition(LaunchConfiguration('scienceMode')).evaluate_inverse(),
+            condition=UnlessCondition(LaunchConfiguration('scienceMode')),
         ),
         
         # Scale Startups Drive Node
