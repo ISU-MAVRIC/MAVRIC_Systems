@@ -31,7 +31,7 @@ def generate_launch_description():
         
         # Drivetrain Control Node (non-science mode)
         Node(
-            package='SparkCan',
+            package='spark_can',
             executable='SparkCAN_Drive_Train',
             name='Drivetrain_Control',
             remappings=[
@@ -43,7 +43,7 @@ def generate_launch_description():
         
         # Scale Startups Drive Node
         Node(
-            package='SparkCan',
+            package='spark_can',
             executable='Scale_Startups',
             name='Scale_Startups_Drive',
             parameters=[{
@@ -59,7 +59,7 @@ def generate_launch_description():
         
         # Drivetrain Control Node (science mode)
         Node(
-            package='SparkCan',
+            package='spark_can',
             executable='SparkCAN_Drive_Train',
             name='Drivetrain_Control',
             remappings=[
@@ -71,7 +71,7 @@ def generate_launch_description():
         
         # Scale Startups Science Node
         Node(
-            package='SparkCan',
+            package='spark_can',
             executable='Scale_Startups',
             name='Scale_Startups_Science',
             parameters=[{
@@ -86,7 +86,7 @@ def generate_launch_description():
         
         # Scale Startups Auto Node
         Node(
-            package='SparkCan',
+            package='spark_can',
             executable='Scale_Startups',
             name='Scale_Startups_Auto',
             parameters=[{
