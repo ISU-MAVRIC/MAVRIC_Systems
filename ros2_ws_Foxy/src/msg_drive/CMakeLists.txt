@@ -23,7 +23,7 @@ find_package(ament_cmake REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ArmData.msg"
-  "msg/DriveTrain.msg"
+  "msg/Drivetrain.msg"
   "msg/ScaleFeedback.msg"
   "msg/Steer.msg"
   "msg/Steertrain.msg"
