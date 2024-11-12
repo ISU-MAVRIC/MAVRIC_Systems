@@ -1,4 +1,4 @@
-float32 strLf
-float32 strLb
-float32 strRf
-float32 strRb
+float32 str_lf
+float32 str_lb
+float32 str_rf
+float32 str_rb
