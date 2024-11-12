@@ -8,11 +8,13 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(rosidl_typesupport_c REQUIRED)
+find_package(rosidl_typesupport_cpp REQUIRED)
+find_package(rosidl_typesupport_introspection_c REQUIRED)
+find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+
 
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -21,14 +23,16 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ScaleFeedback.msg" 
   "msg/Steer.msg"
   "msg/Steertrain.msg"
+  DEPENDENCIES std_msgs
 )
 
+# Install launch files
 install(
   DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
 
-# Install Python modules
+# Install Python executables with correct path
 install(PROGRAMS
   spark_can/SparkCAN_Drive_Train.py
   spark_can/Scale_Startups.py
@@ -39,7 +43,6 @@ install(PROGRAMS
 install(DIRECTORY
   spark_can/
   DESTINATION lib/${PROJECT_NAME}
-  PATTERN "*.py"
 )
 
 
