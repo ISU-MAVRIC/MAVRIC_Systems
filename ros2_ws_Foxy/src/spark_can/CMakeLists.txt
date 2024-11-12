@@ -8,6 +8,8 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(std_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -25,6 +27,21 @@ install(
   DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
+
+# Install Python modules
+install(PROGRAMS
+  spark_can/SparkCAN_Drive_Train.py
+  spark_can/Scale_Startups.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install Python package
+install(DIRECTORY
+  spark_can/
+  DESTINATION lib/${PROJECT_NAME}
+  PATTERN "*.py"
+)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
