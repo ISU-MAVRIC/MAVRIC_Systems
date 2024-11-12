@@ -35,7 +35,7 @@ def generate_launch_description():
             os.path.join(
                 get_package_share_directory('spark_can'),
                 'launch',
-                'drive_launch.py'
+                'drive.launch.py'
             )
         ),
         launch_arguments={
