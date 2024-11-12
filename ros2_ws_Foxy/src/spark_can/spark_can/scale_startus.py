@@ -8,7 +8,7 @@ from msg_drive.msg import ArmData, ScaleFeedback
 
 arm_values = ArmData()
 drive_value = Float64()
-
+#tmete
 def drive_cb(msg):
     global drive_value
     drive_value = msg.data
