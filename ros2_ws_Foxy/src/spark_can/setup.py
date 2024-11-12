@@ -31,8 +31,8 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "SparkCAN_Drive_Train = spark_can.SparkCAN_Drive_Train:main",
-            "Scale_Startups = spark_can.Scale_Startups:main",
+            "SparkCAN_Drive_Train = spark_can.spark_can_drive_train:main",
+            "Scale_Startups = spark_can.scale_startups:main",
             # '900MHz_Interface = SparkCan.900MHz_Interface:main',
         ],
     },
