@@ -5,6 +5,7 @@ from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import Node
+from launch.launch_description_sources import XMLLaunchDescriptionSource
 import os
 
 def generate_launch_description():
@@ -16,7 +17,7 @@ def generate_launch_description():
 
     # Include rosbridge_websocket.launch.py
     rosbridge_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
+        XMLLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory('rosbridge_server'),
                 'launch',
