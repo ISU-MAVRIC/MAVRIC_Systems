@@ -31,16 +31,16 @@ def generate_launch_description():
         auto_mode_arg,
         
         # Drivetrain Control Node (non-science mode)
-        # Node(
-        #     package='spark_can',
-        #     executable='SparkCAN_Drive_Train.py',
-        #     name='Drivetrain_Control',
-        #     remappings=[
-        #         ('Drive_Train', 'Drive/Drive_Command'),
-        #         ('Steer_Train', 'Drive/Steer_Command')
-        #     ],
-        #     condition=UnlessCondition(LaunchConfiguration('scienceMode')),
-        # ),
+        Node(
+            package='spark_can',
+            executable='SparkCAN_Drive_Train.py',
+            name='Drivetrain_Control',
+            remappings=[
+                ('Drive_Train', 'Drive/Drive_Command'),
+                ('Steer_Train', 'Drive/Steer_Command')
+            ],
+            condition=UnlessCondition(LaunchConfiguration('scienceMode')),
+        ),
         
         # Scale Startups Drive Node
         Node(
