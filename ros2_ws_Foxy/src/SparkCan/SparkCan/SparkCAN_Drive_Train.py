@@ -29,9 +29,11 @@ Topics:
 
 import rclpy
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 
 from std_msgs.msg import Float64
-from mavric.msg import Steer, Drivetrain, Steertrain, ArmData
+# Assuming these are custom messages in your package
+from SparkCan.msg import Steer, Drivetrain, Steertrain, ArmData
 from SparkCAN import SparkBus
 
 
