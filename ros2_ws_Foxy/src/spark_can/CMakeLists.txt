@@ -13,6 +13,7 @@ find_package(rosidl_typesupport_cpp REQUIRED)
 find_package(rosidl_typesupport_introspection_c REQUIRED)
 find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(spark_can REQUIRED)   
 find_package(std_msgs REQUIRED)
 
 
