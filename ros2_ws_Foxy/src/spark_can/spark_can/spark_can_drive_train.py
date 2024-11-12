@@ -34,7 +34,7 @@ from rclpy.parameter import Parameter
 
 from std_msgs.msg import Float64
 from msg_drive.msg import Steer, Drivetrain, Steertrain, ArmData
-from spark_can.spark_can import SparkBus
+from spark_can import SparkBus
 
 
 # Drive Scales
