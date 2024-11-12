@@ -31,8 +31,8 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import Float64
-# from mavric.msg import Steer, Drivetrain, Steertrain, ArmData
-# from SparkCAN import SparkBus
+from mavric.msg import Steer, Drivetrain, Steertrain, ArmData
+from SparkCAN import SparkBus
 
 
 # Drive Scales

@@ -27,6 +27,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'SparkCAN_Drive_Train = SparkCan.SparkCAN_Drive_Train:main',
+            'Scale_Startups = SparkCan.Scale_Startups:main',
+            # '900MHz_Interface = SparkCan.900MHz_Interface:main',
         ],
     },
 )
