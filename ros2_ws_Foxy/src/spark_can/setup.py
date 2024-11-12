@@ -21,8 +21,10 @@ setup(
     ],
     install_requires=[
         "setuptools",
-        "python-can>=3.3.4",
+        "python-can",
         "numpy",
+        "bson",
+        "PyYAML"
     ],
     zip_safe=True,
     maintainer="golden",
