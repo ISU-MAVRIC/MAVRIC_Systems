@@ -445,10 +445,10 @@ def main(args=None):
 
     # Subscribers for Drill and Drill actuator for science.
     Drill_sub = node.create_subscription(
-        Float64, "Science/Drill", Drill_cb, queue_size=10
+        Float64, "Science/Drill", Drill_cb, 10
     )
     DrillActuator_sub = node.create_subscription(
-        Float64, "Science/DrillActuator", DrillActuator_cb, queue_size=10
+        Float64, "Science/DrillActuator", DrillActuator_cb, 10
     )
 
     setOutputs(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
