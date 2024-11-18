@@ -119,12 +119,16 @@ spark_DrillActuator = sparkBus.init_controller(17)
 
 # Axis Feedback Publishers
 def strpub():
+    # Assign custom message type to steerMsg
     steerMsg = Steer()
-    """ ### WAS ORIGINALLY CASTED TO INT###"""
-    steerMsg.lf = (int(spark_str_lf.position))
-    steerMsg.lb = (int(spark_str_lb.position))
-    steerMsg.rf = (int(spark_str_rf.position))
-    steerMsg.rb = (int(spark_str_rb.position))
+
+    # Assign the values of the sparkmaxes to the steerMsg
+    steerMsg.lf = int(spark_str_lf.position)
+    steerMsg.lb = int(spark_str_lb.position)
+    steerMsg.rf = int(spark_str_rf.position)
+    steerMsg.rb = int(spark_str_rb.position)
+
+    # Publish the steerMsg
     str_pub.publish(steerMsg)
 
 
