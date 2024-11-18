@@ -412,10 +412,10 @@ def main(args=None):
 
     """
     sub = node.create_subscription(Drivetrain, "Drive_Train", driveCallback, 10)
-    # str_sub = node.create_subscription(Steertrain, "Steer_Train", strCallback, 10)
-    # drive_sens = node.create_subscription(
-    #     Float64, "Drive/Drive_Sensitivity", drive_sens_cb, 10
-    # )
+    str_sub = node.create_subscription(Steertrain, "Steer_Train", strCallback, 10)
+    drive_sens = node.create_subscription(
+        Float64, "Drive/Drive_Sensitivity", driveSens_cb, 10
+    )
 
     """
         Create Publisher for Drive/Steer_Feedback
@@ -444,12 +444,12 @@ def main(args=None):
     Vel_pub = node.create_publisher(ArmData, "Arm/JointVelocity", 10)
 
     # Subscribers for Drill and Drill actuator for science.
-    # Drill_sub = node.create_subscriptionubscriber(
-    #     Float64, "Science/Drill", Drill_cb, queue_size=10
-    # )
-    # DrillActuator_sub = node.create_subscription(
-    #     Float64, "Science/DrillActuator", DrillActuator_cb, queue_size=10
-    # )
+    Drill_sub = node.create_subscriptionubscriber(
+        Float64, "Science/Drill", Drill_cb, queue_size=10
+    )
+    DrillActuator_sub = node.create_subscription(
+        Float64, "Science/DrillActuator", DrillActuator_cb, queue_size=10
+    )
 
     setOutputs(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
