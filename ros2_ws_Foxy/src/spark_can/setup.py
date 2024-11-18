@@ -23,7 +23,7 @@ setup(
         "setuptools",
         "python-can",
         "numpy",
-        "bson",
+        "BSON",
         "PyYAML",
         "bitstring"
     ],
