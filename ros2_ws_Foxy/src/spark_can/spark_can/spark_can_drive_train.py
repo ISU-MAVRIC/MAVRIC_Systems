@@ -120,10 +120,11 @@ spark_DrillActuator = sparkBus.init_controller(17)
 # Axis Feedback Publishers
 def strpub():
     steerMsg = Steer()
-    steerMsg.lf = int(spark_str_lf.position)
-    steerMsg.lb = int(spark_str_lb.position)
-    steerMsg.rf = int(spark_str_rf.position)
-    steerMsg.rb = int(spark_str_rb.position)
+    """ ### WAS ORIGINALLY CASTED TO INT###"""
+    steerMsg.lf = float(spark_str_lf.position)
+    steerMsg.lb = float(spark_str_lb.position)
+    steerMsg.rf = float(spark_str_rf.position)
+    steerMsg.rb = float(spark_str_rb.position)
     str_pub.publish(steerMsg)
 
 
@@ -498,7 +499,7 @@ def main(args=None):
         self.sub = self.create_subscription(Drivetrain, 'Drive_Train', driveCallback, 10)
         self.str_sub = self.create_subscription(Steertrain, 'Steer_Train', strCallback, 10)
         self.drive_sens = self.create_subscription(Float64, 'Drive/Drive_Sensitivity', drive_sens_cb, 10)
-        self.str_pub = self.create_publisher(Float64, 'Drive/Steer_Feedback', 10)
+        self.str_pub = self.create_publisher(Steer, 'Drive/Steer_Feedback', 10)
 
         # Subscribers for Armtrain
         self.SR_sub = self.create_subscription(Float64, "Arm/ShoulderRot", SR_cb, 10)
