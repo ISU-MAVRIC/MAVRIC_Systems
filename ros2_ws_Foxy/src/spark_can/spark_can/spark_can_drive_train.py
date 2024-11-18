@@ -121,10 +121,10 @@ spark_DrillActuator = sparkBus.init_controller(17)
 def strpub():
     steerMsg = Steer()
     """ ### WAS ORIGINALLY CASTED TO INT###"""
-    steerMsg.lf = float(int(spark_str_lf.position))
-    steerMsg.lb = float(int(spark_str_lb.position))
-    steerMsg.rf = float(int(spark_str_rf.position))
-    steerMsg.rb = float(int(spark_str_rb.position))
+    steerMsg.lf = (int(spark_str_lf.position))
+    steerMsg.lb = (int(spark_str_lb.position))
+    steerMsg.rf = (int(spark_str_rf.position))
+    steerMsg.rb = (int(spark_str_rb.position))
     str_pub.publish(steerMsg)
 
 
