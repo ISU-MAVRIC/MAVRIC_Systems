@@ -431,7 +431,7 @@ def main(args=None):
                     <topic name>,
                     <queue_size>)
     """
-    str_pub = node.create_publisher(Float64, "Drive/Steer_Feedback", 10)
+    str_pub = node.create_publisher(Steer, "Drive/Steer_Feedback", 10)
 
     # Subscribers for Armtrain
     SR_sub = node.create_subscription(Float64, "Arm/ShoulderRot", SR_cb, 10)
