@@ -412,10 +412,10 @@ def main(args=None):
 
     """
     sub = node.create_subscription(Drivetrain, "Drive_Train", driveCallback, 10)
-    str_sub = node.create_subscription(Steertrain, "Steer_Train", strCallback, 10)
-    drive_sens = node.create_subscription(
-        Float64, "Drive/Drive_Sensitivity", drive_sens_cb, 10
-    )
+    # str_sub = node.create_subscription(Steertrain, "Steer_Train", strCallback, 10)
+    # drive_sens = node.create_subscription(
+    #     Float64, "Drive/Drive_Sensitivity", drive_sens_cb, 10
+    # )
 
     """
         Create Publisher for Drive/Steer_Feedback
