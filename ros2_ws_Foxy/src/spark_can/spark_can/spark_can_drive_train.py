@@ -362,7 +362,7 @@ def snap_function(publisher, input):
         publisher.percent_output(input)
 
 
-def talker(args=None):
+def main(args=None):
 
     # Declare global variables, TODO Question: Why are these global?
     global str_pub, lf, lm, lb, rf, rm, rb, c_Scale, c_str_Scale
@@ -542,4 +542,4 @@ def talker(args=None):
         self.i += 1 """
 
 if __name__ == "__main__":
-    talker()
+    main()
