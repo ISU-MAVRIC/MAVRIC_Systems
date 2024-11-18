@@ -444,7 +444,7 @@ def main(args=None):
     Vel_pub = node.create_publisher(ArmData, "Arm/JointVelocity", 10)
 
     # Subscribers for Drill and Drill actuator for science.
-    Drill_sub = node.create_subscriptionubscriber(
+    Drill_sub = node.create_subscription(
         Float64, "Science/Drill", Drill_cb, queue_size=10
     )
     DrillActuator_sub = node.create_subscription(
