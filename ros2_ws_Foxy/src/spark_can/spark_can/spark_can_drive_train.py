@@ -136,6 +136,9 @@ def arm_feedback():
     Pos_msg = ArmData()
     Vel_msg = ArmData()
 
+    """ 
+    ERROR: shoulder_rot field must be of type float 
+    """
     Pos_msg.shoulder_rot = spark_shoulderRot.position
     Pos_msg.shoulder_pitch = spark_shoulderPitch.position
     Pos_msg.elbow_pitch = spark_elbowPitch.position
@@ -368,6 +371,9 @@ def snap_function(publisher, input):
 
 
 def main(args=None):
+
+    print(spark_shoulderRot.position)
+    return
 
     # Declare global variables, TODO Question: Why are these global?
     global str_pub, lf, lm, lb, rf, rm, rb, c_Scale, c_str_Scale
