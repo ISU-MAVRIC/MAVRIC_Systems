@@ -139,17 +139,17 @@ def arm_feedback():
     """ 
     ERROR: shoulder_rot field must be of type float 
     """
-    Pos_msg.shoulder_rot = spark_shoulderRot.position
-    Pos_msg.shoulder_pitch = spark_shoulderPitch.position
-    Pos_msg.elbow_pitch = spark_elbowPitch.position
-    Pos_msg.wrist_pitch = spark_wristPitch.position
-    Pos_msg.wrist_rot = spark_wristRot.position
+    Pos_msg.shoulder_rot = float(spark_shoulderRot.position)
+    Pos_msg.shoulder_pitch = float(spark_shoulderPitch.position)
+    Pos_msg.elbow_pitch = float(spark_elbowPitch.position)
+    Pos_msg.wrist_pitch = float(spark_wristPitch.position)
+    Pos_msg.wrist_rot = float(spark_wristRot.position)
 
-    Vel_msg.shoulder_rot = spark_shoulderRot.velocity
-    Vel_msg.shoulder_pitch = spark_shoulderPitch.velocity
-    Vel_msg.elbow_pitch = spark_elbowPitch.velocity
-    Vel_msg.wrist_pitch = spark_wristPitch.velocity
-    Vel_msg.wrist_rot = spark_wristRot.velocity
+    Vel_msg.shoulder_rot = float(spark_shoulderRot.velocity)
+    Vel_msg.shoulder_pitch = float(spark_shoulderPitch.velocity)
+    Vel_msg.elbow_pitch = float(spark_elbowPitch.velocity)
+    Vel_msg.wrist_pitch = float(spark_wristPitch.velocity)
+    Vel_msg.wrist_rot = float(spark_wristRot.velocity)
 
     Pos_pub.publish(Pos_msg)
     Vel_pub.publish(Vel_msg)
