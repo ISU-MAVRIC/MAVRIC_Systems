@@ -388,8 +388,8 @@ def main(args=None):
     node.get_logger().info("Created CAN_ATS node")
 
     """ DEBUG """
-    node.get_logger().info(f'Shoulder Rotation Position: {spark_shoulderRot.position}')
-    return
+    # node.get_logger().info(f'Shoulder Rotation Position: {spark_shoulderRot.position}')
+    # return
 
     #
     """
