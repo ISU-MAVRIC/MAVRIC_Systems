@@ -35,6 +35,20 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
+
+            """
+                FORMAT:
+
+                    <executable name> = <package_name>.<file_name>:<function_name>
+                
+                NOTE:
+                        
+                        <executable name> is the name of the executable thats named in the launch file.
+                        <package_name> is the name of the package that the executable is associated with.
+                        <file_name> is the name of the file that contains the function
+                        <function_name> is the name of the function that is called when the executable is run.
+            """
+
             "spark_can_drive_train = spark_can.spark_can_drive_train:main",
             "scale_startups = spark_can.scale_startups:main",
 
