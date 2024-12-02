@@ -33,7 +33,8 @@ def generate_launch_description():
         # Drivetrain Control Node (non-science mode)
         Node(
             package='spark_can',
-            executable='SparkCAN_Drive_Train',
+            # executable='SparkCAN_Drive_Train',
+            executable='spark_can_drive_train',
             name='Drivetrain_Control',
             remappings=[
                 ('Drive_Train', 'Drive/Drive_Command'),
@@ -61,7 +62,8 @@ def generate_launch_description():
         # Drivetrain Control Node (science mode)
         Node(
             package='spark_can',
-            executable='SparkCAN_Drive_Train',
+            # executable='SparkCAN_Drive_Train',
+            executable='spark_can_drive_train',
             name='Drivetrain_Control',
             remappings=[
                 ('Drive_Train', 'Drive/Drive_Command'),
