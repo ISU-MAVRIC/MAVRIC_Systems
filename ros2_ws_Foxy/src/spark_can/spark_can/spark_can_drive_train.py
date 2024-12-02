@@ -93,7 +93,7 @@ DrillActuator = 0
 
 
 # Setup Sparkmax on can bus
-sparkBus = SparkBus(channel="can0", bustype="socketcan", bitrate=1000000)
+sparkBus = SparkBus(channel="vcan0", bustype="socketcan", bitrate=1000000)
 # Wheels
 spark_lf = sparkBus.init_controller(1)
 spark_lm = sparkBus.init_controller(2)

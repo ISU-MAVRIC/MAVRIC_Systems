@@ -16,7 +16,7 @@ Author: Jacob Peskuski, Gabriel Carlson
 
 
 class SparkBus:
-    def __init__(self, channel='can0', bustype='socketcan', bitrate=1000000):
+    def __init__(self, channel='vcan0', bustype='socketcan', bitrate=1000000):
         """
         Object for sending and receiving Spark Max CAN messages.
 
