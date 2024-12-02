@@ -371,9 +371,9 @@ def snap_function(publisher, input):
 
 
 def main(args=None):
-
-
-
+    """
+        TODO: Class based Implementation
+    """
 
     # Declare global variables, TODO Question: Why are these global?
     global str_pub, lf, lm, lb, rf, rm, rb, c_Scale, c_str_Scale
