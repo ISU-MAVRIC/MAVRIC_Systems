@@ -21,7 +21,7 @@ import board
 from std_msgs.msg import Float64
 
 #changed "mavric.msg" to "SparkCan.msg"
-from SparkCan.msg import Voltage
+from msg_sensor.msg import Voltage
 # import adafruit_ads1x15.ads1115 as ADS
 # from adafruit_ads1x15 import analog_in
 import Adafruit_ADS1x15 as ADS

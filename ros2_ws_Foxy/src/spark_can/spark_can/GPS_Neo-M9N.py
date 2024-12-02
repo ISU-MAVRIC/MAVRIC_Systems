@@ -6,7 +6,7 @@ import rclpy
 from rclpy.node import Node
 import serial
 #changed from "mavric.msg" to "SparkCan.msg"
-from SparkCan.msg import GPS
+from msg_sensor.msg import GPS
 from std_msgs.msg import Bool
 from ublox_gps import UbloxGps
 

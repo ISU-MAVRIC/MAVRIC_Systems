@@ -3,7 +3,7 @@ from glob import glob
 from setuptools import find_packages, setup
 
 
-package_name = 'SparkCan'
+package_name = 'spark_can'
 
 setup(
     name=package_name,
@@ -27,6 +27,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            "Battery_Voltage = spark_can.Battery_Voltage:main"
+            "BNO055_IMU = spark_can.BNO055_IMU",
+            "GPS_Neo-M9N = spark_can.GPS_Neo-M9N"
         ],
     },
 )
