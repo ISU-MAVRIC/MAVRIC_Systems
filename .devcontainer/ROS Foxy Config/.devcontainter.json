@@ -1,0 +1,27 @@
+{
+    "name": "ROS 2 Foxy Development",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "."
+    },
+    "runArgs": [
+        "--cap-add=SYS_PTRACE",
+        "--security-opt",
+        "seccomp=unconfined"
+    ],
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "extensions": [
+        "ms-python.black-formatter",
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "visualstudioexptteam.vscodeintellicode",
+        "ms-python.python",
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-iot.vscode-ros",
+        "redhat.vscode-xml"
+    ],
+    "remoteUser": "vscode"
+}
