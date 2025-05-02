@@ -1,0 +1,24 @@
+<launch>
+  <include file="/opt/ros/foxy/share/rosbridge_server/launch/rosbridge_websocket_launch.xml"/>
+  <node pkg="cysar" exec="teleop.py" name="teleop">
+    <param name="deadzone" value="0.08"/>
+    <param name="max_speed" value="1.0"/>
+    <param name="flipper_sensitivity" value="1.0"/>
+    <param name="flipper_min" value="-25.0"/>
+    <param name="flipper_max" value="25.0"/>
+    <param name="shoulder_rotation_min" value="-1000.0"/>
+    <param name="shoulder_rotation_max" value="1000.0"/>
+    <param name="shoulder_rotation_sensitivity" value="0.1"/>
+    <param name="shoulder_angle_min" value="0.0"/>
+    <param name="shoulder_angle_max" value="40.0"/>
+    <param name="shoulder_angle_sensitivity" value="0.1"/>
+    <param name="elbow_angle_min" value="0.0"/>
+    <param name="elbow_angle_max" value="30.0"/>
+    <param name="elbow_angle_sensitivity" value="0.1"/>
+    <param name="wrist_angle_speed" value="0.2"/>
+    <param name="wrist_rotation_speed" value="0.4"/>
+  </node>
+  <node pkg="cysar" exec="operator_interface.py" name="operator_interface"/>
+  <!--<node pkg="cysar" exec="camera_control.py" name="camera_control"/>--> <!--DEPRECATED-->
+  <node pkg="cysar" exec="can_control.py" name="can_control"/>
+</launch>

@@ -1,0 +1,6 @@
+float32 shoulder_rotatation
+float32 shoulder_angle
+float32 elbow_angle
+float32 wrist_rotation_velocity
+float32 wrist_angle_velocity
+bool claw_closing
