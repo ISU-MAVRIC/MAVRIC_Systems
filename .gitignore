@@ -15,5 +15,8 @@ colcon/
 .deps_install/
 
 # Ignore IDE-specific files
-.vscode/
 .idea/
+
+# Keep vscode extensions.json
+**/.vscode/*
+!**/.vscode/extensions.json
