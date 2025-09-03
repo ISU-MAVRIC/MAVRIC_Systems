@@ -23,7 +23,7 @@
                 "visualstudioexptteam.vscodeintellicode",
                 "ms-python.python",
                 "ms-python.debugpy",
-                "ms-iot.vscode-ros",
+                "ranch-hand-robotics.rde-pack",
                 "redhat.vscode-xml"
             ]
         }
