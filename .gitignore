@@ -5,6 +5,7 @@
 build/
 install/
 log/
+__pycache__/
 
 # Ignore ROS 2 workspace files
 colcon/

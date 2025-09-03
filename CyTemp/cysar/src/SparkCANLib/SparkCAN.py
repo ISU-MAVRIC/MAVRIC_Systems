@@ -2,6 +2,9 @@ from can.interface import Bus
 from can import Message, CanError
 from threading import Thread
 import time
+import queue
+import traceback
+import logging
 
 from SparkCANLib import SparkController
 
@@ -14,7 +17,7 @@ Author: Jacob Peskuski, Gabriel Carlson
 
 
 class SparkBus:
-    def __init__(self, channel='can0', bustype='socketcan', bitrate=1000000):
+    def __init__(self, channel='can0', bustype='socketcan', bitrate=1000000, suppress_errors=True):
         """
         Object for sending and receiving Spark Max CAN messages.
 
@@ -26,8 +29,59 @@ class SparkBus:
         @param bitrate: Rate at which bits are sent through the CAN bus.
         @type bitrate: int
         """
-        # init CAN bus
-        self.bus = Bus(channel=channel, bustype=bustype, bitrate=bitrate)
+        # init CAN bus (with fallback if interface not available)
+        self.simulated = False
+
+        class _DummyBus:
+            """Minimal stand‑in for python-can Bus when no CAN interface is present.
+            Stores sent messages in an internal queue so recv() can return them if desired.
+            """
+            def __init__(self):
+                self._q = queue.Queue()
+
+            def send(self, msg):  # mimic python-can Bus API
+                self._q.put(msg)
+
+            def recv(self, timeout=0):
+                if timeout is None:
+                    timeout = 0
+                try:
+                    return self._q.get(timeout=timeout)
+                except queue.Empty:
+                    return None
+
+        # optionally suppress python-can logger noise if interface missing
+        if suppress_errors:
+            logging.getLogger('can').setLevel(logging.CRITICAL)
+
+        # helper for ROS logging if rclpy available
+        def _ros_log(level: str, msg: str):
+            try:
+                from rclpy.logging import get_logger
+                logger = get_logger('SparkCAN')
+                if level == 'info':
+                    logger.info(msg)
+                elif level == 'warn':
+                    logger.warn(msg)
+                elif level == 'error':
+                    logger.error(msg)
+                else:
+                    logger.info(msg)
+            except Exception:
+                # fallback to print
+                print(msg)
+
+        try:
+            self.bus = Bus(channel=channel, bustype=bustype, bitrate=bitrate)
+            _ros_log('info', f"[SparkCAN] Using real CAN bus: channel='{channel}', bustype='{bustype}', bitrate={bitrate} (simulation=False)")
+        except Exception as e:
+            # Fall back to dummy bus so higher-level code keeps working.
+            warn_msg = f"[SparkCAN] CAN bus init failed for channel '{channel}' ({e}). Running in simulation mode (no hardware)."
+            _ros_log('warn', warn_msg)
+            # Optional verbose traceback (comment out if too noisy)
+            # traceback.print_exc()
+            self.bus = _DummyBus()
+            self.simulated = True
 
         #dictionary to store all of the controllers
         self.controllers = {}
@@ -86,6 +140,11 @@ class SparkBus:
         while True:
             message = self.bus.recv(0)
             if message is None:
+                # avoid tight spin when no hardware present
+                if self.simulated:
+                    time.sleep(0.005)
+                else:
+                    time.sleep(0.0005)
                 continue
 
             # get api (class and index) and id of device from the message id
@@ -133,6 +192,10 @@ class SparkBus:
         while True:
             if self.heartbeat_enabled:
                 # set when init_controller is called
-                msg = Message(arbitration_id=0x02052480, data=self.enable_id_array)
-                self.send_msg(msg)
+                try:
+                    msg = Message(arbitration_id=0x02052480, data=self.enable_id_array)
+                    self.send_msg(msg)
+                except Exception as e:
+                    # In simulation or if message creation fails, just log once per loop
+                    print(f"[SparkCAN] Heartbeat send failed: {e}")
                 time.sleep(.02)

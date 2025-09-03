@@ -34,3 +34,13 @@ time.sleep(5)
 #Set motor to 0% power
 sparkESC.percent_output(0)
 ```
+
+## Running Without Hardware / No vcan Device
+
+If the specified CAN interface (e.g. `can0` / `vcan0`) isn't present or python-can can't initialize it, the library automatically enters a lightweight simulation mode. In this mode:
+
+- A dummy in‑memory bus is used so API calls (`send_msg`, controller output methods) do not raise exceptions.
+- Heartbeat still iterates but only logs warnings if something goes wrong.
+- No real status frames are received, so feedback properties like `velocity` / `position` remain at their initialized values (0) unless you extend the dummy bus to inject frames.
+
+This allows higher-level application code to run on development machines without a physical or virtual CAN device. When a real interface becomes available, simply ensure the CAN device exists before constructing `SparkBus` and hardware communication will resume with no code changes.
