@@ -1,0 +1,36 @@
+{
+  "name": "ROS 2 Foxy Desktop with NoVNC",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "runArgs": [
+    "--init",
+    "--shm-size=1g",
+    "--ulimit", "rtprio=99"
+  ],
+  "forwardPorts": [
+    8080,
+    5900
+  ],
+  "remoteUser": "dev",
+  "containerEnv": {
+    "DISPLAY": ":1"
+  },
+  "postCreateCommand": "rosdep update || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-iot.vscode-ros",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "twxs.cmake",
+        "ms-vscode.cpptools"
+      ]
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/src,target=/home/dev/ros2_ws/src,type=bind"
+  ],
+  "workspaceFolder": "/home/dev/ros2_ws"
+}
