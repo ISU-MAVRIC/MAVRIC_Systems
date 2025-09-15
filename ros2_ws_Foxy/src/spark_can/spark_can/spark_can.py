@@ -199,4 +199,5 @@ class SparkBus:
                     self.send_msg(msg)
                 except Exception as e:
                     # In simulation or if message creation fails, just log once per loop
-                    print(f"[SparkCAN] Heartbeat send f
+                    print(f"[SparkCAN] Heartbeat send failed: {e}")
+                time.sleep(.02)
