@@ -5,6 +5,7 @@
 build/
 install/
 log/
+__pycache__/
 
 # Ignore ROS 2 workspace files
 colcon/
@@ -15,5 +16,12 @@ colcon/
 .deps_install/
 
 # Ignore IDE-specific files
-.vscode/
 .idea/
+
+# Keep vscode extensions.json
+**/.vscode/*
+!**/.vscode/extensions.json
+
+# Ignore supervisord runtime files at repo root
+/supervisord.log
+/supervisord.pid
