@@ -21,3 +21,7 @@ colcon/
 # Keep vscode extensions.json
 **/.vscode/*
 !**/.vscode/extensions.json
+
+# Ignore supervisord runtime files at repo root
+/supervisord.log
+/supervisord.pid
