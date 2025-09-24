@@ -20,7 +20,7 @@ BRD = 3
 INVERTED = -1
 
 class DriveControl():
-    """s
+    """
     Uses the CANbus interface to set the velocity of the motors.
 
     Args:

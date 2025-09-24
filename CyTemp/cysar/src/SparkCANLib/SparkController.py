@@ -2,6 +2,7 @@ from can.interface import Bus
 from can import Message
 from SparkCANLib import Statuses
 from struct import pack
+from rclpy.logging import get_logger
 
 """
 Description: Objects for storing data from motor controllers and sending data to motor controllers
@@ -16,6 +17,7 @@ def packer_float(value):
 
 class Controller:
     def __init__(self, bus, id):
+        self.logger = get_logger('cysar.SparkController')
         self.bus = bus
         self.id = id
         self.statuses = {0x60: None,
@@ -41,6 +43,7 @@ class Controller:
         mod_value = value*self.percentProps["dir"]*self.percentProps["scale"]
         msg = Message(arbitration_id= 0x02050080 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
+        self.logger.info(f"Sent percent output {mod_value} to controller ID {self.id}")
 
     def velocity_output(self, value):
         mod_value = value * self.velocityProps["dir"]*self.velocityProps["countConversion"]
