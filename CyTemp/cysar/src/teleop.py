@@ -13,6 +13,7 @@ import rclpy
 from rclpy.node import Node
 from cysar.msg import DriveTrain
 import numpy as np
+from cysar.msg import SteerTrain
 
 class Teleop(Node):
     """
@@ -25,9 +26,13 @@ class Teleop(Node):
         # Variables
         self.drive_train = DriveTrain()
         self.mode : str = "Drive"
+        self.steer_train = SteerTrain()
+
+        
 
         # Publisher/Subscribers
         self.drive_train_publisher = self.create_publisher(DriveTrain, 'drive_train', 10)
+        self.fteer_train_publisher = self.create_publisher(SteerTrain, 'steer_train', 10)
 
         # Paramerters   
         self.declare_parameter('max_speed', '1.0')
