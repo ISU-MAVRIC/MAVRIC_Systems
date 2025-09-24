@@ -14,6 +14,7 @@ from rclpy.node import Node
 from cysar.msg import DriveTrain
 from SparkCANLib import SparkController, SparkCAN
 from drive_control import DriveControl
+from steer_control import SteerControl
 
 class CanControl(Node):
     """
@@ -25,6 +26,14 @@ class CanControl(Node):
         self.bus = SparkCAN.SparkBus(channel="can0", bustype='socketcan', bitrate=1000000)
         self.drive_control = DriveControl(self.bus)
         self.drive_train_subscription = self.create_subscription(DriveTrain, 'drive_train', self.drive_listener, 10)
+        self.steer_control = SteerControl(self.bus)
+        self.steer_train_subscription = self.create_subscription(DriveTrain, 'steer_train', self.steer_listener, 10)
+
+    def steer_listener(self, msg : SteerTrain) -> None:
+        """
+        Called whenever new steer train data is recieved from ROS.
+        """
+        self.steer_control.set_angle(msg)
 
 
     def drive_listener(self, msg : DriveTrain) -> None:
