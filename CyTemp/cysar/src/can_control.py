@@ -43,7 +43,7 @@ class CanControl(Node):
         """
         Called whenever new steer train data is recieved from ROS.
         """
-        self.steer_control.set_steering(msg)
+        self.steer_control.set_velocity(msg)
 
 
 def main(args=None):
