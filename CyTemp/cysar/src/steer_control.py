@@ -2,10 +2,10 @@ from cysar.msg import SteerTrain
 from SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers
-FLD = 4
-FRD = 6
-BLD = 1
-BRD = 3
+FLS = 7
+FRS = 10
+BLS = 9
+BRS = 8
 
 INVERTED = -1
 
@@ -18,10 +18,10 @@ class SteerControl():
     """
     def __init__(self, bus : SparkBus):
         self.bus = bus
-        self.FLMotor = self.bus.init_controller(FLD)
-        self.FRMotor = self.bus.init_controller(FRD)
-        self.BLMotor = self.bus.init_controller(BLD)
-        self.BRMotor = self.bus.init_controller(BRD)
+        self.FLMotor = self.bus.init_controller(FLS)
+        self.FRMotor = self.bus.init_controller(FRS)
+        self.BLMotor = self.bus.init_controller(BLS)
+        self.BRMotor = self.bus.init_controller(BRS)
 
     def set_velocity(self, msg : SteerTrain):
         """
