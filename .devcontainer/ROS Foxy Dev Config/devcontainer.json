@@ -5,11 +5,7 @@
         "context": "."
     },
     "runArgs": [
-        "--privileged",
-        "--cap-add=SYS_PTRACE",
-        "--security-opt",
-        "seccomp=unconfined",
-        "--cap-add=NET_ADMIN"
+        "--network=host"
     ],
     "customizations": {
         "vscode": {
@@ -28,6 +24,5 @@
             ]
         }
     },
-    // "postStartCommand": "sudo ip link add dev can0 type vcan && sudo ip link set up can0",
     "remoteUser": "mavric"
 }

@@ -1,6 +1,9 @@
 <launch>
-  <node pkg="cysar" exec="teleop.py" name="teleop">
-    <param name="max_speed" value="1.0"/>
+  <node name="rosbridge_websocket" pkg="rosbridge_server" exec="rosbridge_websocket">
+    <param name="port" value="9090" />
   </node>
-  <node pkg="cysar" exec="can_control.py" name="can_control"/>
+  <node pkg="cysar" exec="teleop.py" name="teleop">
+    <param name="max_speed" value="1.0" />
+  </node>
+  <node pkg="cysar" exec="can_control.py" name="can_control" />
 </launch>
