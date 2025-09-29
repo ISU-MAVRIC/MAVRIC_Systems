@@ -5,14 +5,11 @@ import rclpy.logging
 from typing import Optional
 
 # CAN IDs for Drive Controllers
-# FLS = 7
-# FRS = 10
-# BLS = 9
-# BRS = 8
-FLS = 1
-FRS = 6
-BLS = 5
-BRS = 3
+FLS = 7
+FRS = 10
+BLS = 9
+BRS = 8
+
 
 INVERTED = -1
 
