@@ -12,10 +12,10 @@ from cysar.msg import DriveTrain
 from SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers
-FLD = 4
-FRD = 6
-BLD = 1
-BRD = 3
+FLD = 7 # Changed from 4 to 7
+FRD = 10 # Changed from 6 to 10
+BLD = 9 # Changed from 1 to 9
+BRD = 8 # Changed from 3 to 8
 
 INVERTED = -1
 
