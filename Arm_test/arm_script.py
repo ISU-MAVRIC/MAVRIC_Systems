@@ -8,6 +8,6 @@ arm_motor = bus.init_controller(9)
 while (True):
     # arm_motor.percent_output(0.05)
 
-    print (arm_motor.position())
+    print (arm_motor.position)
 
     # l_motor.percent_output(0.05)
