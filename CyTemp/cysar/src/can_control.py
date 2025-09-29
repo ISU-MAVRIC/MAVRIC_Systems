@@ -14,9 +14,8 @@ from rclpy.node import Node
 from cysar.msg import DriveTrain
 from SparkCANLib import SparkController, SparkCAN
 from drive_control import DriveControl
-from cysar.msg import SteerTraina
+from cysar.msg import SteerTrain
 from steer_control import SteerControl
-import rclpy
 import rclpy.logging
 
 
