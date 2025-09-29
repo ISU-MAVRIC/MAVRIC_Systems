@@ -5,10 +5,10 @@ import rclpy.logging
 from typing import Optional
 
 # CAN IDs for Drive Controllers
-FLS = 7
-FRS = 10
-BLS = 9
-BRS = 8
+FLD = 7
+FRD = 10
+BLD = 9
+BRD = 8
 
 
 INVERTED = -1
@@ -26,16 +26,16 @@ class SteerControl():
         self.bus = bus
         # self._logger = logger or rclpy.logging.get_logger('cysar.steer_control')
 
-        self.FLMotor = self.bus.init_controller(FLS)
+        self.FLMotor = self.bus.init_controller(FLD)
         # self._logger.info(f"Initialized Front Left Steer (FLS) controller with CAN ID {FLS}")
 
-        self.FRMotor = self.bus.init_controller(FRS)
+        self.FRMotor = self.bus.init_controller(FRD)
         # self._logger.info(f"Initialized Front Right Steer (FRS) controller with CAN ID {FRS}")
 
-        self.BLMotor = self.bus.init_controller(BLS)
+        self.BLMotor = self.bus.init_controller(BLD)
         # self._logger.info(f"Initialized Back Left Steer (BLS) controller with CAN ID {BLS}")
 
-        self.BRMotor = self.bus.init_controller(BRS)
+        self.BRMotor = self.bus.init_controller(BRD)
         # self._logger.info(f"Initialized Back Right Steer (BRS) controller with CAN ID {BRS}")
 
     def set_velocity(self, msg : SteerTrain):
