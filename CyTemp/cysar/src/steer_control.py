@@ -51,7 +51,7 @@ class SteerControl():
         self.FRMotor.percent_output(msg.front_right)
         # self._logger.info(
         #     f"Setting Back Left Motor velocity to {msg.back_left:.3f} (inverted: {(INVERTED * msg.back_left):.3f})"
-        )
+        #)
         self.BLMotor.percent_output(INVERTED * msg.back_left)
         # self._logger.info(
         #     f"Setting Back Right Motor velocity to {msg.back_right:.3f} (inverted: {(INVERTED * msg.back_right):.3f})"
