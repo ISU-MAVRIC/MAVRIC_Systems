@@ -1,9 +1,10 @@
 from SparkCANLib import SparkController, SparkCAN
-import numpy as np
 
 bus = SparkCAN.SparkBus(channel="can0", bustype='socketcan', bitrate=1000000)
 
 arm_motor = bus.init_controller(5)
+l_motor = bus.init_controller(1)
 
 while (True):
     arm_motor.percent_output(0.05)
+    l_motor.percent_output(0.05)
