@@ -16,7 +16,7 @@ from SparkCANLib import SparkController, SparkCAN
 from drive_control import DriveControl
 from cysar.msg import SteerTrain
 from steer_control import SteerControl
-import rclpy.logging
+
 
 
 class CanControl(Node):
@@ -46,7 +46,7 @@ class CanControl(Node):
         Called whenever new steer train data is recieved from ROS.
         """
         self.steer_control.set_velocity(msg)
-        self.get_logger().info(f"Received SteerTrain message: {msg}")
+        
 
 
 def main(args=None):
