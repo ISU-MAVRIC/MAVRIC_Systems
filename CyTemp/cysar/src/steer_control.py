@@ -2,10 +2,14 @@ from cysar.msg import SteerTrain
 from SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers
-FLS = 7
-FRS = 10
-BLS = 9
-BRS = 8
+# FLS = 7
+# FRS = 10
+# BLS = 9
+# BRS = 8
+FLS = 1
+FRS = 6
+BLS = 5
+BRS = 3
 
 INVERTED = -1
 
