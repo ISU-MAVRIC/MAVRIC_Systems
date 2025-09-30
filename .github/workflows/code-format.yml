@@ -1,0 +1,111 @@
+---
+name: Code Formatting
+
+'on':
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+jobs:
+  format:
+    name: Format Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Install formatting tools
+        run: |
+          pip install black isort
+          npm install -g prettier
+          sudo apt-get update
+          sudo apt-get install -y cmake-format clang-format
+
+      - name: Format Python files with Black
+        run: |
+          # Format Python files with Black (88 character line length)
+          find . -name "*.py" -not -path "./.git/*" \
+            -not -path "./build/*" -not -path "./install/*" \
+            -not -path "./__pycache__/*" -print0 | \
+            xargs -0 --no-run-if-empty black \
+            --line-length 88 --target-version py38
+        continue-on-error: false
+
+      - name: Sort Python imports with isort
+        run: |
+          # Sort imports to be compatible with Black
+          find . -name "*.py" -not -path "./.git/*" \
+            -not -path "./build/*" -not -path "./install/*" \
+            -not -path "./__pycache__/*" -print0 | \
+            xargs -0 --no-run-if-empty isort --profile black
+        continue-on-error: false
+
+      - name: Format JSON files with Prettier
+        run: |
+          # Format JSON files
+          find . -name "*.json" -not -path "./.git/*" \
+            -not -path "./node_modules/*" -not -path "./build/*" \
+            -not -path "./install/*" -print0 | \
+            xargs -0 --no-run-if-empty prettier --write
+        continue-on-error: false
+
+      - name: Format CMake files
+        run: |
+          # Format CMakeLists.txt and .cmake files
+          find . \( -name "CMakeLists.txt" -o -name "*.cmake" \) \
+            -not -path "./.git/*" -not -path "./build/*" \
+            -not -path "./install/*" -print0 | \
+            xargs -0 --no-run-if-empty cmake-format -i
+        continue-on-error: false
+
+      - name: Format C/C++ files (if any)
+        run: |
+          # Format C/C++ files with clang-format
+          find . \( -name "*.cpp" -o -name "*.c" -o -name "*.h" \
+            -o -name "*.hpp" \) -not -path "./.git/*" \
+            -not -path "./build/*" -not -path "./install/*" \
+            -print0 | xargs -0 --no-run-if-empty clang-format -i
+        continue-on-error: false
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Files were reformatted"
+            git status --porcelain
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No files were reformatted"
+          fi
+
+      - name: Commit formatted code
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email \
+            'github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "Auto-format code with Black, Prettier, and other formatters
+
+          - Format Python files with Black (88 char line length)
+          - Sort Python imports with isort (Black profile)
+          - Format JSON files with Prettier
+          - Format CMake files with cmake-format
+          - Format C/C++ files with clang-format"
+
+      - name: Push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git push

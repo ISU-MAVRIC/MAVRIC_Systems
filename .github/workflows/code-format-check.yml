@@ -1,0 +1,82 @@
+---
+name: Code Format Check
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-format:
+    name: Check Code Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Install formatting tools
+        run: |
+          pip install black isort
+          npm install -g prettier
+          sudo apt-get update
+          sudo apt-get install -y cmake-format clang-format
+
+      - name: Check Python formatting with Black
+        run: |
+          echo "Checking Python files with Black..."
+          find . -name "*.py" -not -path "./.git/*" \
+            -not -path "./build/*" -not -path "./install/*" \
+            -not -path "./__pycache__/*" -print0 | \
+            xargs -0 --no-run-if-empty black --check --diff \
+            --line-length 88 --target-version py38
+        continue-on-error: false
+
+      - name: Check Python import sorting with isort
+        run: |
+          echo "Checking Python import sorting with isort..."
+          find . -name "*.py" -not -path "./.git/*" \
+            -not -path "./build/*" -not -path "./install/*" \
+            -not -path "./__pycache__/*" -print0 | \
+            xargs -0 --no-run-if-empty isort --check-only \
+            --diff --profile black
+        continue-on-error: false
+
+      - name: Check JSON formatting with Prettier
+        run: |
+          echo "Checking JSON files with Prettier..."
+          find . -name "*.json" -not -path "./.git/*" \
+            -not -path "./node_modules/*" -not -path "./build/*" \
+            -not -path "./install/*" -print0 | \
+            xargs -0 --no-run-if-empty prettier --check
+        continue-on-error: false
+
+      - name: Check CMake formatting
+        run: |
+          echo "Checking CMake files with cmake-format..."
+          find . \( -name "CMakeLists.txt" -o -name "*.cmake" \) \
+            -not -path "./.git/*" -not -path "./build/*" \
+            -not -path "./install/*" -print0 | \
+            xargs -0 --no-run-if-empty cmake-format --check
+        continue-on-error: false
+
+      - name: Check C/C++ formatting (if any)
+        run: |
+          echo "Checking C/C++ files with clang-format..."
+          # Check if any C/C++ files exist first
+          if find . \( -name "*.cpp" -o -name "*.c" -o -name "*.h" \
+            -o -name "*.hpp" \) -not -path "./.git/*" \
+            -not -path "./build/*" -not -path "./install/*" | \
+            grep -q .; then
+            find . \( -name "*.cpp" -o -name "*.c" -o -name "*.h" \
+              -o -name "*.hpp" \) -not -path "./.git/*" \
+              -not -path "./build/*" -not -path "./install/*" \
+              -exec clang-format --dry-run --Werror {} \;
+          else
+            echo "No C/C++ files found to check."
+          fi
+        continue-on-error: false

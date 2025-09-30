@@ -25,3 +25,9 @@ colcon/
 # Ignore supervisord runtime files at repo root
 /supervisord.log
 /supervisord.pid
+
+# Ignore formatter cache files
+.mypy_cache/
+.black_cache/
+.ruff_cache/
+*.orig
