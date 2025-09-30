@@ -17,7 +17,9 @@ Author: Jacob Peskuski, Gabriel Carlson
 
 
 class SparkBus:
-    def __init__(self, channel='can0', bustype='socketcan', bitrate=1000000, suppress_errors=True):
+    def __init__(
+        self, channel="can0", bustype="socketcan", bitrate=1000000, suppress_errors=True
+    ):
         """
         Object for sending and receiving Spark Max CAN messages.
 
@@ -36,6 +38,7 @@ class SparkBus:
             """Minimal stand‑in for python-can Bus when no CAN interface is present.
             Stores sent messages in an internal queue so recv() can return them if desired.
             """
+
             def __init__(self):
                 self._q = queue.Queue()
 
@@ -52,18 +55,19 @@ class SparkBus:
 
         # optionally suppress python-can logger noise if interface missing
         if suppress_errors:
-            logging.getLogger('can').setLevel(logging.CRITICAL)
+            logging.getLogger("can").setLevel(logging.CRITICAL)
 
         # helper for ROS logging if rclpy available
         def _ros_log(level: str, msg: str):
             try:
                 from rclpy.logging import get_logger
-                logger = get_logger('SparkCAN')
-                if level == 'info':
+
+                logger = get_logger("SparkCAN")
+                if level == "info":
                     logger.info(msg)
-                elif level == 'warn':
+                elif level == "warn":
                     logger.warn(msg)
-                elif level == 'error':
+                elif level == "error":
                     logger.error(msg)
                 else:
                     logger.info(msg)
@@ -73,20 +77,23 @@ class SparkBus:
 
         try:
             self.bus = Bus(channel=channel, bustype=bustype, bitrate=bitrate)
-            _ros_log('info', f"[SparkCAN] Using real CAN bus: channel='{channel}', bustype='{bustype}', bitrate={bitrate} (simulation=False)")
+            _ros_log(
+                "info",
+                f"[SparkCAN] Using real CAN bus: channel='{channel}', bustype='{bustype}', bitrate={bitrate} (simulation=False)",
+            )
         except Exception as e:
             # Fall back to dummy bus so higher-level code keeps working.
             warn_msg = f"[SparkCAN] CAN bus init failed for channel '{channel}' ({e}). Running in simulation mode (no hardware)."
-            _ros_log('warn', warn_msg)
+            _ros_log("warn", warn_msg)
             # Optional verbose traceback (comment out if too noisy)
             # traceback.print_exc()
             self.bus = _DummyBus()
             self.simulated = True
 
-        #dictionary to store all of the controllers
+        # dictionary to store all of the controllers
         self.controllers = {}
 
-        #array of all the currently added CAN IDs (Used for heartbeat)
+        # array of all the currently added CAN IDs (Used for heartbeat)
         self.can_ids = []
 
         # Start heartbeat thread
@@ -127,7 +134,7 @@ class SparkBus:
         @type msg: Message
         """
         try:
-            #Sends the passed in CAN message to the CAN Bus initialized in constructor
+            # Sends the passed in CAN message to the CAN Bus initialized in constructor
             self.bus.send(msg)
         except CanError as err:
             print(err)
@@ -149,9 +156,13 @@ class SparkBus:
 
             # get api (class and index) and id of device from the message id
             api = (message.arbitration_id & 0x0000FFC0) >> 6
-            devID = (message.arbitration_id & 0x0000003F)
+            devID = message.arbitration_id & 0x0000003F
 
-            if devID in self.controllers.keys() and api in self.controllers[devID].statuses.keys() and self.controllers[devID].statuses[api] is not None:
+            if (
+                devID in self.controllers.keys()
+                and api in self.controllers[devID].statuses.keys()
+                and self.controllers[devID].statuses[api] is not None
+            ):
                 # using device id and api, send message to decoder
                 self.controllers[devID].statuses[api].decode(message.data)
 
@@ -171,12 +182,12 @@ class SparkBus:
         """
         Helper method to update the heartbeat CAN message being sent when another controller is added
         """
-        enable_array = ['0'] * 64
+        enable_array = ["0"] * 64
         for id in self.can_ids:
-            enable_array[id] = '1'
+            enable_array[id] = "1"
         enable_array.reverse()
         self.enable_id_array = [0, 0, 0, 0, 0, 0, 0, 0]
-        #For testing, should rewrite to clean up
+        # For testing, should rewrite to clean up
         self.enable_id_array[7] = int("".join(enable_array[0:8]), 2)
         self.enable_id_array[6] = int("".join(enable_array[8:16]), 2)
         self.enable_id_array[5] = int("".join(enable_array[16:24]), 2)
@@ -186,8 +197,7 @@ class SparkBus:
         self.enable_id_array[1] = int("".join(enable_array[48:56]), 2)
         self.enable_id_array[0] = int("".join(enable_array[56:64]), 2)
 
-
-    #Multithreaded runnable to continuously send heartbeat without blocking main thread. Thread started in constructor
+    # Multithreaded runnable to continuously send heartbeat without blocking main thread. Thread started in constructor
     def _heartbeat_runnable(self):
         while True:
             if self.heartbeat_enabled:
@@ -198,4 +208,4 @@ class SparkBus:
                 except Exception as e:
                     # In simulation or if message creation fails, just log once per loop
                     print(f"[SparkCAN] Heartbeat send failed: {e}")
-                time.sleep(.02)
+                time.sleep(0.02)

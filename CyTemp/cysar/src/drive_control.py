@@ -19,21 +19,23 @@ BRD = 3
 
 INVERTED = -1
 
-class DriveControl():
+
+class DriveControl:
     """
     Uses the CANbus interface to set the velocity of the motors.
 
     Args:
         bus (SparkCANLib.SparkCAN.SparkBus): CANbus interface
     """
-    def __init__(self, bus : SparkBus):
+
+    def __init__(self, bus: SparkBus):
         self.bus = bus
         self.FLMotor = self.bus.init_controller(FLD)
         self.FRMotor = self.bus.init_controller(FRD)
         self.BLMotor = self.bus.init_controller(BLD)
         self.BRMotor = self.bus.init_controller(BRD)
 
-    def set_velocity(self, msg : DriveTrain):
+    def set_velocity(self, msg: DriveTrain):
         """
         Sets the velocity of the motors based on the ROS values.
 
