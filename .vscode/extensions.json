@@ -7,6 +7,7 @@
         "ms-python.python",
         "ms-python.debugpy",
         "ranch-hand-robotics.rde-pack",
-        "redhat.vscode-xml"
+        "redhat.vscode-xml",
+        "ms-azuretools.vscode-containers"
     ]
 }
