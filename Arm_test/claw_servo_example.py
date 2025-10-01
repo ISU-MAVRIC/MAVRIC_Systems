@@ -141,7 +141,7 @@ def main():
     # Initialize PCA9685
     # Based on Servos.launch: address=64 (0x40), frequency=50Hz
     print("\nInitializing PCA9685...")
-    pwm = PCA9685.PCA9685(address=0x40, busnum=1)
+    pwm = PCA9685.PCA9685(address=0x40, busnum=0)
     
     # Claw is on CH3 or CH4 depending on configuration
     # Using CH3 as per Servos.launch
