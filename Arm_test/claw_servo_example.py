@@ -145,7 +145,7 @@ def main():
     
     # Claw is on CH3 or CH4 depending on configuration
     # Using CH3 as per Servos.launch
-    claw_channel = 0
+    claw_channel = 1
     
     # Create claw controller
     claw = ClawController(pwm, claw_channel, frequency=50)
