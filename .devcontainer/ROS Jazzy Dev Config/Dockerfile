@@ -27,6 +27,8 @@ RUN pip3 install --no-cache-dir \
         bson \
         pymongo \
         pyyaml \
+        robotpy \
+        robotpy-rev \
         bitstring
 
 # Create non-root user and enable passwordless sudo
