@@ -141,11 +141,11 @@ def main():
     # Initialize PCA9685
     # Based on Servos.launch: address=64 (0x40), frequency=50Hz
     print("\nInitializing PCA9685...")
-    pwm = PCA9685.PCA9685(address=0x40, busnum=0)
+    pwm = PCA9685.PCA9685(address=0x40, busnum=1)
     
     # Claw is on CH3 or CH4 depending on configuration
     # Using CH3 as per Servos.launch
-    claw_channel = 3
+    claw_channel = 0
     
     # Create claw controller
     claw = ClawController(pwm, claw_channel, frequency=50)
@@ -206,7 +206,7 @@ def interactive_mode():
     print("=" * 60)
     
     pwm = PCA9685.PCA9685(address=0x40, busnum=1)
-    claw_channel = 3
+    claw_channel = 0
     claw = ClawController(pwm, claw_channel, frequency=50)
     
     print("\nCommands:")
