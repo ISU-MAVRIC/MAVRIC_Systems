@@ -7,7 +7,7 @@ motor = bus.init_controller(13)
 # motor3 = bus.init_controller(9)
 # motor4 = bus.init_controller(8)
 
-motor.percent_output(0.40)
+motor.percent_output(-0.40)
 # motor2.percent_output(0.05)
 # motor3.percent_output(0.05)
 # motor4.percent_output(-0.05)
