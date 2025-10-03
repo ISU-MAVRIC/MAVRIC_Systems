@@ -2,7 +2,7 @@ from SparkCANLib import SparkController, SparkCAN
 
 bus = SparkCAN.SparkBus(channel="can0", bustype='socketcan', bitrate=1000000)
 
-motor = bus.init_controller(12)
+motor = bus.init_controller(11)
 # motor2 = bus.init_controller(10)
 # motor3 = bus.init_controller(9)
 # motor4 = bus.init_controller(8)
