@@ -3,4 +3,4 @@ from . import SparkCAN
 from . import Statuses
 from .SparkCAN import SparkBusManager
 
-__all__ = ['SparkController', 'SparkCAN', 'Statuses', 'SparkBusManager']
+__all__ = ['SparkController', 'Statuses', 'SparkBusManager']
