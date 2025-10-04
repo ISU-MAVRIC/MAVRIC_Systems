@@ -23,6 +23,10 @@
   "postStartCommand": "bash -lc 'echo [noVNC] Open: http://localhost:${NOVNC_PORT:-8080}/vnc.html'",
   "customizations": {
     "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.defaultInterpreterPath": "/usr/bin/python3"
+      },
       "extensions": [
         "ms-python.black-formatter",
         "ms-vscode.cpptools",
