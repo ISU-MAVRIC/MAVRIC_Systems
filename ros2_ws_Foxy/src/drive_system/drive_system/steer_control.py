@@ -1,5 +1,5 @@
-from cysar.msg import SteerTrain
-from SparkCANLib.SparkCAN import SparkBus
+from mavric_msg.msg import SteerTrain
+from mavric_utils.SparkCANLib.SparkCAN import SparkBus
 from typing import Optional
 
 # CAN IDs for Drive Controllers

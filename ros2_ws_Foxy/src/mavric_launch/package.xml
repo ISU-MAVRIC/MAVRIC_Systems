@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>mavric_launch</name>
+  <version>0.0.1</version>
+  <description>Launch files package</description>
+  <maintainer email="user@todo.todo">user</maintainer>
+  <license>TODO</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rosbridge_server</exec_depend>
+  <exec_depend>rosapi</exec_depend>
+  <exec_depend>drive_system</exec_depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
