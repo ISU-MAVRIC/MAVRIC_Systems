@@ -9,13 +9,33 @@ import logging
 from . import SparkController
 
 
+class SparkBusManager:
+    """
+    Singleton manager for SparkBus instance to ensure only one CAN bus is initialized.
+    """
+    _instance = None
+
+    @classmethod
+    def get_instance(cls, channel="can0", bustype="socketcan", bitrate=1000000, suppress_errors=True):
+        """
+        Returns the singleton SparkBus instance, creating it if necessary.
+
+        @param channel: Serial channel the CAN interface is on.
+        @param bustype: Type of bus.
+        @param bitrate: Rate at which bits are sent through the CAN bus.
+        @param suppress_errors: Whether to suppress CAN-related errors.
+        @return: The singleton SparkBus instance.
+        """
+        if cls._instance is None:
+            cls._instance = SparkBus(channel, bustype, bitrate, suppress_errors)
+        return cls._instance
+
+
 """
 Description: Library for providing objects for controlling and receving feedback from multiple Spark Max Controllers via
 CAN.
 Author: Jacob Peskuski, Gabriel Carlson
 """
-
-
 class SparkBus:
     def __init__(
         self, channel="can0", bustype="socketcan", bitrate=1000000, suppress_errors=True

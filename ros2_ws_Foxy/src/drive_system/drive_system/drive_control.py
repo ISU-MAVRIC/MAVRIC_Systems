@@ -8,7 +8,7 @@ Author: Isaac Denning
 Date: 10/21/23
 """
 
-from mavric_msg.msg import DriveTrain
+from mavric_msg_drive.msg import DriveTrain
 from mavric_utils.SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers

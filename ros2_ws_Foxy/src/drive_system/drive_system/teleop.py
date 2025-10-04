@@ -11,9 +11,7 @@ Date: 10/21/23
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import DriveTrain
-import numpy as np
-from mavric_msg.msg import SteerTrain
+from mavric_msg_drive.msg import DriveTrain, SteerTrain
 
 
 class Teleop(Node):

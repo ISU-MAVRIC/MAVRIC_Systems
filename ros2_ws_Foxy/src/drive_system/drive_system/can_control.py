@@ -11,10 +11,9 @@ Date: 10/21/23
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import DriveTrain
-from mavric_utils.SparkCANLib import SparkController, SparkCAN
+from mavric_msg_drive.msg import DriveTrain, SteerTrain
+from mavric_utils.SparkCANLib import SparkBusManager
 from drive_system.drive_control import DriveControl
-from mavric_msg.msg import SteerTrain
 from drive_system.steer_control import SteerControl
 
 
@@ -26,9 +25,10 @@ class CanControl(Node):
 
     def __init__(self) -> None:
         super().__init__("can_control")
-        self.bus = SparkCAN.SparkBus(
-            channel="can0", bustype="socketcan", bitrate=1000000
-        )
+        # self.bus = SparkCAN.SparkBus(
+        #     channel="can0", bustype="socketcan", bitrate=1000000
+        # )
+        self.bus = SparkBusManager.get_instance(channel="can0", bustype="socketcan", bitrate=1000000)
 
         # Drive Control can bus
         self.drive_control = DriveControl(self.bus)
