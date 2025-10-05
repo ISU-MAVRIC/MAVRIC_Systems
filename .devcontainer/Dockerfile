@@ -26,7 +26,7 @@ RUN pip3 install --no-cache-dir \
     adafruit-circuitpython-servokit \
     adafruit-circuitpython-pca9685 \
     adafruit-circuitpython-motor \
-    adafruit-blinka \
+    adafruit-blinka F\
     smbus2
 
 # Create non-root user and enable passwordless sudo
