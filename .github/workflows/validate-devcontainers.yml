@@ -48,7 +48,7 @@ jobs:
           echo "🔍 Checking changes against $base_ref"
 
           # Get list of changed devcontainer.json or .devcontainer files
-          changed=$(git diff --name-only $base_ref ${{ github.sha }} | grep -E 'devcontainer.json|.devcontainer/' || true)
+          changed=$(git diff --name-only $base_ref ${{ github.sha }} | grep -E 'devcontainer.json|\.devcontainer/' || true)
 
           # Extract unique parent folders
           folders=$(echo "$changed" | xargs -r -n1 dirname | sort -u)
