@@ -114,12 +114,11 @@ jobs:
 
       - name: Build and smoke test affected devcontainers
         if: steps.changes.outputs.devcontainer_dirs != ''
+        env:
+          DEVCONTAINER_DIRS: ${{ steps.changes.outputs.devcontainer_dirs }}
         run: |
           # Read devcontainer directories from previous step
-          devcontainer_dirs=$(cat << 'EOF'
-          ${{ steps.changes.outputs.devcontainer_dirs }}
-          EOF
-          )
+          devcontainer_dirs="$DEVCONTAINER_DIRS"
 
           if [ -z "$devcontainer_dirs" ]; then
             echo "No devcontainers to build"
@@ -128,6 +127,9 @@ jobs:
 
           # Process each affected devcontainer directory
           while IFS= read -r devcontainer_dir; do
+            # Trim extraneous whitespace but preserve internal spaces
+            devcontainer_dir="${devcontainer_dir#${devcontainer_dir%%[![:space:]]*}}"
+            devcontainer_dir="${devcontainer_dir%${devcontainer_dir##*[![:space:]]}}"
             [ -z "$devcontainer_dir" ] && continue
             
             # Verify devcontainer.json exists
