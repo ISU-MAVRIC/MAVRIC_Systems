@@ -45,7 +45,7 @@ jobs:
           echo "🔍 Checking changes against $base_ref"
 
           # Find all changed files under any .devcontainer/ directory
-          changed_files=$(git diff --name-only "$base_ref" "${{ github.sha }}" | grep '/\.devcontainer/' || true)
+          changed_files=$(git diff --name-only "$base_ref" "${{ github.sha }}" | grep '\.devcontainer/' || true)
           
           if [ -z "$changed_files" ]; then
             echo "No devcontainer changes detected"
