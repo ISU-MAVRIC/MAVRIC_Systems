@@ -64,27 +64,36 @@ jobs:
             base_ref="${{ github.event.before }}"
           fi
 
-          for config in $(git diff --name-only $base_ref ${{ github.sha }} \
-          | grep -E 'devcontainer.json|\.devcontainer/' \
-          | xargs -r -n1 dirname \
-          | sed 's|/\.devcontainer$||' \
+          for devcontainer_path in $(git diff --name-only $base_ref ${{ github.sha }} \
+          | grep -E 'devcontainer.json' \
           | sort -u); do
 
-          echo "🔨 Building devcontainer in $config"
+          # Determine workspace folder based on devcontainer location
+          # For .devcontainer/devcontainer.json -> workspace is .
+          # For path/to/folder/.devcontainer/devcontainer.json -> workspace is path/to/folder
+          if [[ "$devcontainer_path" == ".devcontainer/"* ]]; then
+            workspace="."
+          else
+            workspace=$(dirname "$(dirname "$devcontainer_path")")
+          fi
+
+          echo "🔨 Building devcontainer at $devcontainer_path (workspace: $workspace)"
           devcontainer build \
-            --workspace-folder "$config" \
+            --workspace-folder "$workspace" \
             --cache-from type=local,src=/tmp/.buildx-cache \
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max
 
-          echo "🚀 Running smoke test in $config"
-          if [ -f "$config/.devcontainer/smoke-test.sh" ]; then
-            devcontainer run-user-commands \
-              --workspace-folder "$config" \
-              -- bash -lc "./.devcontainer/smoke-test.sh"
+          echo "🚀 Running smoke test for $devcontainer_path"
+          if [ -f "$workspace/.devcontainer/smoke-test.sh" ]; then
+            devcontainer up --workspace-folder "$workspace"
+            devcontainer exec \
+              --workspace-folder "$workspace" \
+              bash -lc "./.devcontainer/smoke-test.sh"
           else
-            devcontainer run-user-commands \
-              --workspace-folder "$config" \
-              -- bash -lc "echo '✅ Container started'; ros2 --version || python3 --version || echo 'No runtime check configured'"
+            devcontainer up --workspace-folder "$workspace"
+            devcontainer exec \
+              --workspace-folder "$workspace" \
+              bash -lc "echo '✅ Container started'; ros2 --version || python3 --version || echo 'No runtime check configured'"
           fi
           done
 
