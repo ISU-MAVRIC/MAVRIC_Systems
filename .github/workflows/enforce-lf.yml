@@ -1,0 +1,33 @@
+name: Enforce LF Endings
+
+on:
+  pull_request:          # runs on ALL PRs
+  push:
+    branches: [ main ]   # runs on direct pushes to main
+
+jobs:
+  fix-line-endings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Convert CRLF → LF in text files
+        run: |
+          # List all tracked text files (ignores binaries)
+          files=$(git ls-files | xargs file --mime | grep 'charset=us-ascii\|charset=utf-8' | cut -d: -f1)
+
+          # Normalize endings in place
+          for f in $files; do
+            sed -i 's/\r$//' "$f"
+          done
+
+          # Show which files were touched
+          if ! git diff --exit-code; then
+            echo "❌ Some files had CRLF endings. They were converted to LF:"
+            git diff --name-only
+            echo "Please commit these changes locally before merging."
+            exit 1
+          else
+            echo "✅ All text files already use LF endings."
+          fi
