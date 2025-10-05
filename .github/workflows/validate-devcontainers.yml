@@ -118,7 +118,9 @@ jobs:
           DEVCONTAINER_DIRS: ${{ steps.changes.outputs.devcontainer_dirs }}
         run: |
           # Read devcontainer directories from previous step
-          devcontainer_dirs="$DEVCONTAINER_DIRS"
+          raw_devcontainer_dirs="$DEVCONTAINER_DIRS"
+          raw_devcontainer_dirs="${raw_devcontainer_dirs//$'\\r'/}"
+          devcontainer_dirs="${raw_devcontainer_dirs//$'\\n'/$'\n'}"
 
           if [ -z "$devcontainer_dirs" ]; then
             echo "No devcontainers to build"
