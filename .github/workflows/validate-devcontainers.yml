@@ -58,7 +58,13 @@ jobs:
       - name: Build and smoke test modified devcontainers
         if: steps.changes.outputs.folders != ''
         run: |
-          for config in $(git diff --name-only <base> <head> \
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref="origin/${{ github.base_ref }}"
+          else
+            base_ref="${{ github.event.before }}"
+          fi
+
+          for config in $(git diff --name-only $base_ref ${{ github.sha }} \
           | grep -E 'devcontainer.json|\.devcontainer/' \
           | xargs -r -n1 dirname \
           | sed 's|/\.devcontainer$||' \
