@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAVRIC Rover Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 MAVRIC Rover Control Interface</h1>
+            <div class="connection-status">
+                <span class="status-indicator" id="status-indicator"></span>
+                <span id="connection-status">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="controls-container">
+            <!-- Movement Controls Section -->
+            <div class="control-section">
+                <h2>🚗 Movement Controls</h2>
+                <div class="control-group">
+                    <div class="key-display-grid">
+                        <div class="key-row">
+                            <div class="key-item empty"></div>
+                            <div class="key-item" data-key="w">
+                                <div class="key">W</div>
+                                <div class="label">Forward</div>
+                                <div class="sublabel">+Shift: Fast | +Ctrl: Slow</div>
+                            </div>
+                            <div class="key-item empty"></div>
+                        </div>
+                        <div class="key-row">
+                            <div class="key-item" data-key="a">
+                                <div class="key">A</div>
+                                <div class="label">Left</div>
+                            </div>
+                            <div class="key-item" data-key="s">
+                                <div class="key">S</div>
+                                <div class="label">Backward</div>
+                            </div>
+                            <div class="key-item" data-key="d">
+                                <div class="key">D</div>
+                                <div class="label">Right</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rotation Controls Section -->
+            <div class="control-section">
+                <h2>🔄 Rotation Controls</h2>
+                <div class="control-group">
+                    <div class="key-display-grid rotation">
+                        <div class="key-item" data-key="q">
+                            <div class="key">Q</div>
+                            <div class="label">Rotate Left</div>
+                        </div>
+                        <div class="key-item" data-key="e">
+                            <div class="key">E</div>
+                            <div class="label">Rotate Right</div>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <p>⚠️ Rotation mode is exclusive with movement controls</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arm Controls Section -->
+            <div class="control-section arm-section">
+                <h2>🦾 Arm Controls</h2>
+                
+                <!-- Shoulder Controls -->
+                <div class="arm-subsection">
+                    <h3>Shoulder</h3>
+                    <div class="key-display-grid arm-grid">
+                        <div class="key-item" data-key="y">
+                            <div class="key">Y</div>
+                            <div class="label">Pitch Up</div>
+                        </div>
+                        <div class="key-item" data-key="h">
+                            <div class="key">H</div>
+                            <div class="label">Pitch Down</div>
+                        </div>
+                        <div class="key-item" data-key="z">
+                            <div class="key">Z</div>
+                            <div class="label">Rotate Left</div>
+                        </div>
+                        <div class="key-item" data-key="x">
+                            <div class="key">X</div>
+                            <div class="label">Rotate Right</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Elbow Controls -->
+                <div class="arm-subsection">
+                    <h3>Elbow</h3>
+                    <div class="key-display-grid arm-grid">
+                        <div class="key-item" data-key="u">
+                            <div class="key">U</div>
+                            <div class="label">Pitch Up</div>
+                        </div>
+                        <div class="key-item" data-key="j">
+                            <div class="key">J</div>
+                            <div class="label">Pitch Down</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wrist Controls -->
+                <div class="arm-subsection">
+                    <h3>Wrist</h3>
+                    <div class="key-display-grid arm-grid">
+                        <div class="key-item" data-key="i">
+                            <div class="key">I</div>
+                            <div class="label">Pitch Up</div>
+                        </div>
+                        <div class="key-item" data-key="k">
+                            <div class="key">K</div>
+                            <div class="label">Pitch Down</div>
+                        </div>
+                        <div class="key-item" data-key="c">
+                            <div class="key">C</div>
+                            <div class="label">Rotate Left</div>
+                        </div>
+                        <div class="key-item" data-key="v">
+                            <div class="key">V</div>
+                            <div class="label">Rotate Right</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Claw Controls -->
+                <div class="arm-subsection">
+                    <h3>Claw</h3>
+                    <div class="key-display-grid arm-grid">
+                        <div class="key-item" data-key="[">
+                            <div class="key">[</div>
+                            <div class="label">Open</div>
+                        </div>
+                        <div class="key-item" data-key="]">
+                            <div class="key">]</div>
+                            <div class="label">Close</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <strong>Active Keys:</strong>
+                <span id="active-keys">None</span>
+            </div>
+            <button id="emergency-stop" class="emergency-btn">🛑 EMERGENCY STOP</button>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <h3>ℹ️ Instructions</h3>
+            <ul>
+                <li>Use keyboard keys to control the rover</li>
+                <li>Multiple keys can be pressed simultaneously</li>
+                <li>Movement (WASD) and Rotation (QE) controls are mutually exclusive</li>
+                <li>Arm controls are always available regardless of movement mode</li>
+                <li>Hold Shift with W for fast speed, Ctrl with W for slow speed</li>
+                <li>Click Emergency Stop or press ESC to stop all motors</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
