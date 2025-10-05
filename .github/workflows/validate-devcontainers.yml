@@ -60,9 +60,10 @@ jobs:
             # For .devcontainer/ROS Foxy Desktop/... -> .devcontainer/ROS Foxy Desktop
             # For .devcontainer/ROS Jazzy Dev Config/... -> .devcontainer/ROS Jazzy Dev Config
             
-            if [[ "$file" =~ ^\.devcontainer/[^/]+/.*$ ]]; then
+            if [[ "$file" =~ ^\.devcontainer/([^/]+)/.*$ ]]; then
               # File is in a subdirectory (e.g., .devcontainer/ROS Foxy Desktop/Dockerfile)
-              echo "$file" | grep -oP '^\.devcontainer/[^/]+'
+              # Extract the subdirectory name using bash regex capture
+              echo ".devcontainer/${BASH_REMATCH[1]}"
             elif [[ "$file" =~ ^\.devcontainer/[^/]+$ ]]; then
               # File is directly in .devcontainer (e.g., .devcontainer/devcontainer.json)
               echo ".devcontainer"
