@@ -27,35 +27,35 @@ WRIST_ROT = Controller(bus, WRIST_ROT_ID)
 pressed_keys = set()
 
 def set_drive_speeds(speed):
-    FLD.set_speed(speed)
-    BLD.set_speed(-1 * speed)
-    FRD.set_speed(speed)
-    BRD.set_speed(-1 * speed)
+    FLD.percent_output(speed)
+    BLD.percent_output(-1 * speed)
+    FRD.percent_output(speed)
+    BRD.percent_output(-1 * speed)
 
 def set_steer_pos(pos):
-    FLS.set_position(pos)
-    BLS.set_position(-1 * pos)
-    FRS.set_position(pos)
-    BRS.set_position(-1 * pos)
+    FLS.position_output(pos)
+    BLS.position_output(-1 * pos)
+    FRS.position_output(pos)
+    BRS.position_output(-1 * pos)
 
 def reset_steer_pos():
-    FLS.set_position(DEFAULT_STEER_POS)
-    BLS.set_position(-1 * DEFAULT_STEER_POS)
-    FRS.set_position(DEFAULT_STEER_POS)
-    BRS.set_position(-1 * DEFAULT_STEER_POS)
+    FLS.position_output(DEFAULT_STEER_POS)
+    BLS.position_output(-1 * DEFAULT_STEER_POS)
+    FRS.position_output(DEFAULT_STEER_POS)
+    BRS.position_output(-1 * DEFAULT_STEER_POS)
 
 def set_rotation_pos():
     # Add check for wheel positions
-    FLS.set_position(STEER_ROTATION_POS)
-    BLS.set_position(-1 * STEER_ROTATION_POS)
-    FRS.set_position(STEER_ROTATION_POS)
-    BRS.set_position(-1 * STEER_ROTATION_POS)
+    FLS.position_output(STEER_ROTATION_POS)
+    BLS.position_output(-1 * STEER_ROTATION_POS)
+    FRS.position_output(STEER_ROTATION_POS)
+    BRS.position_output(-1 * STEER_ROTATION_POS)
 
 def set_rotation_speed(speed):
-    FLS.set_speed(speed)
-    BLS.set_speed(speed)
-    FRS.set_speed(speed)
-    BRS.set_speed(speed)
+    FLS.percent_output(speed)
+    BLS.percent_output(speed)
+    FRS.percent_output(speed)
+    BRS.percent_output(speed)
 
 def state_movement():
     speed = 0
@@ -150,11 +150,11 @@ def arm_controls():
     elif ']' in pressed_keys:
         claw = -1 * CLAW_SPEED
     
-    SHOULDER_PITCH.set_speed(shoulder_pitch)
-    SHOULDER_ROT.set_speed(shoulder_rot)
-    ELBOW_PITCH.set_speed(elbow_pitch)
-    WRIST_PITCH.set_speed(wrist_pitch)
-    WRIST_ROT.set_speed(wrist_rot)
+    SHOULDER_PITCH.percent_output(shoulder_pitch)
+    SHOULDER_ROT.percent_output(shoulder_rot)
+    ELBOW_PITCH.percent_output(elbow_pitch)
+    WRIST_PITCH.percent_output(wrist_pitch)
+    WRIST_ROT.percent_output(wrist_rot)
     # kit.servo[CLAW_CHANNEL].throttle = claw
 
 
