@@ -3,11 +3,11 @@ name: Validate Devcontainers
 on:
   pull_request:
     paths:
-      - '.devcontainer/**'
+      - '**/.devcontainer/**'
   push:
     branches: [ main ]
     paths:
-      - '.devcontainer/**'
+      - '**/.devcontainer/**'
 
 jobs:
   devcontainer-check:
@@ -44,8 +44,8 @@ jobs:
 
           echo "🔍 Checking changes against $base_ref"
 
-          # Find all changed files under .devcontainer/
-          changed_files=$(git diff --name-only "$base_ref" "${{ github.sha }}" | grep '^\.devcontainer/' || true)
+          # Find all changed files under any .devcontainer/ directory
+          changed_files=$(git diff --name-only "$base_ref" "${{ github.sha }}" | grep '/\.devcontainer/' || true)
           
           if [ -z "$changed_files" ]; then
             echo "No devcontainer changes detected"
@@ -55,20 +55,7 @@ jobs:
 
           # Determine which devcontainer directories were affected
           # Extract unique devcontainer directories from changed files
-          devcontainer_dirs=$(echo "$changed_files" | while IFS= read -r file; do
-            # For .devcontainer/devcontainer.json or .devcontainer/Dockerfile -> .devcontainer
-            # For .devcontainer/ROS Foxy Desktop/... -> .devcontainer/ROS Foxy Desktop
-            # For .devcontainer/ROS Jazzy Dev Config/... -> .devcontainer/ROS Jazzy Dev Config
-            
-            if [[ "$file" =~ ^\.devcontainer/([^/]+)/.*$ ]]; then
-              # File is in a subdirectory (e.g., .devcontainer/ROS Foxy Desktop/Dockerfile)
-              # Extract the subdirectory name using bash regex capture
-              echo ".devcontainer/${BASH_REMATCH[1]}"
-            elif [[ "$file" =~ ^\.devcontainer/[^/]+$ ]]; then
-              # File is directly in .devcontainer (e.g., .devcontainer/devcontainer.json)
-              echo ".devcontainer"
-            fi
-          done | sort -u)
+          devcontainer_dirs=$(echo "$changed_files" | sed -E 's|(.*/\.devcontainer((/[^/]+)*)?)/.*|\1|' | sort -u)
 
           echo "Affected devcontainer directories:"
           echo "$devcontainer_dirs"
