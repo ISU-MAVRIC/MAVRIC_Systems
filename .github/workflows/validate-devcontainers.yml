@@ -58,17 +58,23 @@ jobs:
       - name: Build and smoke test modified devcontainers
         if: steps.changes.outputs.folders != ''
         run: |
-          for folder in ${{ steps.changes.outputs.folders }}; do
-            echo "🔨 Building devcontainer in $folder"
+          for config in $(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'devcontainer.json|\.devcontainer/' | xargs -r -n1 dirname | sort -u); do
+            echo "🔨 Building devcontainer in $config"
             devcontainer build \
-              --workspace-folder "$folder" \
+              --workspace-folder "$config" \
               --cache-from type=local,src=/tmp/.buildx-cache \
               --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max
 
-            echo "🚀 Running smoke test in $folder"
-            devcontainer run-user-commands \
-              --workspace-folder "$folder" \
-              -- bash -lc "echo '✅ Container started'; ros2 --version || python3 --version || echo 'No runtime check configured'"
+            echo "🚀 Running smoke test in $config"
+            if [ -f "$config/.devcontainer/smoke-test.sh" ]; then
+              devcontainer run-user-commands \
+                --workspace-folder "$config" \
+                -- bash -lc "./.devcontainer/smoke-test.sh"
+            else
+              devcontainer run-user-commands \
+                --workspace-folder "$config" \
+                -- bash -lc "echo '✅ Container started'; ros2 --version || python3 --version || echo 'No runtime check configured'"
+            fi
           done
 
       - name: Move cache
