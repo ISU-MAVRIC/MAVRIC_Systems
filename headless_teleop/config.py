@@ -1,0 +1,21 @@
+# Drive Motors
+FLD_ID = 7
+FRD_ID = 10
+BLD_ID = 9
+BRD_ID = 8
+
+# Steer Motors
+FLS_ID = 1
+FRS_ID = 6
+BLD_ID = 5
+BRD_ID = 3
+
+# Arm Motors
+SHOULDER_PITCH_ID = 11
+SHOULDER_ROT_ID = 12
+ELBOW_PITCH_ID = 13
+WRIST_PITCH_ID = 14
+WRIST_ROT_ID = 15
+
+# Claw PWM Channel
+CLAW_CHANNEL = 1
