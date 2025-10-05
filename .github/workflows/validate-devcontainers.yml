@@ -3,12 +3,10 @@ name: Validate Devcontainers
 on:
   pull_request:
     paths:
-      - '**/devcontainer.json'
       - '.devcontainer/**'
   push:
     branches: [ main ]
     paths:
-      - '**/devcontainer.json'
       - '.devcontainer/**'
 
 jobs:
@@ -35,7 +33,7 @@ jobs:
       - name: Install Dev Containers CLI
         run: npm install -g @devcontainers/cli
 
-      - name: Find modified devcontainers
+      - name: Find affected devcontainer directories
         id: changes
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -46,68 +44,114 @@ jobs:
 
           echo "🔍 Checking changes against $base_ref"
 
-          changed=$(git diff --name-only $base_ref ${{ github.sha }} | grep -E 'devcontainer.json|\.devcontainer/' || true)
-          folders=$(echo "$changed" | xargs -r -n1 dirname | sort -u)
+          # Find all changed files under .devcontainer/
+          changed_files=$(git diff --name-only "$base_ref" "${{ github.sha }}" | grep '^\.devcontainer/' || true)
+          
+          if [ -z "$changed_files" ]; then
+            echo "No devcontainer changes detected"
+            echo "devcontainer_dirs=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
+          # Determine which devcontainer directories were affected
+          # Extract unique devcontainer directories from changed files
+          devcontainer_dirs=$(echo "$changed_files" | while IFS= read -r file; do
+            # For .devcontainer/devcontainer.json or .devcontainer/Dockerfile -> .devcontainer
+            # For .devcontainer/ROS Foxy Desktop/... -> .devcontainer/ROS Foxy Desktop
+            # For .devcontainer/ROS Jazzy Dev Config/... -> .devcontainer/ROS Jazzy Dev Config
+            
+            if [[ "$file" =~ ^\.devcontainer/[^/]+/.*$ ]]; then
+              # File is in a subdirectory (e.g., .devcontainer/ROS Foxy Desktop/Dockerfile)
+              echo "$file" | grep -oP '^\.devcontainer/[^/]+'
+            elif [[ "$file" =~ ^\.devcontainer/[^/]+$ ]]; then
+              # File is directly in .devcontainer (e.g., .devcontainer/devcontainer.json)
+              echo ".devcontainer"
+            fi
+          done | sort -u)
+
+          echo "Affected devcontainer directories:"
+          echo "$devcontainer_dirs"
+
+          # Store as output (newline-separated list)
           {
-            echo "folders<<EOF"
-            echo "$folders"
+            echo "devcontainer_dirs<<EOF"
+            echo "$devcontainer_dirs"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build and smoke test modified devcontainers
-        if: steps.changes.outputs.folders != ''
+      - name: Build and smoke test affected devcontainers
+        if: steps.changes.outputs.devcontainer_dirs != ''
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base_ref="origin/${{ github.base_ref }}"
-          else
-            base_ref="${{ github.event.before }}"
+          # Read devcontainer directories from previous step
+          devcontainer_dirs=$(cat << 'EOF'
+          ${{ steps.changes.outputs.devcontainer_dirs }}
+          EOF
+          )
+
+          if [ -z "$devcontainer_dirs" ]; then
+            echo "No devcontainers to build"
+            exit 0
           fi
 
-          for devcontainer_path in $(git diff --name-only $base_ref ${{ github.sha }} \
-          | grep -E 'devcontainer.json' \
-          | sort -u); do
+          # Process each affected devcontainer directory
+          while IFS= read -r devcontainer_dir; do
+            [ -z "$devcontainer_dir" ] && continue
+            
+            # Verify devcontainer.json exists
+            if [ ! -f "$devcontainer_dir/devcontainer.json" ]; then
+              echo "⚠️  No devcontainer.json found in $devcontainer_dir, skipping"
+              continue
+            fi
 
-          # Determine workspace folder and config path
-          # For .devcontainer/devcontainer.json -> workspace is ., no config needed (default)
-          # For .devcontainer/ROS Foxy Desktop/devcontainer.json -> workspace is ., config is .devcontainer/ROS Foxy Desktop
-          workspace="."
-          config_arg=""
-          
-          devcontainer_dir=$(dirname "$devcontainer_path")
-          
-          # If devcontainer is in a subdirectory of .devcontainer/, use --config
-          if [[ "$devcontainer_dir" != ".devcontainer" ]]; then
-            config_arg="--config $devcontainer_dir"
-          fi
+            workspace="."
+            
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔨 Building devcontainer: $devcontainer_dir"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Build with appropriate config
+            if [[ "$devcontainer_dir" == ".devcontainer" ]]; then
+              # Default devcontainer (no --config needed)
+              devcontainer build \
+                --workspace-folder "$workspace" \
+                --cache-from type=local,src=/tmp/.buildx-cache \
+                --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max
+            else
+              # Variant devcontainer in subdirectory
+              devcontainer build \
+                --workspace-folder "$workspace" \
+                --config "$devcontainer_dir" \
+                --cache-from type=local,src=/tmp/.buildx-cache \
+                --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max
+            fi
 
-          echo "🔨 Building devcontainer at $devcontainer_path"
-          echo "   Workspace: $workspace"
-          echo "   Config: ${config_arg:-default (.devcontainer)}"
-          
-          devcontainer build \
-            --workspace-folder "$workspace" \
-            $config_arg \
-            --cache-from type=local,src=/tmp/.buildx-cache \
-            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-          echo "🚀 Running smoke test for $devcontainer_path"
-          smoke_test_script="$devcontainer_dir/smoke-test.sh"
-          
-          if [ -f "$smoke_test_script" ]; then
-            devcontainer up --workspace-folder "$workspace" $config_arg
-            devcontainer exec \
-              --workspace-folder "$workspace" \
-              $config_arg \
-              bash -lc "$smoke_test_script"
-          else
-            devcontainer up --workspace-folder "$workspace" $config_arg
-            devcontainer exec \
-              --workspace-folder "$workspace" \
-              $config_arg \
-              bash -lc "echo '✅ Container started'; ros2 --version || python3 --version || echo 'No runtime check configured'"
-          fi
-          done
+            echo ""
+            echo "🚀 Running smoke test for $devcontainer_dir"
+            smoke_test_script="$devcontainer_dir/smoke-test.sh"
+            
+            # Run smoke test with appropriate config
+            if [[ "$devcontainer_dir" == ".devcontainer" ]]; then
+              if [ -f "$smoke_test_script" ]; then
+                devcontainer up --workspace-folder "$workspace"
+                devcontainer exec --workspace-folder "$workspace" bash -lc "$smoke_test_script"
+              else
+                devcontainer up --workspace-folder "$workspace"
+                devcontainer exec --workspace-folder "$workspace" bash -lc "echo '✅ Container started'; ros2 --version 2>/dev/null || python3 --version || echo 'No runtime check configured'"
+              fi
+            else
+              if [ -f "$smoke_test_script" ]; then
+                devcontainer up --workspace-folder "$workspace" --config "$devcontainer_dir"
+                devcontainer exec --workspace-folder "$workspace" --config "$devcontainer_dir" bash -lc "$smoke_test_script"
+              else
+                devcontainer up --workspace-folder "$workspace" --config "$devcontainer_dir"
+                devcontainer exec --workspace-folder "$workspace" --config "$devcontainer_dir" bash -lc "echo '✅ Container started'; ros2 --version 2>/dev/null || python3 --version || echo 'No runtime check configured'"
+              fi
+            fi
+            
+            echo "✅ Successfully validated $devcontainer_dir"
+            echo ""
+          done <<< "$devcontainer_dirs"
 
       - name: Move cache
         if: always()
