@@ -38,7 +38,6 @@ jobs:
       - name: Find modified devcontainers
         id: changes
         run: |
-          # Compare against base branch for PRs, or previous commit for pushes
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base_ref="origin/${{ github.base_ref }}"
           else
@@ -47,13 +46,14 @@ jobs:
 
           echo "🔍 Checking changes against $base_ref"
 
-          # Get list of changed devcontainer.json or .devcontainer files
           changed=$(git diff --name-only $base_ref ${{ github.sha }} | grep -E 'devcontainer.json|\.devcontainer/' || true)
-
-          # Extract unique parent folders
           folders=$(echo "$changed" | xargs -r -n1 dirname | sort -u)
 
-          echo "folders=$folders" >> $GITHUB_OUTPUT
+          {
+            echo "folders<<EOF"
+            echo "$folders"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and smoke test modified devcontainers
         if: steps.changes.outputs.folders != ''
