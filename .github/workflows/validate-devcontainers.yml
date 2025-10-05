@@ -1,0 +1,76 @@
+name: Validate Devcontainers
+
+on:
+  pull_request:
+    paths:
+      - '**/devcontainer.json'
+      - '.devcontainer/**'
+  push:
+    branches: [ main ]
+    paths:
+      - '**/devcontainer.json'
+      - '.devcontainer/**'
+
+jobs:
+  devcontainer-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Install Dev Containers CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Find modified devcontainers
+        id: changes
+        run: |
+          # Compare against base branch for PRs, or previous commit for pushes
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref="origin/${{ github.base_ref }}"
+          else
+            base_ref="${{ github.event.before }}"
+          fi
+
+          echo "🔍 Checking changes against $base_ref"
+
+          # Get list of changed devcontainer.json or .devcontainer files
+          changed=$(git diff --name-only $base_ref ${{ github.sha }} | grep -E 'devcontainer.json|.devcontainer/' || true)
+
+          # Extract unique parent folders
+          folders=$(echo "$changed" | xargs -r -n1 dirname | sort -u)
+
+          echo "folders=$folders" >> $GITHUB_OUTPUT
+
+      - name: Build and smoke test modified devcontainers
+        if: steps.changes.outputs.folders != ''
+        run: |
+          for folder in ${{ steps.changes.outputs.folders }}; do
+            echo "🔨 Building devcontainer in $folder"
+            devcontainer build \
+              --workspace-folder "$folder" \
+              --cache-from type=local,src=/tmp/.buildx-cache \
+              --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+            echo "🚀 Running smoke test in $folder"
+            devcontainer run-user-commands \
+              --workspace-folder "$folder" \
+              -- bash -lc "echo '✅ Container started'; ros2 --version || python3 --version || echo 'No runtime check configured'"
+          done
+
+      - name: Move cache
+        if: always()
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
