@@ -2,7 +2,7 @@ import curses
 import time
 from spark_can.spark_can import SparkBus
 from spark_can.spark_controller import Controller
-# from adafruit_servokit import ServoKit
+from adafruit_servokit import ServoKit
 from  config import *
 
 # kit = ServoKit(channels=16)
@@ -63,7 +63,7 @@ def reset_all():
     ELBOW_PITCH.percent_output(0)
     WRIST_PITCH.percent_output(0)
     WRIST_ROT.percent_output(0)
-    # kit.servo[CLAW_CHANNEL].throttle = 0
+    # kit.continuous_servo[CLAW_CHANNEL].throttle = 0
     return "All controls reset"
 
 def main(stdscr):

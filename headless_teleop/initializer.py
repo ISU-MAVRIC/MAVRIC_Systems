@@ -155,7 +155,7 @@ def arm_controls():
     ELBOW_PITCH.percent_output(elbow_pitch)
     WRIST_PITCH.percent_output(wrist_pitch)
     WRIST_ROT.percent_output(wrist_rot)
-    # kit.servo[CLAW_CHANNEL].throttle = claw
+    # kit.continuous_servo[CLAW_CHANNEL].throttle = claw
 
 
 def update_controls():
