@@ -14,20 +14,34 @@ jobs:
 
       - name: Convert CRLF → LF in text files
         run: |
-          # List all tracked text files (ignores binaries)
-          files=$(git ls-files | xargs file --mime | grep 'charset=us-ascii\|charset=utf-8' | cut -d: -f1)
+          set -e
+          
+          # List all tracked files and check their text attribute
+          # This properly handles filenames with spaces, special characters, etc.
+          git ls-files -z --cached --exclude-standard | \
+            git check-attr -z --stdin text | \
+            awk -v RS='\0' -F'\0' '
+              NR % 3 == 1 { file = $1 }
+              NR % 3 == 0 && ($1 ~ /^(set|unspecified)$/) { print file }
+            ' | while IFS= read -r -d '' file; do
+              # Skip if file doesn't exist (e.g., submodule)
+              [ -f "$file" ] || continue
+              
+              # Convert CRLF to LF in place
+              sed -i 's/\r$//' "$file"
+            done
 
-          # Normalize endings in place
-          for f in $files; do
-            sed -i 's/\r$//' "$f"
-          done
-
-          # Show which files were touched
-          if ! git diff --exit-code; then
-            echo "❌ Some files had CRLF endings. They were converted to LF:"
+          # Check if any files were modified
+          if ! git diff --exit-code --quiet; then
+            echo "❌ Some files had CRLF endings. They have been converted to LF:"
+            echo ""
             git diff --name-only
-            echo "Please commit these changes locally before merging."
+            echo ""
+            echo "Files modified: $(git diff --name-only | wc -l)"
+            echo ""
+            echo "Please ensure your local repository uses LF line endings."
+            echo "Run 'git config core.autocrlf input' to prevent CRLF on commit."
             exit 1
           else
-            echo "✅ All text files already use LF endings."
+            echo "✅ All text files already use LF line endings."
           fi
