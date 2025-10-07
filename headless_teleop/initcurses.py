@@ -1,11 +1,11 @@
 import curses
 import time
-from SparkCANLib import SparkBus, Controller
+from SparkCANLib import SparkCAN, SparkController as Controller
 from adafruit_servokit import ServoKit
 from  config import *
 
 # kit = ServoKit(channels=16)
-bus = SparkBus()
+bus = SparkCAN.SparkBus()
 
 FLD = Controller(bus, FLD_ID)
 FRD = Controller(bus, FRD_ID)
