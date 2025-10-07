@@ -19,8 +19,8 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 # Initialize CAN bus and controllers
 print("Initializing CAN bus...")
 try:
-    bus = SparkCAN.SparkBus()
     kit = ServoKit(channels=16)
+    bus = SparkCAN.SparkBus()
     print("✓ CAN bus initialized (or running in simulation mode)")
 except Exception as e:
     print(f"⚠ CAN bus initialization warning: {e}")
@@ -47,6 +47,16 @@ WRIST_ROT = bus.init_controller(WRIST_ROT_ID)
 pressed_keys = set()
 control_lock = threading.Lock()
 
+def reset_all():
+    set_drive_speeds(0)
+    reset_steer_pos()
+    set_rotation_speed(0)
+    SHOULDER_PITCH.percent_output(0)
+    SHOULDER_ROT.percent_output(0)
+    ELBOW_PITCH.percent_output(0)
+    WRIST_PITCH.percent_output(0)
+    WRIST_ROT.percent_output(0)
+    kit.continuous_servo[CLAW_CHANNEL].throttle = 0
 
 def set_drive_speeds(speed):
     FLD.percent_output(speed)
@@ -65,6 +75,10 @@ def reset_steer_pos():
     FRS.position_output(DEFAULT_STEER_POS)
     BLS.position_output(-1 * DEFAULT_STEER_POS)
     BRS.position_output(-1 * DEFAULT_STEER_POS)
+
+    target = DEFAULT_STEER_POS
+    while abs(FRS.position - target) > 0.8:
+        time.sleep(0.01)
 
 def set_rotation_pos():
     # Add check for wheel positions
@@ -113,7 +127,10 @@ def state_movement():
         steer_pos = STEER_LEFT_POS
     elif 'd' in pressed_keys:
         steer_pos = STEER_RIGHT_POS
-    
+
+    if abs(STEER_ROTATION_POS - (-1 * FRS.position)) < 1.0 and abs(STEER_ROTATION_POS - (-1 * BLS.position)) < 1.0:
+        reset_steer_pos()
+
     set_steer_pos(steer_pos)
     set_drive_speeds(speed)
 
@@ -207,7 +224,7 @@ def update_controls():
         if 'q' in pressed_keys or 'e' in pressed_keys:
             state_rotation()
         else:
-            reset_steer_pos()
+            # reset_steer_pos()
             state_movement()
 
 
@@ -288,6 +305,8 @@ def main(port=5000):
     print("Press Ctrl+C to stop the server")
     print("="*60)
     print("")
+
+    reset_all()
     
     try:
         socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)

@@ -60,6 +60,7 @@ def set_rotation_speed(speed):
 def reset_all():
     set_drive_speeds(0)
     reset_steer_pos()
+    set_rotation_speed(0)
     SHOULDER_PITCH.percent_output(0)
     SHOULDER_ROT.percent_output(0)
     ELBOW_PITCH.percent_output(0)
