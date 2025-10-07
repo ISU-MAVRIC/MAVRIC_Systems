@@ -49,10 +49,10 @@ def set_rotation_pos():
     BRS.position_output(STEER_ROTATION_POS)
 
 def set_rotation_speed(speed):
-    FLS.percent_output(speed)
-    BLS.percent_output(speed)
-    FRS.percent_output(speed)
-    BRS.percent_output(speed)
+    FLD.percent_output(speed)
+    BLD.percent_output(speed)
+    FRD.percent_output(speed)
+    BRD.percent_output(speed)
 
 def reset_all():
     set_drive_speeds(0)
