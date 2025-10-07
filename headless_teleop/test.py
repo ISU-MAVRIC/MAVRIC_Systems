@@ -11,7 +11,7 @@ FRS = bus.init_controller(FRS_ID)
 BLS = bus.init_controller(BLS_ID)
 BRS = bus.init_controller(BRS_ID)
 
-FLS.position_output(0.8)
+FLS.position_output(1)
 FRS.position_output(0.8)
 BLS.position_output(-0.8)
 BRS.position_output(-0.8)
