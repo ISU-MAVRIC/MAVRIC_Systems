@@ -19,6 +19,11 @@ FLS.position_output(0.8)
 # BLS.position_output(-0.8)
 # BRS.position_output(-0.8)
 
+FLS.percent_output(0)
+FRS.percent_output(0)
+BLS.percent_output(0)
+BRS.percent_output(0)
+
 
 while True:
     print(f"FLS.position: {FLS.position}, FRS.position: {FRS.position}, BLS.position: {BLS.position}, BRS.position: {BRS.position}")
