@@ -101,11 +101,11 @@ def main(stdscr):
             msg = "Steer right"
         elif key == ord("q"):
             set_rotation_pos()
-            set_rotation_speed(STEER_ROTATION_SPEED)
+            set_rotation_speed(-1 * STEER_ROTATION_SPEED)
             msg = "Rotate left"
         elif key == ord("e"):
             set_rotation_pos()
-            set_rotation_speed(-STEER_ROTATION_SPEED)
+            set_rotation_speed(STEER_ROTATION_SPEED)
             msg = "Rotate right"
         elif key == ord("z"):
             SHOULDER_ROT.percent_output(-SHOULDER_ROT_SPEED)
