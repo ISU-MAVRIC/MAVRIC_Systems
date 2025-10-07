@@ -16,3 +16,6 @@ FLD.percent_output(0.1)
 FRD.percent_output(0.1)
 BLD.percent_output(-0.1)
 BRD.percent_output(-0.1)
+
+while True:
+    pass
