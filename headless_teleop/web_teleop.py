@@ -8,7 +8,7 @@ from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
 from config import *
 from SparkCANLib import SparkCAN, SparkController as COntroller
-# from adafruit_servokit import ServoKit
+from adafruit_servokit import ServoKit
 import time
 import threading
 
@@ -20,6 +20,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 print("Initializing CAN bus...")
 try:
     bus = SparkCAN.SparkBus()
+    kit = ServoKit(channels=16)
     print("✓ CAN bus initialized (or running in simulation mode)")
 except Exception as e:
     print(f"⚠ CAN bus initialization warning: {e}")
@@ -101,7 +102,7 @@ def state_movement():
 
     # Adjust speed when turning
     if ('w' in pressed_keys and 'a' in pressed_keys) or ('w' in pressed_keys and 'd' in pressed_keys):
-        speed = NORMAL_DRIVE_SPEED / 1.5
+        speed = MIN_DRIVE_SPEED
     elif ('s' in pressed_keys and 'a' in pressed_keys) or ('s' in pressed_keys and 'd' in pressed_keys):
         speed = -1 * MIN_DRIVE_SPEED
 
@@ -124,9 +125,9 @@ def state_rotation():
     if 'q' in pressed_keys and 'e' in pressed_keys:
         set_drive_speeds(0)
     elif 'q' in pressed_keys:
-        set_rotation_speed(STEER_ROTATION_SPEED)
-    elif 'e' in pressed_keys:
         set_rotation_speed(-1 * STEER_ROTATION_SPEED)
+    elif 'e' in pressed_keys:
+        set_rotation_speed(STEER_ROTATION_SPEED)
     else:
         set_drive_speeds(0)
 
@@ -160,9 +161,9 @@ def arm_controls():
     if 'u' in pressed_keys and 'j' in pressed_keys:
         elbow_pitch = 0
     elif 'u' in pressed_keys:
-        elbow_pitch = ELBOW_PITCH_SPEED
-    elif 'j' in pressed_keys:
         elbow_pitch = -1 * ELBOW_PITCH_SPEED
+    elif 'j' in pressed_keys:
+        elbow_pitch = ELBOW_PITCH_SPEED
 
     # Wrist pitch (I/K)
     if 'i' in pressed_keys and 'k' in pressed_keys:
@@ -176,9 +177,9 @@ def arm_controls():
     if 'c' in pressed_keys and 'v' in pressed_keys:
         wrist_rot = 0
     elif 'c' in pressed_keys:
-        wrist_rot = WRIST_ROT_SPEED
-    elif 'v' in pressed_keys:
         wrist_rot = -1 * WRIST_ROT_SPEED
+    elif 'v' in pressed_keys:
+        wrist_rot = WRIST_ROT_SPEED
 
     # Claw ([/])
     if '[' in pressed_keys and ']' in pressed_keys:
@@ -193,7 +194,7 @@ def arm_controls():
     ELBOW_PITCH.percent_output(elbow_pitch)
     WRIST_PITCH.percent_output(wrist_pitch)
     WRIST_ROT.percent_output(wrist_rot)
-    # kit.continuous_servo[CLAW_CHANNEL].throttle = claw
+    kit.continuous_servo[CLAW_CHANNEL].throttle = claw
 
 
 def update_controls():

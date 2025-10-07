@@ -108,7 +108,7 @@ def main(stdscr):
             set_rotation_speed(STEER_ROTATION_SPEED)
             msg = "Rotate right"
         elif key == ord("z"):
-            SHOULDER_ROT.percent_output(-SHOULDER_ROT_SPEED)
+            SHOULDER_ROT.percent_output(-1 * SHOULDER_ROT_SPEED)
             msg = "Shoulder rotate left"
         elif key == ord("x"):
             SHOULDER_ROT.percent_output(SHOULDER_ROT_SPEED)
@@ -117,7 +117,7 @@ def main(stdscr):
             SHOULDER_PITCH.percent_output(SHOULDER_PITCH_SPEED)
             msg = "Shoulder pitch up"
         elif key == ord("h"):
-            SHOULDER_PITCH.percent_output(-SHOULDER_PITCH_SPEED)
+            SHOULDER_PITCH.percent_output(-1 * SHOULDER_PITCH_SPEED)
             msg = "Shoulder pitch down"
         elif key == ord("u"):
             ELBOW_PITCH.percent_output(-1 * ELBOW_PITCH_SPEED)
