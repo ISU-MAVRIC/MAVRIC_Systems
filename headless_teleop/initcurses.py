@@ -135,10 +135,10 @@ def main(stdscr):
             WRIST_ROT.percent_output(-1 * WRIST_ROT_SPEED)
             msg = "Wrist rotate left"
         elif key == ord("["):
-            kit.servo[CLAW_CHANNEL].throttle = CLAW_SPEED
+            kit.continuous_servo[CLAW_CHANNEL].throttle = CLAW_SPEED
             msg = "Claw open"
         elif key == ord("]"):
-            kit.servo[CLAW_CHANNEL].throttle = -CLAW_SPEED
+            kit.continuous_servo[CLAW_CHANNEL].throttle = -CLAW_SPEED
             msg = "Claw close"
         elif key == ord(" "):
             msg = reset_all()
