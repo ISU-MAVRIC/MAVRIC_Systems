@@ -7,9 +7,9 @@ Provides a browser-based GUI for controlling the rover with keyboard support.
 from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
 from config import *
-from spark_can.spark_can import SparkBus
-from spark_can.spark_controller import Controller
+from SparkCANLib import SparkCAN, SparkController as COntroller
 # from adafruit_servokit import ServoKit
+import time
 import threading
 
 app = Flask(__name__)
@@ -19,31 +19,28 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 # Initialize CAN bus and controllers
 print("Initializing CAN bus...")
 try:
-    bus = SparkBus()
+    bus = SparkCAN.SparkBus()
     print("✓ CAN bus initialized (or running in simulation mode)")
 except Exception as e:
     print(f"⚠ CAN bus initialization warning: {e}")
     print("  Continuing in simulation mode...")
-    bus = SparkBus()
+    bus = SparkCAN.SparkBus()
 
-# Drive motors
-FLD = Controller(bus, FLD_ID)
-FRD = Controller(bus, FRD_ID)
-BLD = Controller(bus, BLD_ID)
-BRD = Controller(bus, BRD_ID)
+FLD = bus.init_controller(FLD_ID)
+FRD = bus.init_controller(FRD_ID)
+BLD = bus.init_controller(BLD_ID)
+BRD = bus.init_controller(BRD_ID)
 
-# Steer motors
-FLS = Controller(bus, FLS_ID)
-FRS = Controller(bus, FRS_ID)
-BLS = Controller(bus, BLD_ID)
-BRS = Controller(bus, BRD_ID)
+FLS = bus.init_controller(FLS_ID)
+FRS = bus.init_controller(FRS_ID)
+BLS = bus.init_controller(BLS_ID)
+BRS = bus.init_controller(BRS_ID)
 
-# Arm motors
-SHOULDER_PITCH = Controller(bus, SHOULDER_PITCH_ID)
-SHOULDER_ROT = Controller(bus, SHOULDER_ROT_ID)
-ELBOW_PITCH = Controller(bus, ELBOW_PITCH_ID)
-WRIST_PITCH = Controller(bus, WRIST_PITCH_ID)
-WRIST_ROT = Controller(bus, WRIST_ROT_ID)
+SHOULDER_PITCH = bus.init_controller(SHOULDER_PITCH_ID)
+SHOULDER_ROT = bus.init_controller(SHOULDER_ROT_ID)
+ELBOW_PITCH = bus.init_controller(ELBOW_PITCH_ID)
+WRIST_PITCH = bus.init_controller(WRIST_PITCH_ID)
+WRIST_ROT = bus.init_controller(WRIST_ROT_ID)
 
 # Track currently pressed keys
 pressed_keys = set()
@@ -51,39 +48,34 @@ control_lock = threading.Lock()
 
 
 def set_drive_speeds(speed):
-    """Set speed for all drive motors"""
     FLD.percent_output(speed)
-    BLD.percent_output(-1 * speed)
-    FRD.percent_output(speed)
+    FRD.percent_output(-1 * speed)
+    BLD.percent_output(speed)
     BRD.percent_output(-1 * speed)
 
-
 def set_steer_pos(pos):
-    """Set position for all steering motors"""
     FLS.position_output(pos)
-    BLS.position_output(-1 * pos)
     FRS.position_output(pos)
+    BLS.position_output(-1 * pos)
     BRS.position_output(-1 * pos)
 
-
 def reset_steer_pos():
-    """Reset steering to default position"""
     FLS.position_output(DEFAULT_STEER_POS)
-    BLS.position_output(-1 * DEFAULT_STEER_POS)
     FRS.position_output(DEFAULT_STEER_POS)
+    BLS.position_output(-1 * DEFAULT_STEER_POS)
     BRS.position_output(-1 * DEFAULT_STEER_POS)
 
-
 def set_rotation_pos():
-    """Set wheels to rotation position"""
+    # Add check for wheel positions
     FLS.position_output(STEER_ROTATION_POS)
+    FRS.position_output(-1 * STEER_ROTATION_POS)
     BLS.position_output(-1 * STEER_ROTATION_POS)
-    FRS.position_output(STEER_ROTATION_POS)
-    BRS.position_output(-1 * STEER_ROTATION_POS)
-
+    BRS.position_output(STEER_ROTATION_POS)
+    target = -1 * STEER_ROTATION_POS
+    while abs(FRS.position - target) > 0.8:
+        time.sleep(0.01)
 
 def set_rotation_speed(speed):
-    """Set rotation speed for all wheels"""
     FLD.percent_output(speed)
     BLD.percent_output(speed)
     FRD.percent_output(speed)
