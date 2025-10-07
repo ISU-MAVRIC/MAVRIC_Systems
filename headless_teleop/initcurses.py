@@ -4,7 +4,7 @@ from SparkCANLib import SparkCAN, SparkController as Controller
 from adafruit_servokit import ServoKit
 from  config import *
 
-kit = ServoKit(channels=16)
+# kit = ServoKit(channels=16)
 bus = SparkCAN.SparkBus()
 
 FLD = bus.init_controller(FLD_ID)
@@ -37,8 +37,8 @@ def set_steer_pos(pos):
 
 def reset_steer_pos():
     FLS.position_output(DEFAULT_STEER_POS)
-    BLS.position_output(-1 * DEFAULT_STEER_POS)
     FRS.position_output(DEFAULT_STEER_POS)
+    BLS.position_output(-1 * DEFAULT_STEER_POS)
     BRS.position_output(-1 * DEFAULT_STEER_POS)
 
 def set_rotation_pos():
@@ -135,10 +135,10 @@ def main(stdscr):
             WRIST_ROT.percent_output(WRIST_ROT_SPEED)
             msg = "Wrist rotate left"
         elif key == ord("["):
-            kit.continuous_servo[CLAW_CHANNEL].throttle = CLAW_SPEED
+            # kit.continuous_servo[CLAW_CHANNEL].throttle = CLAW_SPEED
             msg = "Claw open"
         elif key == ord("]"):
-            kit.continuous_servo[CLAW_CHANNEL].throttle = -CLAW_SPEED
+            # kit.continuous_servo[CLAW_CHANNEL].throttle = -CLAW_SPEED
             msg = "Claw close"
         elif key == ord(" "):
             msg = reset_all()
