@@ -19,5 +19,5 @@ BRS.position_output(-0.8)
 
 
 while True:
-    # print(f"FLS.position: {FLS.position}, FRS.position: {FRS.position}, BLS.position: {BLS.position}, BRS.position: {BRS.position}")
+    print(f"FLS.position: {FLS.position}, FRS.position: {FRS.position}, BLS.position: {BLS.position}, BRS.position: {BRS.position}")
     time.sleep(0.1)
