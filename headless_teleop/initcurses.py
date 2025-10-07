@@ -47,6 +47,9 @@ def set_rotation_pos():
     FRS.position_output(-1 * STEER_ROTATION_POS)
     BLS.position_output(-1 * STEER_ROTATION_POS)
     BRS.position_output(STEER_ROTATION_POS)
+    target = -1 * STEER_ROTATION_POS
+    while abs(FRS.position - target) > 0.8:
+        time.sleep(0.01)
 
 def set_rotation_speed(speed):
     FLD.percent_output(speed)
