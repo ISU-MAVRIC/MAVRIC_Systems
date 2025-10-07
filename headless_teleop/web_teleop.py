@@ -27,211 +27,237 @@ except Exception as e:
     print("  Continuing in simulation mode...")
     bus = SparkCAN.SparkBus()
 
-FLD = bus.init_controller(FLD_ID)
-FRD = bus.init_controller(FRD_ID)
-BLD = bus.init_controller(BLD_ID)
-BRD = bus.init_controller(BRD_ID)
+# Initialize drive motors (all 4 wheels)
+drive_motors = {
+    'FLD': bus.init_controller(FLD_ID),
+    'FRD': bus.init_controller(FRD_ID),
+    'BLD': bus.init_controller(BLD_ID),
+    'BRD': bus.init_controller(BRD_ID)
+}
 
-FLS = bus.init_controller(FLS_ID)
-FRS = bus.init_controller(FRS_ID)
-BLS = bus.init_controller(BLS_ID)
-BRS = bus.init_controller(BRS_ID)
+# Initialize steer motors (all 4 wheels)
+steer_motors = {
+    'FLS': bus.init_controller(FLS_ID),
+    'FRS': bus.init_controller(FRS_ID),
+    'BLS': bus.init_controller(BLS_ID),
+    'BRS': bus.init_controller(BRS_ID)
+}
 
-SHOULDER_PITCH = bus.init_controller(SHOULDER_PITCH_ID)
-SHOULDER_ROT = bus.init_controller(SHOULDER_ROT_ID)
-ELBOW_PITCH = bus.init_controller(ELBOW_PITCH_ID)
-WRIST_PITCH = bus.init_controller(WRIST_PITCH_ID)
-WRIST_ROT = bus.init_controller(WRIST_ROT_ID)
+# Initialize arm motors
+arm_motors = {
+    'SHOULDER_PITCH': bus.init_controller(SHOULDER_PITCH_ID),
+    'SHOULDER_ROT': bus.init_controller(SHOULDER_ROT_ID),
+    'ELBOW_PITCH': bus.init_controller(ELBOW_PITCH_ID),
+    'WRIST_PITCH': bus.init_controller(WRIST_PITCH_ID),
+    'WRIST_ROT': bus.init_controller(WRIST_ROT_ID)
+}
 
-# Track currently pressed keys
+# Track currently pressed keys and steering state
 pressed_keys = set()
 control_lock = threading.Lock()
+steering_thread = None
+steering_target = None
+steering_lock = threading.Lock()
 
 
 def reset_all():
+    """Reset all motors and servos to default state"""
     set_drive_speeds(0)
-    reset_steer_pos()
-    set_rotation_speed(0)
-    SHOULDER_PITCH.percent_output(0)
-    SHOULDER_ROT.percent_output(0)
-    ELBOW_PITCH.percent_output(0)
-    WRIST_PITCH.percent_output(0)
-    WRIST_ROT.percent_output(0)
+    set_steer_pos_immediate(DEFAULT_STEER_POS)
+    for motor in arm_motors.values():
+        motor.percent_output(0)
     kit.continuous_servo[CLAW_CHANNEL].throttle = 0
 
 
 def set_drive_speeds(speed):
-    FLD.percent_output(speed)
-    FRD.percent_output(-1 * speed)
-    BLD.percent_output(speed)
-    BRD.percent_output(-1 * speed)
+    """Set all drive motor speeds (accounts for motor direction)"""
+    drive_motors['FLD'].percent_output(speed)
+    drive_motors['FRD'].percent_output(-speed)
+    drive_motors['BLD'].percent_output(speed)
+    drive_motors['BRD'].percent_output(-speed)
 
 
-def set_steer_pos(pos):
-    FLS.position_output(pos)
-    FRS.position_output(pos)
-    BLS.position_output(-1 * pos)
-    BRS.position_output(-1 * pos)
-
-    # Wait for wheels fully steer if previously in rotation mode
-    while (
-        abs(pos - (FRS.position)) > POS_MARGIN_ERROR
-        and abs(pos - (-1 * BLS.position)) > POS_MARGIN_ERROR
-    ):
-        time.sleep(0.01)
+def set_steer_pos_immediate(pos):
+    """Set steering position immediately without waiting"""
+    steer_motors['FLS'].position_output(pos)
+    steer_motors['FRS'].position_output(pos)
+    steer_motors['BLS'].position_output(-pos)
+    steer_motors['BRS'].position_output(-pos)
 
 
-def reset_steer_pos():
-    FLS.position_output(DEFAULT_STEER_POS)
-    FRS.position_output(DEFAULT_STEER_POS)
-    BLS.position_output(-1 * DEFAULT_STEER_POS)
-    BRS.position_output(-1 * DEFAULT_STEER_POS)
+def _steering_worker(target_pos, check_position=False):
+    """Background worker to handle steering transitions (non-blocking)"""
+    set_steer_pos_immediate(target_pos)
+    
+    if check_position:
+        # Optional: wait for position to be reached in background
+        start_time = time.time()
+        timeout = 2.0  # 2 second timeout
+        
+        while time.time() - start_time < timeout:
+            with steering_lock:
+                # Check if we've been interrupted by a new steering command
+                if steering_target != target_pos:
+                    return
+            
+            # Check if position reached
+            if abs(steer_motors['FRS'].position - target_pos) <= POS_MARGIN_ERROR:
+                break
+            time.sleep(0.01)
 
-    target = DEFAULT_STEER_POS
-    while abs(FRS.position - target) > POS_MARGIN_ERROR:
-        time.sleep(0.01)
+
+def set_steer_pos(pos, wait=False):
+    """Set steering position (non-blocking by default)"""
+    global steering_thread, steering_target
+    
+    with steering_lock:
+        steering_target = pos
+    
+    # Send command immediately
+    set_steer_pos_immediate(pos)
+    
+    # Optionally spawn background thread for position monitoring
+    if wait:
+        if steering_thread and steering_thread.is_alive():
+            pass  # Let existing thread finish or be interrupted
+        steering_thread = threading.Thread(target=_steering_worker, args=(pos, True), daemon=True)
+        steering_thread.start()
 
 
 def set_rotation_pos():
-    # Add check for wheel positions
-    FLS.position_output(STEER_ROTATION_POS)
-    FRS.position_output(-1 * STEER_ROTATION_POS)
-    BLS.position_output(-1 * STEER_ROTATION_POS)
-    BRS.position_output(STEER_ROTATION_POS)
-    target = -1 * STEER_ROTATION_POS
-    while abs(FRS.position - target) > POS_MARGIN_ERROR:
-        time.sleep(0.01)
+    """Position wheels for rotation mode (non-blocking)"""
+    global steering_target
+    
+    target_pos = STEER_ROTATION_POS
+    with steering_lock:
+        steering_target = target_pos
+    
+    steer_motors['FLS'].position_output(STEER_ROTATION_POS)
+    steer_motors['FRS'].position_output(-STEER_ROTATION_POS)
+    steer_motors['BLS'].position_output(-STEER_ROTATION_POS)
+    steer_motors['BRS'].position_output(STEER_ROTATION_POS)
 
 
 def set_rotation_speed(speed):
-    FLD.percent_output(speed)
-    BLD.percent_output(speed)
-    FRD.percent_output(speed)
-    BRD.percent_output(speed)
+    """Set rotation speed for all drive motors"""
+    for motor in drive_motors.values():
+        motor.percent_output(speed)
+
+
+def is_in_rotation_mode():
+    """Check if wheels are currently in rotation position"""
+    try:
+        return (abs(STEER_ROTATION_POS - (-steer_motors['FRS'].position)) < POS_MARGIN_ERROR and 
+                abs(STEER_ROTATION_POS - (-steer_motors['BLS'].position)) < POS_MARGIN_ERROR)
+    except:
+        return False
 
 
 def state_movement():
-    """Handle movement state controls (W, A, S, D)"""
+    """Handle movement state controls (W, A, S, D) - non-blocking"""
     speed = 0
     steer_pos = DEFAULT_STEER_POS
 
-    # Determine drive speed
-    if "w" in pressed_keys and "shift" in pressed_keys:
-        speed = MAX_DRIVE_SPEED
-    elif "w" in pressed_keys and "ctrl" in pressed_keys:
-        speed = MIN_DRIVE_SPEED
-    elif "w" in pressed_keys and "s" in pressed_keys:
+    # Determine drive speed with priority order
+    w_pressed = "w" in pressed_keys
+    s_pressed = "s" in pressed_keys
+    shift_pressed = "shift" in pressed_keys
+    ctrl_pressed = "ctrl" in pressed_keys
+    
+    if w_pressed and s_pressed:
         speed = 0
-    elif "w" in pressed_keys:
-        speed = NORMAL_DRIVE_SPEED
-    elif "s" in pressed_keys:
-        speed = -1 * MIN_DRIVE_SPEED
+    elif w_pressed:
+        if shift_pressed:
+            speed = MAX_DRIVE_SPEED
+        elif ctrl_pressed:
+            speed = MIN_DRIVE_SPEED
+        else:
+            speed = NORMAL_DRIVE_SPEED
+    elif s_pressed:
+        speed = -MIN_DRIVE_SPEED
 
-    # Adjust speed when turning
-    if ("w" in pressed_keys and "a" in pressed_keys) or (
-        "w" in pressed_keys and "d" in pressed_keys
-    ):
-        speed = MIN_DRIVE_SPEED
-    elif ("s" in pressed_keys and "a" in pressed_keys) or (
-        "s" in pressed_keys and "d" in pressed_keys
-    ):
-        speed = -1 * MIN_DRIVE_SPEED
+    # Adjust speed when turning (reduce speed for better control)
+    a_pressed = "a" in pressed_keys
+    d_pressed = "d" in pressed_keys
+    
+    if (w_pressed or s_pressed) and (a_pressed or d_pressed):
+        # Turning - reduce to minimum speed for better control
+        speed = MIN_DRIVE_SPEED if speed > 0 else -MIN_DRIVE_SPEED
 
     # Determine steering position
-    if "a" in pressed_keys and "d" in pressed_keys:
+    if a_pressed and d_pressed:
         steer_pos = DEFAULT_STEER_POS
-    elif "a" in pressed_keys:
+    elif a_pressed:
         steer_pos = STEER_LEFT_POS
-    elif "d" in pressed_keys:
+    elif d_pressed:
         steer_pos = STEER_RIGHT_POS
 
-    if (
-        abs(STEER_ROTATION_POS - (-1 * FRS.position)) < POS_MARGIN_ERROR
-        and abs(STEER_ROTATION_POS - (-1 * BLS.position)) < POS_MARGIN_ERROR
-        and speed != 0
-    ):
-        reset_steer_pos()
-
-    set_steer_pos(steer_pos)
+    # If wheels are in rotation mode and we want to move, reset steering first
+    if is_in_rotation_mode() and speed != 0:
+        set_steer_pos(steer_pos, wait=True)  # BLOCKING - wait for wheels to reach position
+    else:
+        set_steer_pos(steer_pos, wait=False)
+    
     set_drive_speeds(speed)
 
 
 def state_rotation():
-    """Handle rotation state controls (Q, E)"""
-    set_rotation_pos()
+    """Handle rotation state controls (Q, E) - non-blocking"""
+    set_rotation_pos()  # Non-blocking now
+    
+    q_pressed = "q" in pressed_keys
+    e_pressed = "e" in pressed_keys
 
-    if "q" in pressed_keys and "e" in pressed_keys:
-        set_rotation_speed(0)
-    elif "q" in pressed_keys:
-        set_rotation_speed(-1 * STEER_ROTATION_SPEED)
-    elif "e" in pressed_keys:
-        set_rotation_speed(STEER_ROTATION_SPEED)
+    if q_pressed and e_pressed:
+        speed = 0
+    elif q_pressed:
+        speed = -STEER_ROTATION_SPEED
+    elif e_pressed:
+        speed = STEER_ROTATION_SPEED
     else:
-        set_rotation_speed(0)
+        speed = 0
+    
+    set_rotation_speed(speed)
 
 
 def arm_controls():
-    """Handle arm controls (always active)"""
-    shoulder_rot = 0
-    shoulder_pitch = 0
-    elbow_pitch = 0
-    wrist_pitch = 0
-    wrist_rot = 0
-    claw = 0
-
-    # Shoulder rotation (Z/X)
-    if "z" in pressed_keys and "x" in pressed_keys:
-        shoulder_rot = 0
-    elif "z" in pressed_keys:
-        shoulder_rot = -1 * SHOULDER_ROT_SPEED
-    elif "x" in pressed_keys:
-        shoulder_rot = SHOULDER_ROT_SPEED
-
-    # Shoulder pitch (Y/H)
-    if "y" in pressed_keys and "h" in pressed_keys:
-        shoulder_pitch = 0
-    elif "y" in pressed_keys:
-        shoulder_pitch = SHOULDER_PITCH_SPEED
-    elif "h" in pressed_keys:
-        shoulder_pitch = -1 * SHOULDER_PITCH_SPEED
-
-    # Elbow pitch (U/J)
-    if "u" in pressed_keys and "j" in pressed_keys:
-        elbow_pitch = 0
-    elif "u" in pressed_keys:
-        elbow_pitch = -1 * ELBOW_PITCH_SPEED
-    elif "j" in pressed_keys:
-        elbow_pitch = ELBOW_PITCH_SPEED
-
-    # Wrist pitch (I/K)
-    if "i" in pressed_keys and "k" in pressed_keys:
-        wrist_pitch = 0
-    elif "i" in pressed_keys:
-        wrist_pitch = WRIST_PITCH_SPEED
-    elif "k" in pressed_keys:
-        wrist_pitch = -1 * WRIST_PITCH_SPEED
-
-    # Wrist rotation (C/V)
-    if "c" in pressed_keys and "v" in pressed_keys:
-        wrist_rot = 0
-    elif "c" in pressed_keys:
-        wrist_rot = -1 * WRIST_ROT_SPEED
-    elif "v" in pressed_keys:
-        wrist_rot = WRIST_ROT_SPEED
-
-    # Claw ([/])
+    """Handle arm controls (always active, non-blocking)"""
+    # Define control mappings: (positive_key, negative_key, speed_value)
+    arm_control_map = {
+        'SHOULDER_ROT': ('x', 'z', SHOULDER_ROT_SPEED),
+        'SHOULDER_PITCH': ('y', 'h', SHOULDER_PITCH_SPEED),
+        'ELBOW_PITCH': ('j', 'u', ELBOW_PITCH_SPEED),
+        'WRIST_PITCH': ('i', 'k', WRIST_PITCH_SPEED),
+        'WRIST_ROT': ('v', 'c', WRIST_ROT_SPEED),
+    }
+    
+    # Process each arm motor
+    for motor_name, (pos_key, neg_key, speed) in arm_control_map.items():
+        pos_pressed = pos_key in pressed_keys
+        neg_pressed = neg_key in pressed_keys
+        
+        if pos_pressed and neg_pressed:
+            # Both keys pressed - stop
+            output = 0
+        elif pos_pressed:
+            output = speed
+        elif neg_pressed:
+            output = -speed
+        else:
+            output = 0
+        
+        arm_motors[motor_name].percent_output(output)
+    
+    # Handle claw (servo, not a motor controller)
     if "[" in pressed_keys and "]" in pressed_keys:
         claw = 0
     elif "[" in pressed_keys:
         claw = CLAW_SPEED
     elif "]" in pressed_keys:
-        claw = -1 * CLAW_SPEED
-
-    SHOULDER_PITCH.percent_output(shoulder_pitch)
-    SHOULDER_ROT.percent_output(shoulder_rot)
-    ELBOW_PITCH.percent_output(elbow_pitch)
-    WRIST_PITCH.percent_output(wrist_pitch)
-    WRIST_ROT.percent_output(wrist_rot)
+        claw = -CLAW_SPEED
+    else:
+        claw = 0
+    
     kit.continuous_servo[CLAW_CHANNEL].throttle = claw
 
 
