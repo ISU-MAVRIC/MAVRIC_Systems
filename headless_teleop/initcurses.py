@@ -25,8 +25,8 @@ WRIST_ROT = bus.init_controller(WRIST_ROT_ID)
 
 def set_drive_speeds(speed):
     FLD.percent_output(speed)
-    BLD.percent_output(-1 * speed)
-    FRD.percent_output(speed)
+    FRD.percent_output(-1 * speed)
+    BLD.percent_output(speed)
     BRD.percent_output(-1 * speed)
 
 def set_steer_pos(pos):
