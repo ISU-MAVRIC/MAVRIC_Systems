@@ -31,8 +31,8 @@ def set_drive_speeds(speed):
 
 def set_steer_pos(pos):
     FLS.position_output(pos)
-    BLS.position_output(-1 * pos)
     FRS.position_output(pos)
+    BLS.position_output(-1 * pos)
     BRS.position_output(-1 * pos)
 
 def reset_steer_pos():
@@ -44,9 +44,9 @@ def reset_steer_pos():
 def set_rotation_pos():
     # Add check for wheel positions
     FLS.position_output(STEER_ROTATION_POS)
+    FRS.position_output(-1 * STEER_ROTATION_POS)
     BLS.position_output(-1 * STEER_ROTATION_POS)
-    FRS.position_output(STEER_ROTATION_POS)
-    BRS.position_output(-1 * STEER_ROTATION_POS)
+    BRS.position_output(STEER_ROTATION_POS)
 
 def set_rotation_speed(speed):
     FLS.percent_output(speed)
