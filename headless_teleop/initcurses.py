@@ -14,8 +14,8 @@ BRD = bus.init_controller(BRD_ID)
 
 FLS = bus.init_controller(FLS_ID)
 FRS = bus.init_controller(FRS_ID)
-BLS = bus.init_controller(BLD_ID)
-BRS = bus.init_controller(BRD_ID)
+BLS = bus.init_controller(BLS_ID)
+BRS = bus.init_controller(BRS_ID)
 
 SHOULDER_PITCH = bus.init_controller(SHOULDER_PITCH_ID)
 SHOULDER_ROT = bus.init_controller(SHOULDER_ROT_ID)
@@ -66,6 +66,7 @@ def reset_all():
     return "All controls reset"
 
 def main(stdscr):
+    reset_all()
     curses.cbreak()
     stdscr.nodelay(True)
     stdscr.clear()
