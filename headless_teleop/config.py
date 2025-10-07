@@ -1,14 +1,14 @@
 # Drive Motors
-FLD_ID = 7
-FRD_ID = 10
-BLD_ID = 9
-BRD_ID = 8
-
-# Steer Motors 
-FLS_ID = 1
-FRS_ID = 6
+FLD_ID = 1
+FRD_ID = 6
 BLD_ID = 5
 BRD_ID = 3
+
+# Steer Motors 
+FLS_ID = 7
+FRS_ID = 10
+BLD_ID = 9
+BRD_ID = 8
 
 # Arm Motors
 SHOULDER_PITCH_ID = 11

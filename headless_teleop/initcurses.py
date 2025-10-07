@@ -1,7 +1,6 @@
 import curses
 import time
-from spark_can.spark_can import SparkBus
-from spark_can.spark_controller import Controller
+from SparkCANLib import SparkBus, Controller
 from adafruit_servokit import ServoKit
 from  config import *
 

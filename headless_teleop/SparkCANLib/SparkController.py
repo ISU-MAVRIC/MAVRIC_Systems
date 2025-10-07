@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
 from can.interface import Bus
 from can import Message
-# from Statuses import Status
-from spark_can.Statuses import Status
+from SparkCANLib import Statuses
 from struct import pack
 
 """
@@ -22,8 +20,10 @@ class Controller:
         self.id = id
         self.statuses = {
             0x60: None,
-            0x61: Status( 0x2051840 + id, (32, 8, 12, 12), ("float", "uint", "uint", "uint")),
-            0x62: Status(0x2051880 + id, (32,), ("float",)),
+            0x61: Statuses.Status(
+                0x2051840 + id, (32, 8, 12, 12), ("float", "uint", "uint", "uint")
+            ),
+            0x62: Statuses.Status(0x2051880 + id, (32,), ("float",)),
             0x63: None,
             0x64: None,
         }

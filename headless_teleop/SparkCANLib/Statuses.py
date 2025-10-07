@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from can.interface import Bus
 from can import Message
 import bitstring
@@ -25,7 +24,7 @@ class Status:
         self.id = id
         self.datasizes = (0,) + datasizes
         self.datatypes = datatypes
-        self.data = [0]*len(datatypes)
+        self.data = [0] * len(datatypes)
 
     def decode(self, msg):
         """
@@ -38,8 +37,8 @@ class Status:
         # loop through each data range to get each value in status message
         for i in range(len(self.datatypes)):
             # get start and end indexes of each value in the message
-            start = sum(list(self.datasizes[0:i+1]))
-            end = sum(list(self.datasizes[0:i+2]))
+            start = sum(list(self.datasizes[0 : i + 1]))
+            end = sum(list(self.datasizes[0 : i + 2]))
 
             # get string of bits
             data = bitstring.BitArray(msg)
