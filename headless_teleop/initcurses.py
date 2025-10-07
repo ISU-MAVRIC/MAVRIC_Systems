@@ -4,7 +4,7 @@ from SparkCANLib import SparkCAN, SparkController as Controller
 from adafruit_servokit import ServoKit
 from  config import *
 
-# kit = ServoKit(channels=16)
+kit = ServoKit(channels=16)
 bus = SparkCAN.SparkBus()
 
 FLD = bus.init_controller(FLD_ID)
@@ -65,7 +65,7 @@ def reset_all():
     ELBOW_PITCH.percent_output(0)
     WRIST_PITCH.percent_output(0)
     WRIST_ROT.percent_output(0)
-    # kit.continuous_servo[CLAW_CHANNEL].throttle = 0
+    kit.continuous_servo[CLAW_CHANNEL].throttle = 0
     return "All controls reset"
 
 def main(stdscr):
@@ -77,7 +77,7 @@ def main(stdscr):
     stdscr.addstr(0, 0,
         "Controls: w/s drive | a/d steer | q/e rotate | "
         "z/x shoulder rot | y/h shoulder pitch | u/j elbow | "
-        "i/k wrist pitch | c/v wrist rot | [/] claw | space reset | q quit"
+        "i/k wrist pitch | c/v wrist rot | [/] claw | space reset | Q quit"
     )
     stdscr.refresh()
 
@@ -138,10 +138,10 @@ def main(stdscr):
             WRIST_ROT.percent_output(WRIST_ROT_SPEED)
             msg = "Wrist rotate left"
         elif key == ord("["):
-            # kit.continuous_servo[CLAW_CHANNEL].throttle = CLAW_SPEED
+            kit.continuous_servo[CLAW_CHANNEL].throttle = CLAW_SPEED
             msg = "Claw open"
         elif key == ord("]"):
-            # kit.continuous_servo[CLAW_CHANNEL].throttle = -CLAW_SPEED
+            kit.continuous_servo[CLAW_CHANNEL].throttle = -CLAW_SPEED
             msg = "Claw close"
         elif key == ord(" "):
             msg = reset_all()
