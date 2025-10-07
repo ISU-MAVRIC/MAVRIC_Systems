@@ -2,159 +2,241 @@ import curses
 import time
 from SparkCANLib import SparkCAN, SparkController as Controller
 from adafruit_servokit import ServoKit
-from  config import *
+from config import *
 
+# Initialize hardware
 kit = ServoKit(channels=16)
 bus = SparkCAN.SparkBus()
 
-FLD = bus.init_controller(FLD_ID)
-FRD = bus.init_controller(FRD_ID)
-BLD = bus.init_controller(BLD_ID)
-BRD = bus.init_controller(BRD_ID)
+# Initialize drive motors (all 4 wheels)
+drive_motors = {
+    "FLD": bus.init_controller(FLD_ID),
+    "FRD": bus.init_controller(FRD_ID),
+    "BLD": bus.init_controller(BLD_ID),
+    "BRD": bus.init_controller(BRD_ID),
+}
 
-FLS = bus.init_controller(FLS_ID)
-FRS = bus.init_controller(FRS_ID)
-BLS = bus.init_controller(BLS_ID)
-BRS = bus.init_controller(BRS_ID)
+# Initialize steer motors (all 4 wheels)
+steer_motors = {
+    "FLS": bus.init_controller(FLS_ID),
+    "FRS": bus.init_controller(FRS_ID),
+    "BLS": bus.init_controller(BLS_ID),
+    "BRS": bus.init_controller(BRS_ID),
+}
 
-SHOULDER_PITCH = bus.init_controller(SHOULDER_PITCH_ID)
-SHOULDER_ROT = bus.init_controller(SHOULDER_ROT_ID)
-ELBOW_PITCH = bus.init_controller(ELBOW_PITCH_ID)
-WRIST_PITCH = bus.init_controller(WRIST_PITCH_ID)
-WRIST_ROT = bus.init_controller(WRIST_ROT_ID)
+# Initialize arm motors
+arm_motors = {
+    "SHOULDER_PITCH": bus.init_controller(SHOULDER_PITCH_ID),
+    "SHOULDER_ROT": bus.init_controller(SHOULDER_ROT_ID),
+    "ELBOW_PITCH": bus.init_controller(ELBOW_PITCH_ID),
+    "WRIST_PITCH": bus.init_controller(WRIST_PITCH_ID),
+    "WRIST_ROT": bus.init_controller(WRIST_ROT_ID),
+}
+
 
 def set_drive_speeds(speed):
-    FLD.percent_output(speed)
-    FRD.percent_output(-1 * speed)
-    BLD.percent_output(speed)
-    BRD.percent_output(-1 * speed)
+    """Set all drive motor speeds (accounts for motor direction)"""
+
+    if (
+        abs(STEER_ROTATION_POS - (-steer_motors["FRS"].position)) < POS_MARGIN_ERROR
+        and abs(STEER_ROTATION_POS - (-steer_motors["BLS"].position))
+        < POS_MARGIN_ERROR
+    ):
+        reset_steer_pos()
+    drive_motors["FLD"].percent_output(speed)
+    drive_motors["FRD"].percent_output(-speed)
+    drive_motors["BLD"].percent_output(speed)
+    drive_motors["BRD"].percent_output(-speed)
+
 
 def set_steer_pos(pos):
-    FLS.position_output(pos)
-    FRS.position_output(pos)
-    BLS.position_output(-1 * pos)
-    BRS.position_output(-1 * pos)
+    """Set all steering positions (accounts for motor direction)"""
+    steer_motors["FLS"].position_output(pos)
+    steer_motors["FRS"].position_output(pos)
+    steer_motors["BLS"].position_output(-pos)
+    steer_motors["BRS"].position_output(-pos)
 
-def reset_steer_pos():
-    FLS.position_output(DEFAULT_STEER_POS)
-    FRS.position_output(DEFAULT_STEER_POS)
-    BLS.position_output(-1 * DEFAULT_STEER_POS)
-    BRS.position_output(-1 * DEFAULT_STEER_POS)
-
-def set_rotation_pos():
-    # Add check for wheel positions
-    FLS.position_output(STEER_ROTATION_POS)
-    FRS.position_output(-1 * STEER_ROTATION_POS)
-    BLS.position_output(-1 * STEER_ROTATION_POS)
-    BRS.position_output(STEER_ROTATION_POS)
-    target = -1 * STEER_ROTATION_POS
-    while abs(FRS.position - target) > 0.8:
+    # Wait for wheels fully steer if previously in rotation mode
+    while (
+        abs(pos - (steer_motors["FLS"].position)) > POS_MARGIN_ERROR
+        and 
+        abs(pos - (-1 * steer_motors["BLS"].position)) > POS_MARGIN_ERROR
+    ):
         time.sleep(0.01)
 
+
+def reset_steer_pos():
+    """Reset steering to default position"""
+    set_steer_pos(DEFAULT_STEER_POS)
+
+    while abs(-steer_motors["FRS"].position - DEFAULT_STEER_POS) > POS_MARGIN_ERROR:
+        time.sleep(0.01)
+
+
+def set_rotation_pos():
+    """Position wheels for rotation mode"""
+    steer_motors["FLS"].position_output(STEER_ROTATION_POS)
+    steer_motors["FRS"].position_output(-STEER_ROTATION_POS)
+    steer_motors["BLS"].position_output(-STEER_ROTATION_POS)
+    steer_motors["BRS"].position_output(STEER_ROTATION_POS)
+
+    # Wait for wheels to reach position
+    target = -STEER_ROTATION_POS
+    while abs(steer_motors["FRS"].position - target) > POS_MARGIN_ERROR:
+        time.sleep(0.01)
+
+
 def set_rotation_speed(speed):
-    FLD.percent_output(speed)
-    BLD.percent_output(speed)
-    FRD.percent_output(speed)
-    BRD.percent_output(speed)
+    """Set rotation speed for all drive motors"""
+    for motor in drive_motors.values():
+        motor.percent_output(speed)
+
 
 def reset_all():
+    """Reset all motors and servos to default state"""
     set_drive_speeds(0)
     reset_steer_pos()
-    set_rotation_speed(0)
-    SHOULDER_PITCH.percent_output(0)
-    SHOULDER_ROT.percent_output(0)
-    ELBOW_PITCH.percent_output(0)
-    WRIST_PITCH.percent_output(0)
-    WRIST_ROT.percent_output(0)
+    for motor in arm_motors.values():
+        motor.percent_output(0)
     kit.continuous_servo[CLAW_CHANNEL].throttle = 0
     return "All controls reset"
 
+
 def main(stdscr):
+    """Main control loop using curses for input"""
     reset_all()
     curses.cbreak()
     stdscr.nodelay(True)
     stdscr.clear()
 
-    stdscr.addstr(0, 0,
+    # Display controls header
+    stdscr.addstr(
+        0,
+        0,
         "Controls: w/s drive | a/d steer | q/e rotate | "
         "z/x shoulder rot | y/h shoulder pitch | u/j elbow | "
-        "i/k wrist pitch | c/v wrist rot | [/] claw | space reset | Q quit"
+        "i/k wrist pitch | c/v wrist rot | [/] claw | space reset | Q quit",
     )
     stdscr.refresh()
 
+    # Key mapping for more efficient processing
+    # Format: key -> (function, args, message)
+    key_actions = {
+        ord("w"): (set_drive_speeds, (MIN_DRIVE_SPEED,), "Drive forward"),
+        ord("s"): (set_drive_speeds, (-MIN_DRIVE_SPEED,), "Drive backward"),
+        ord("a"): (set_steer_pos, (STEER_LEFT_POS,), "Steer left"),
+        ord("d"): (set_steer_pos, (STEER_RIGHT_POS,), "Steer right"),
+        ord("z"): (
+            lambda: arm_motors["SHOULDER_ROT"].percent_output(-SHOULDER_ROT_SPEED),
+            (),
+            "Shoulder rotate left",
+        ),
+        ord("x"): (
+            lambda: arm_motors["SHOULDER_ROT"].percent_output(SHOULDER_ROT_SPEED),
+            (),
+            "Shoulder rotate right",
+        ),
+        ord("y"): (
+            lambda: arm_motors["SHOULDER_PITCH"].percent_output(SHOULDER_PITCH_SPEED),
+            (),
+            "Shoulder pitch up",
+        ),
+        ord("h"): (
+            lambda: arm_motors["SHOULDER_PITCH"].percent_output(-SHOULDER_PITCH_SPEED),
+            (),
+            "Shoulder pitch down",
+        ),
+        ord("u"): (
+            lambda: arm_motors["ELBOW_PITCH"].percent_output(-ELBOW_PITCH_SPEED),
+            (),
+            "Elbow up",
+        ),
+        ord("j"): (
+            lambda: arm_motors["ELBOW_PITCH"].percent_output(ELBOW_PITCH_SPEED),
+            (),
+            "Elbow down",
+        ),
+        ord("i"): (
+            lambda: arm_motors["WRIST_PITCH"].percent_output(WRIST_PITCH_SPEED),
+            (),
+            "Wrist pitch up",
+        ),
+        ord("k"): (
+            lambda: arm_motors["WRIST_PITCH"].percent_output(-WRIST_PITCH_SPEED),
+            (),
+            "Wrist pitch down",
+        ),
+        ord("c"): (
+            lambda: arm_motors["WRIST_ROT"].percent_output(-WRIST_ROT_SPEED),
+            (),
+            "Wrist rotate right",
+        ),
+        ord("v"): (
+            lambda: arm_motors["WRIST_ROT"].percent_output(WRIST_ROT_SPEED),
+            (),
+            "Wrist rotate left",
+        ),
+        ord("["): (
+            lambda: setattr(kit.continuous_servo[CLAW_CHANNEL], "throttle", CLAW_SPEED),
+            (),
+            "Claw open",
+        ),
+        ord("]"): (
+            lambda: setattr(
+                kit.continuous_servo[CLAW_CHANNEL], "throttle", -CLAW_SPEED
+            ),
+            (),
+            "Claw close",
+        ),
+        ord(" "): (reset_all, (), None),  # Message returned by function
+    }
+
+    # Special rotation handlers (need to set position first)
+    def rotate_left():
+        set_rotation_pos()
+        set_rotation_speed(-STEER_ROTATION_SPEED)
+        return "Rotate left"
+
+    def rotate_right():
+        set_rotation_pos()
+        set_rotation_speed(STEER_ROTATION_SPEED)
+        return "Rotate right"
+
+    key_actions[ord("q")] = (rotate_left, (), None)
+    key_actions[ord("e")] = (rotate_right, (), None)
+
+    last_msg = ""
+
     while True:
         key = stdscr.getch()
+
         if key == -1:
+            # No key pressed - sleep to reduce CPU usage
             time.sleep(0.05)
             continue
 
-        if key == ord("w"):
-            set_drive_speeds(MIN_DRIVE_SPEED)
-            msg = "Drive forward"
-        elif key == ord("s"):
-            set_drive_speeds(-1 * MIN_DRIVE_SPEED)
-            msg = "Drive backward"
-        elif key == ord("a"):
-            set_steer_pos(STEER_LEFT_POS)
-            msg = "Steer left"
-        elif key == ord("d"):
-            set_steer_pos(STEER_RIGHT_POS)
-            msg = "Steer right"
-        elif key == ord("q"):
-            set_rotation_pos()
-            set_rotation_speed(-1 * STEER_ROTATION_SPEED)
-            msg = "Rotate left"
-        elif key == ord("e"):
-            set_rotation_pos()
-            set_rotation_speed(STEER_ROTATION_SPEED)
-            msg = "Rotate right"
-        elif key == ord("z"):
-            SHOULDER_ROT.percent_output(-1 * SHOULDER_ROT_SPEED)
-            msg = "Shoulder rotate left"
-        elif key == ord("x"):
-            SHOULDER_ROT.percent_output(SHOULDER_ROT_SPEED)
-            msg = "Shoulder rotate right"
-        elif key == ord("y"):
-            SHOULDER_PITCH.percent_output(SHOULDER_PITCH_SPEED)
-            msg = "Shoulder pitch up"
-        elif key == ord("h"):
-            SHOULDER_PITCH.percent_output(-1 * SHOULDER_PITCH_SPEED)
-            msg = "Shoulder pitch down"
-        elif key == ord("u"):
-            ELBOW_PITCH.percent_output(-1 * ELBOW_PITCH_SPEED)
-            msg = "Elbow up"
-        elif key == ord("j"):
-            ELBOW_PITCH.percent_output(ELBOW_PITCH_SPEED)
-            msg = "Elbow down"
-        elif key == ord("i"):
-            WRIST_PITCH.percent_output(WRIST_PITCH_SPEED)
-            msg = "Wrist pitch up"
-        elif key == ord("k"):
-            WRIST_PITCH.percent_output(-1 * WRIST_PITCH_SPEED)
-            msg = "Wrist pitch down"
-        elif key == ord("c"):
-            WRIST_ROT.percent_output(-1 * WRIST_ROT_SPEED)
-            msg = "Wrist rotate right"
-        elif key == ord("v"):
-            WRIST_ROT.percent_output(WRIST_ROT_SPEED)
-            msg = "Wrist rotate left"
-        elif key == ord("["):
-            kit.continuous_servo[CLAW_CHANNEL].throttle = CLAW_SPEED
-            msg = "Claw open"
-        elif key == ord("]"):
-            kit.continuous_servo[CLAW_CHANNEL].throttle = -CLAW_SPEED
-            msg = "Claw close"
-        elif key == ord(" "):
-            msg = reset_all()
-        elif key == ord("Q"):  # capital Q to quit
+        # Handle quit
+        if key == ord("Q"):
             reset_all()
             break
+
+        # Process key action
+        if key in key_actions:
+            func, args, msg = key_actions[key]
+            result = func(*args)
+            # Use returned message if available, otherwise use predefined message
+            msg = result if result is not None else msg
         else:
             msg = f"Unknown key: {key}"
 
-        stdscr.addstr(2, 0, f"Last action: {msg}      ")
-        stdscr.refresh()
+        # Only update display if message changed
+        if msg != last_msg:
+            stdscr.addstr(2, 0, f"Last action: {msg}      ")
+            stdscr.refresh()
+            last_msg = msg
+
         time.sleep(0.05)
+
 
 if __name__ == "__main__":
     curses.wrapper(main)

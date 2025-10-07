@@ -13,8 +13,8 @@ import time
 import threading
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'mavric_secret_key'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+app.config["SECRET_KEY"] = "mavric_secret_key"
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # Initialize CAN bus and controllers
 print("Initializing CAN bus...")
@@ -47,6 +47,7 @@ WRIST_ROT = bus.init_controller(WRIST_ROT_ID)
 pressed_keys = set()
 control_lock = threading.Lock()
 
+
 def reset_all():
     set_drive_speeds(0)
     reset_steer_pos()
@@ -58,17 +59,27 @@ def reset_all():
     WRIST_ROT.percent_output(0)
     kit.continuous_servo[CLAW_CHANNEL].throttle = 0
 
+
 def set_drive_speeds(speed):
     FLD.percent_output(speed)
     FRD.percent_output(-1 * speed)
     BLD.percent_output(speed)
     BRD.percent_output(-1 * speed)
 
+
 def set_steer_pos(pos):
     FLS.position_output(pos)
     FRS.position_output(pos)
     BLS.position_output(-1 * pos)
     BRS.position_output(-1 * pos)
+
+    # Wait for wheels fully steer if previously in rotation mode
+    while (
+        abs(pos - (FRS.position)) > POS_MARGIN_ERROR
+        and abs(pos - (-1 * BLS.position)) > POS_MARGIN_ERROR
+    ):
+        time.sleep(0.01)
+
 
 def reset_steer_pos():
     FLS.position_output(DEFAULT_STEER_POS)
@@ -77,8 +88,9 @@ def reset_steer_pos():
     BRS.position_output(-1 * DEFAULT_STEER_POS)
 
     target = DEFAULT_STEER_POS
-    while abs(FRS.position - target) > 0.8:
+    while abs(FRS.position - target) > POS_MARGIN_ERROR:
         time.sleep(0.01)
+
 
 def set_rotation_pos():
     # Add check for wheel positions
@@ -87,8 +99,9 @@ def set_rotation_pos():
     BLS.position_output(-1 * STEER_ROTATION_POS)
     BRS.position_output(STEER_ROTATION_POS)
     target = -1 * STEER_ROTATION_POS
-    while abs(FRS.position - target) > 0.8:
+    while abs(FRS.position - target) > POS_MARGIN_ERROR:
         time.sleep(0.01)
+
 
 def set_rotation_speed(speed):
     FLD.percent_output(speed)
@@ -103,32 +116,40 @@ def state_movement():
     steer_pos = DEFAULT_STEER_POS
 
     # Determine drive speed
-    if 'w' in pressed_keys and 'shift' in pressed_keys:
+    if "w" in pressed_keys and "shift" in pressed_keys:
         speed = MAX_DRIVE_SPEED
-    elif 'w' in pressed_keys and 'ctrl' in pressed_keys:
+    elif "w" in pressed_keys and "ctrl" in pressed_keys:
         speed = MIN_DRIVE_SPEED
-    elif 'w' in pressed_keys and 's' in pressed_keys:
+    elif "w" in pressed_keys and "s" in pressed_keys:
         speed = 0
-    elif 'w' in pressed_keys:
+    elif "w" in pressed_keys:
         speed = NORMAL_DRIVE_SPEED
-    elif 's' in pressed_keys:
+    elif "s" in pressed_keys:
         speed = -1 * MIN_DRIVE_SPEED
 
     # Adjust speed when turning
-    if ('w' in pressed_keys and 'a' in pressed_keys) or ('w' in pressed_keys and 'd' in pressed_keys):
+    if ("w" in pressed_keys and "a" in pressed_keys) or (
+        "w" in pressed_keys and "d" in pressed_keys
+    ):
         speed = MIN_DRIVE_SPEED
-    elif ('s' in pressed_keys and 'a' in pressed_keys) or ('s' in pressed_keys and 'd' in pressed_keys):
+    elif ("s" in pressed_keys and "a" in pressed_keys) or (
+        "s" in pressed_keys and "d" in pressed_keys
+    ):
         speed = -1 * MIN_DRIVE_SPEED
 
     # Determine steering position
-    if 'a' in pressed_keys and 'd' in pressed_keys:
+    if "a" in pressed_keys and "d" in pressed_keys:
         steer_pos = DEFAULT_STEER_POS
-    elif 'a' in pressed_keys:
+    elif "a" in pressed_keys:
         steer_pos = STEER_LEFT_POS
-    elif 'd' in pressed_keys:
+    elif "d" in pressed_keys:
         steer_pos = STEER_RIGHT_POS
 
-    if abs(STEER_ROTATION_POS - (-1 * FRS.position)) < 1.0 and abs(STEER_ROTATION_POS - (-1 * BLS.position)) < 1.0:
+    if (
+        abs(STEER_ROTATION_POS - (-1 * FRS.position)) < POS_MARGIN_ERROR
+        and abs(STEER_ROTATION_POS - (-1 * BLS.position)) < POS_MARGIN_ERROR
+        and speed != 0
+    ):
         reset_steer_pos()
 
     set_steer_pos(steer_pos)
@@ -139,14 +160,14 @@ def state_rotation():
     """Handle rotation state controls (Q, E)"""
     set_rotation_pos()
 
-    if 'q' in pressed_keys and 'e' in pressed_keys:
-        set_drive_speeds(0)
-    elif 'q' in pressed_keys:
+    if "q" in pressed_keys and "e" in pressed_keys:
+        set_rotation_speed(0)
+    elif "q" in pressed_keys:
         set_rotation_speed(-1 * STEER_ROTATION_SPEED)
-    elif 'e' in pressed_keys:
+    elif "e" in pressed_keys:
         set_rotation_speed(STEER_ROTATION_SPEED)
     else:
-        set_drive_speeds(0)
+        set_rotation_speed(0)
 
 
 def arm_controls():
@@ -159,53 +180,53 @@ def arm_controls():
     claw = 0
 
     # Shoulder rotation (Z/X)
-    if 'z' in pressed_keys and 'x' in pressed_keys:
+    if "z" in pressed_keys and "x" in pressed_keys:
         shoulder_rot = 0
-    elif 'z' in pressed_keys:
+    elif "z" in pressed_keys:
         shoulder_rot = -1 * SHOULDER_ROT_SPEED
-    elif 'x' in pressed_keys:
+    elif "x" in pressed_keys:
         shoulder_rot = SHOULDER_ROT_SPEED
 
     # Shoulder pitch (Y/H)
-    if 'y' in pressed_keys and 'h' in pressed_keys:
+    if "y" in pressed_keys and "h" in pressed_keys:
         shoulder_pitch = 0
-    elif 'y' in pressed_keys:
+    elif "y" in pressed_keys:
         shoulder_pitch = SHOULDER_PITCH_SPEED
-    elif 'h' in pressed_keys:
+    elif "h" in pressed_keys:
         shoulder_pitch = -1 * SHOULDER_PITCH_SPEED
 
     # Elbow pitch (U/J)
-    if 'u' in pressed_keys and 'j' in pressed_keys:
+    if "u" in pressed_keys and "j" in pressed_keys:
         elbow_pitch = 0
-    elif 'u' in pressed_keys:
+    elif "u" in pressed_keys:
         elbow_pitch = -1 * ELBOW_PITCH_SPEED
-    elif 'j' in pressed_keys:
+    elif "j" in pressed_keys:
         elbow_pitch = ELBOW_PITCH_SPEED
 
     # Wrist pitch (I/K)
-    if 'i' in pressed_keys and 'k' in pressed_keys:
+    if "i" in pressed_keys and "k" in pressed_keys:
         wrist_pitch = 0
-    elif 'i' in pressed_keys:
+    elif "i" in pressed_keys:
         wrist_pitch = WRIST_PITCH_SPEED
-    elif 'k' in pressed_keys:
+    elif "k" in pressed_keys:
         wrist_pitch = -1 * WRIST_PITCH_SPEED
 
     # Wrist rotation (C/V)
-    if 'c' in pressed_keys and 'v' in pressed_keys:
+    if "c" in pressed_keys and "v" in pressed_keys:
         wrist_rot = 0
-    elif 'c' in pressed_keys:
+    elif "c" in pressed_keys:
         wrist_rot = -1 * WRIST_ROT_SPEED
-    elif 'v' in pressed_keys:
+    elif "v" in pressed_keys:
         wrist_rot = WRIST_ROT_SPEED
 
     # Claw ([/])
-    if '[' in pressed_keys and ']' in pressed_keys:
+    if "[" in pressed_keys and "]" in pressed_keys:
         claw = 0
-    elif '[' in pressed_keys:
+    elif "[" in pressed_keys:
         claw = CLAW_SPEED
-    elif ']' in pressed_keys:
+    elif "]" in pressed_keys:
         claw = -1 * CLAW_SPEED
-    
+
     SHOULDER_PITCH.percent_output(shoulder_pitch)
     SHOULDER_ROT.percent_output(shoulder_rot)
     ELBOW_PITCH.percent_output(elbow_pitch)
@@ -219,97 +240,96 @@ def update_controls():
     with control_lock:
         # Arm controls are always active
         arm_controls()
-        
+
         # Movement and rotation are mutually exclusive
-        if 'q' in pressed_keys or 'e' in pressed_keys:
+        if "q" in pressed_keys or "e" in pressed_keys:
             state_rotation()
         else:
             # reset_steer_pos()
             state_movement()
 
 
-@app.route('/')
+@app.route("/")
 def index():
     """Serve the main web interface"""
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/api/status')
+@app.route("/api/status")
 def status():
     """Get current control status"""
     with control_lock:
-        return jsonify({
-            'pressed_keys': list(pressed_keys),
-            'status': 'running'
-        })
+        return jsonify({"pressed_keys": list(pressed_keys), "status": "running"})
 
 
-@socketio.on('connect')
+@socketio.on("connect")
 def handle_connect():
     """Handle client connection"""
-    print('Client connected')
-    emit('status', {'message': 'Connected to MAVRIC Rover'})
+    print("Client connected")
+    emit("status", {"message": "Connected to MAVRIC Rover"})
 
 
-@socketio.on('disconnect')
+@socketio.on("disconnect")
 def handle_disconnect():
     """Handle client disconnection - stop all motors"""
-    print('Client disconnected')
+    print("Client disconnected")
     with control_lock:
         pressed_keys.clear()
         update_controls()
 
 
-@socketio.on('key_down')
+@socketio.on("key_down")
 def handle_key_down(data):
     """Handle key press event from web client"""
-    key = data.get('key', '').lower()
+    key = data.get("key", "").lower()
     if key:
         with control_lock:
             pressed_keys.add(key)
             update_controls()
-        emit('key_state', {'pressed_keys': list(pressed_keys)}, broadcast=True)
+        emit("key_state", {"pressed_keys": list(pressed_keys)}, broadcast=True)
 
 
-@socketio.on('key_up')
+@socketio.on("key_up")
 def handle_key_up(data):
     """Handle key release event from web client"""
-    key = data.get('key', '').lower()
+    key = data.get("key", "").lower()
     if key:
         with control_lock:
             pressed_keys.discard(key)
             update_controls()
-        emit('key_state', {'pressed_keys': list(pressed_keys)}, broadcast=True)
+        emit("key_state", {"pressed_keys": list(pressed_keys)}, broadcast=True)
 
 
-@socketio.on('emergency_stop')
+@socketio.on("emergency_stop")
 def handle_emergency_stop():
     """Emergency stop - clear all controls"""
-    print('Emergency stop triggered')
+    print("Emergency stop triggered")
     with control_lock:
         pressed_keys.clear()
         update_controls()
-    emit('key_state', {'pressed_keys': []}, broadcast=True)
+    emit("key_state", {"pressed_keys": []}, broadcast=True)
 
 
 def main(port=5000):
     """Start the web server"""
-    print("="*60)
+    print("=" * 60)
     print("Starting MAVRIC Web Teleop Interface...")
-    print("="*60)
+    print("=" * 60)
     print("")
     print("Access the interface at:")
     print(f"  - Local:    http://localhost:{port}")
     print(f"  - Network:  http://0.0.0.0:{port}")
     print("")
     print("Press Ctrl+C to stop the server")
-    print("="*60)
+    print("=" * 60)
     print("")
 
     reset_all()
-    
+
     try:
-        socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
+        socketio.run(
+            app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True
+        )
     except PermissionError:
         print(f"\n❌ Permission denied on port {port}. Try a different port:")
         print(f"   python3 web_teleop.py --port 8080")
@@ -321,12 +341,18 @@ def main(port=5000):
             print(f"     lsof -ti :{port} | xargs kill")
             print("  2. Use a different port:")
             print("     python3 web_teleop.py --port 8080")
-            
+
             # Try alternative port
             alt_port = port + 1
             print(f"\n🔄 Attempting to use port {alt_port} instead...")
             try:
-                socketio.run(app, host='0.0.0.0', port=alt_port, debug=False, allow_unsafe_werkzeug=True)
+                socketio.run(
+                    app,
+                    host="0.0.0.0",
+                    port=alt_port,
+                    debug=False,
+                    allow_unsafe_werkzeug=True,
+                )
             except Exception as e2:
                 print(f"❌ Failed on port {alt_port} too: {e2}")
         else:
@@ -336,22 +362,24 @@ def main(port=5000):
     except Exception as e:
         print(f"\n❌ Error starting server: {e}")
         import traceback
+
         traceback.print_exc()
 
 
 if __name__ == "__main__":
     import sys
+
     port = 5000
-    
+
     # Parse command line arguments
     if len(sys.argv) > 1:
-        if '--port' in sys.argv:
+        if "--port" in sys.argv:
             try:
-                port_idx = sys.argv.index('--port')
+                port_idx = sys.argv.index("--port")
                 port = int(sys.argv[port_idx + 1])
             except (IndexError, ValueError):
                 print("Usage: python3 web_teleop.py [--port PORT]")
                 print("Example: python3 web_teleop.py --port 8080")
                 sys.exit(1)
-    
+
     main(port)
