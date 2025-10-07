@@ -7,15 +7,15 @@ from  config import *
 # kit = ServoKit(channels=16)
 bus = SparkCAN.SparkBus()
 
-FLD = bus.init_controller(bus, FLD_ID)
-FRD = bus.init_controller(bus, FRD_ID)
-BLD = bus.init_controller(bus, BLD_ID)
-BRD = bus.init_controller(bus, BRD_ID)
+FLD = bus.init_controller(FLD_ID)
+FRD = bus.init_controller(FRD_ID)
+BLD = bus.init_controller(BLD_ID)
+BRD = bus.init_controller(BRD_ID)
 
-FLS = bus.init_controller(bus, FLS_ID)
-FRS = bus.init_controller(bus, FRS_ID)
-BLS = bus.init_controller(bus, BLD_ID)
-BRS = bus.init_controller(bus, BRD_ID)
+FLS = bus.init_controller(FLS_ID)
+FRS = bus.init_controller(FRS_ID)
+BLS = bus.init_controller(BLD_ID)
+BRS = bus.init_controller(BRD_ID)
 
 SHOULDER_PITCH = bus.init_controller(bus, SHOULDER_PITCH_ID)
 SHOULDER_ROT = bus.init_controller(bus, SHOULDER_ROT_ID)
