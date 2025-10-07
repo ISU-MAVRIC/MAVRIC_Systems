@@ -17,11 +17,11 @@ FRS = bus.init_controller(FRS_ID)
 BLS = bus.init_controller(BLD_ID)
 BRS = bus.init_controller(BRD_ID)
 
-SHOULDER_PITCH = bus.init_controller(bus, SHOULDER_PITCH_ID)
-SHOULDER_ROT = bus.init_controller(bus, SHOULDER_ROT_ID)
-ELBOW_PITCH = bus.init_controller(bus, ELBOW_PITCH_ID)
-WRIST_PITCH = bus.init_controller(bus, WRIST_PITCH_ID)
-WRIST_ROT = bus.init_controller(bus, WRIST_ROT_ID)
+SHOULDER_PITCH = bus.init_controller(SHOULDER_PITCH_ID)
+SHOULDER_ROT = bus.init_controller(SHOULDER_ROT_ID)
+ELBOW_PITCH = bus.init_controller(ELBOW_PITCH_ID)
+WRIST_PITCH = bus.init_controller(WRIST_PITCH_ID)
+WRIST_ROT = bus.init_controller(WRIST_ROT_ID)
 
 def set_drive_speeds(speed):
     FLD.percent_output(speed)

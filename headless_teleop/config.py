@@ -5,10 +5,10 @@ BLD_ID = 5
 BRD_ID = 3
 
 # Steer Motors 
-FLS_ID = 7
-FRS_ID = 10
-BLD_ID = 9
-BRD_ID = 8
+FLS_ID = 1007
+FRS_ID = 10010
+BLD_ID = 1009
+BRD_ID = 1008
 
 # Arm Motors
 SHOULDER_PITCH_ID = 11
