@@ -129,10 +129,10 @@ def main(stdscr):
             WRIST_PITCH.percent_output(-1 * WRIST_PITCH_SPEED)
             msg = "Wrist pitch down"
         elif key == ord("c"):
-            WRIST_ROT.percent_output(WRIST_ROT_SPEED)
+            WRIST_ROT.percent_output(-1 * WRIST_ROT_SPEED)
             msg = "Wrist rotate right"
         elif key == ord("v"):
-            WRIST_ROT.percent_output(-1 * WRIST_ROT_SPEED)
+            WRIST_ROT.percent_output(WRIST_ROT_SPEED)
             msg = "Wrist rotate left"
         elif key == ord("["):
             kit.continuous_servo[CLAW_CHANNEL].throttle = CLAW_SPEED
