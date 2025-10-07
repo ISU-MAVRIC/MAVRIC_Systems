@@ -117,10 +117,10 @@ def main(stdscr):
             SHOULDER_PITCH.percent_output(-SHOULDER_PITCH_SPEED)
             msg = "Shoulder pitch down"
         elif key == ord("u"):
-            ELBOW_PITCH.percent_output(ELBOW_PITCH_SPEED)
+            ELBOW_PITCH.percent_output(-1 * ELBOW_PITCH_SPEED)
             msg = "Elbow up"
         elif key == ord("j"):
-            ELBOW_PITCH.percent_output(-1 * ELBOW_PITCH_SPEED)
+            ELBOW_PITCH.percent_output(ELBOW_PITCH_SPEED)
             msg = "Elbow down"
         elif key == ord("i"):
             WRIST_PITCH.percent_output(WRIST_PITCH_SPEED)
