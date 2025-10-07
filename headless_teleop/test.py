@@ -4,7 +4,7 @@ from SparkCANLib import SparkCAN, SparkController as Controller
 from adafruit_servokit import ServoKit
 from  config import *
 
-bus = SparkBus()
+bus = SparkCAN.SparkBus()
 
 FLS = bus.init_controller(FLS_ID)
 FRS = bus.init_controller(FRS_ID)
