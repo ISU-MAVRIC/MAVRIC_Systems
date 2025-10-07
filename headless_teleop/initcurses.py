@@ -62,7 +62,7 @@ def reset_all():
     ELBOW_PITCH.percent_output(0)
     WRIST_PITCH.percent_output(0)
     WRIST_ROT.percent_output(0)
-    kit.continuous_servo[CLAW_CHANNEL].throttle = 0
+    # kit.continuous_servo[CLAW_CHANNEL].throttle = 0
     return "All controls reset"
 
 def main(stdscr):
