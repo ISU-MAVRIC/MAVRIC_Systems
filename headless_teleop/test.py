@@ -20,6 +20,6 @@ FLS.percent_output(0.05)
 
 
 while True:
-    # print(f"FLS.position: {FLS.position}, FRS.position: {FRS.position}, BLS.position: {BLS.position}, BRS.position: {BRS.position}")
-    # time.sleep(0.1)
+    print(f"FLS.position: {FLS.position}, FRS.position: {FRS.position}, BLS.position: {BLS.position}, BRS.position: {BRS.position}")
+    time.sleep(0.1)
     pass
