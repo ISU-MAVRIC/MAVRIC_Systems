@@ -57,12 +57,12 @@ def set_steer_pos(pos):
     steer_motors["BRS"].position_output(-pos)
 
     # Wait for wheels fully steer if previously in rotation mode
-    while (
-        abs(pos - (steer_motors["FLS"].position)) > POS_MARGIN_ERROR
-        and 
-        abs(pos - (-1 * steer_motors["BLS"].position)) > POS_MARGIN_ERROR
-    ):
-        time.sleep(0.01)
+    # while (
+    #     abs(pos - (steer_motors["FLS"].position)) > POS_MARGIN_ERROR
+    #     and 
+    #     abs(pos - (-1 * steer_motors["BLS"].position)) > POS_MARGIN_ERROR
+    # ):
+    #     time.sleep(0.01)
 
 
 def reset_steer_pos():
