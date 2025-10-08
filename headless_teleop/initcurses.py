@@ -69,8 +69,8 @@ def reset_steer_pos():
     """Reset steering to default position"""
     set_steer_pos(DEFAULT_STEER_POS)
 
-    while abs(-steer_motors["FRS"].position - DEFAULT_STEER_POS) > POS_MARGIN_ERROR:
-        time.sleep(0.01)
+    # while abs(-steer_motors["FRS"].position - DEFAULT_STEER_POS) > POS_MARGIN_ERROR:
+    #     time.sleep(0.01)
 
 
 def set_rotation_pos():
