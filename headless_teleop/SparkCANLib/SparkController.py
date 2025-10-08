@@ -45,6 +45,7 @@ class Controller:
         mod_value = value * self.percentProps["dir"] * self.percentProps["scale"]
         msg = Message(arbitration_id=0x02050080 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
+        print(f"Sent percent output: ID:{self.id} : {mod_value}")
 
     def velocity_output(self, value):
         mod_value = (
@@ -59,6 +60,7 @@ class Controller:
         )
         msg = Message(arbitration_id=0x02050C80 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
+        print(f"Sent position output: ID:{self.id} : {mod_value}")
 
     @property
     def velocity(self):

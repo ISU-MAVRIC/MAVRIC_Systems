@@ -14,7 +14,7 @@ const emergencyStopBtn = document.getElementById('emergency-stop');
 
 // Key mapping for special keys
 const keyMap = {
-    'Control': 'ctrl',
+    'CapsLock': 'capslock',
     'Shift': 'shift',
     'BracketLeft': '[',
     'BracketRight': ']',
@@ -25,7 +25,7 @@ const validKeys = new Set([
     'w', 'a', 's', 'd', 'q', 'e',  // Movement and rotation
     'y', 'h', 'u', 'j', 'i', 'k', 'c', 'v', 'z', 'x',  // Arm controls
     '[', ']',  // Claw
-    'shift', 'ctrl'  // Modifiers
+    'shift', 'capslock'  // Modifiers
 ]);
 
 // Socket.IO event handlers
@@ -55,7 +55,7 @@ socket.on('key_state', (data) => {
 document.addEventListener('keydown', (event) => {
     // Prevent default browser behavior for control keys
     if (validKeys.has(event.key.toLowerCase()) || 
-        event.key === 'Control' || 
+        event.key === 'CapsLock' || 
         event.key === 'Shift' ||
         event.code === 'BracketLeft' ||
         event.code === 'BracketRight') {

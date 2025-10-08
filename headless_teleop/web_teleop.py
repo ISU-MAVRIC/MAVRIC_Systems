@@ -8,7 +8,7 @@ from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
 from config import *
 from SparkCANLib import SparkCAN, SparkController as COntroller
-from adafruit_servokit import ServoKit
+# from adafruit_servokit import ServoKit
 import time
 import threading
 
@@ -19,7 +19,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 # Initialize CAN bus and controllers
 print("Initializing CAN bus...")
 try:
-    kit = ServoKit(channels=16)
+    # kit = ServoKit(channels=16)
     bus = SparkCAN.SparkBus()
     print("✓ CAN bus initialized (or running in simulation mode)")
 except Exception as e:
@@ -66,11 +66,12 @@ def reset_all():
     set_steer_pos_immediate(DEFAULT_STEER_POS)
     for motor in arm_motors.values():
         motor.percent_output(0)
-    kit.continuous_servo[CLAW_CHANNEL].throttle = 0
+    # kit.continuous_servo[CLAW_CHANNEL].throttle = 0
 
 
 def set_drive_speeds(speed):
     """Set all drive motor speeds (accounts for motor direction)"""
+    print(f"    set_drive_speeds({speed})")
     drive_motors['FLD'].percent_output(speed)
     drive_motors['FRD'].percent_output(-speed)
     drive_motors['BLD'].percent_output(speed)
@@ -162,17 +163,17 @@ def state_movement():
     w_pressed = "w" in pressed_keys
     s_pressed = "s" in pressed_keys
     shift_pressed = "shift" in pressed_keys
-    ctrl_pressed = "ctrl" in pressed_keys
+    capslock_pressed = "capslock" in pressed_keys
     
     if w_pressed and s_pressed:
         speed = 0
     elif w_pressed:
         if shift_pressed:
-            speed = MAX_DRIVE_SPEED
-        elif ctrl_pressed:
-            speed = MIN_DRIVE_SPEED
-        else:
             speed = NORMAL_DRIVE_SPEED
+        elif capslock_pressed:
+            speed = MAX_DRIVE_SPEED
+        else:
+            speed = MIN_DRIVE_SPEED
     elif s_pressed:
         speed = -MIN_DRIVE_SPEED
 
@@ -180,9 +181,9 @@ def state_movement():
     a_pressed = "a" in pressed_keys
     d_pressed = "d" in pressed_keys
     
-    if (w_pressed or s_pressed) and (a_pressed or d_pressed):
-        # Turning - reduce to minimum speed for better control
-        speed = MIN_DRIVE_SPEED if speed > 0 else -MIN_DRIVE_SPEED
+    # if (w_pressed or s_pressed) and (a_pressed or d_pressed):
+    #     # Turning - reduce to minimum speed for better control
+    #     speed = MIN_DRIVE_SPEED if speed > 0 else -MIN_DRIVE_SPEED
 
     # Determine steering position
     if a_pressed and d_pressed:
@@ -258,21 +259,23 @@ def arm_controls():
     else:
         claw = 0
     
-    kit.continuous_servo[CLAW_CHANNEL].throttle = claw
+    # kit.continuous_servo[CLAW_CHANNEL].throttle = claw
 
 
 def update_controls():
-    """Main control update function"""
-    with control_lock:
-        # Arm controls are always active
-        arm_controls()
+    """Main control update function (assumes caller holds control_lock)"""
+    print(f"update_controls() called - pressed_keys: {pressed_keys}")
+    # Arm controls are always active
+    arm_controls()
 
-        # Movement and rotation are mutually exclusive
-        if "q" in pressed_keys or "e" in pressed_keys:
-            state_rotation()
-        else:
-            # reset_steer_pos()
-            state_movement()
+    # Movement and rotation are mutually exclusive
+    if "q" in pressed_keys or "e" in pressed_keys:
+        print("  -> Calling state_rotation()")
+        state_rotation()
+    else:
+        # reset_steer_pos()
+        print("  -> Calling state_movement()")
+        state_movement()
 
 
 @app.route("/")
@@ -307,8 +310,10 @@ def handle_disconnect():
 @socketio.on("key_down")
 def handle_key_down(data):
     """Handle key press event from web client"""
+    print(f"Received key_down event: {data}")
     key = data.get("key", "").lower()
     if key:
+        print(f"Processing key down: {key}")
         with control_lock:
             pressed_keys.add(key)
             update_controls()
@@ -318,8 +323,10 @@ def handle_key_down(data):
 @socketio.on("key_up")
 def handle_key_up(data):
     """Handle key release event from web client"""
+    print(f"Received key_up event: {data}")
     key = data.get("key", "").lower()
     if key:
+        print(f"Processing key up: {key}")
         with control_lock:
             pressed_keys.discard(key)
             update_controls()
@@ -395,7 +402,7 @@ def main(port=5000):
 if __name__ == "__main__":
     import sys
 
-    port = 5000
+    port = 8001
 
     # Parse command line arguments
     if len(sys.argv) > 1:
