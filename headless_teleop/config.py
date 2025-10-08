@@ -8,7 +8,7 @@ BRD_ID = 3
 FLS_ID = 7
 FRS_ID = 10
 BLS_ID = 9
-BRS_ID = 8
+BRS_ID = 2
 
 # Arm Motors
 SHOULDER_PITCH_ID = 11
