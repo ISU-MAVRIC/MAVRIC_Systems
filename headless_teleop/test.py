@@ -12,7 +12,7 @@ BLS = bus.init_controller(BLS_ID)
 BRS = bus.init_controller(BRS_ID)
 
 # BRS.percent_output(-0.05)
-FLS.percent_output(0.50)
+FLS.percent_output(-0.70)
 # FLS.percent_output(0.05)
 # FLS.percent_output(0)
 # time.sleep(5)
