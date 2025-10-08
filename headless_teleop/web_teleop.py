@@ -8,7 +8,7 @@ from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
 from config import *
 from SparkCANLib import SparkCAN, SparkController as COntroller
-# from adafruit_servokit import ServoKit
+from adafruit_servokit import ServoKit
 import time
 import threading
 
@@ -19,7 +19,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 # Initialize CAN bus and controllers
 print("Initializing CAN bus...")
 try:
-    # kit = ServoKit(channels=16)
+    kit = ServoKit(channels=16)
     bus = SparkCAN.SparkBus()
     print("✓ CAN bus initialized (or running in simulation mode)")
 except Exception as e:
@@ -66,7 +66,7 @@ def reset_all():
     set_steer_pos_immediate(DEFAULT_STEER_POS)
     for motor in arm_motors.values():
         motor.percent_output(0)
-    # kit.continuous_servo[CLAW_CHANNEL].throttle = 0
+    kit.continuous_servo[CLAW_CHANNEL].throttle = 0
 
 
 def set_drive_speeds(speed):
@@ -259,7 +259,7 @@ def arm_controls():
     else:
         claw = 0
     
-    # kit.continuous_servo[CLAW_CHANNEL].throttle = claw
+    kit.continuous_servo[CLAW_CHANNEL].throttle = claw
 
 
 def update_controls():
