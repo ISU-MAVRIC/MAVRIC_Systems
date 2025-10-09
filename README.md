@@ -1,5 +1,5 @@
 **See ros2_ws_Foxy for current development space and example of the following**
-
+#TODO: Fix following badly formatted structure/paragraph
 **General Workspace Structure**
 Workspace
 	build
