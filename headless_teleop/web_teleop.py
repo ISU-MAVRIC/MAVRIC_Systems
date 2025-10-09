@@ -88,7 +88,7 @@ def set_steer_pos_immediate(pos):
 
 def _steering_worker(target_pos, check_position=False):
     """Background worker to handle steering transitions (non-blocking)"""
-    set_steer_pos_immediate(target_pos)
+    # set_steer_pos_immediate(target_pos)
     
     if check_position:
         # Optional: wait for position to be reached in background
