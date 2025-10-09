@@ -138,8 +138,8 @@ def set_rotation_pos():
     steer_motors['BLS'].position_output(-STEER_ROTATION_POS)
     steer_motors['BRS'].position_output(STEER_ROTATION_POS)
 
-    # steering_thread = threading.Thread(target=_steering_worker, args=(target_pos,), daemon=True)
-    # steering_thread.start()
+    steering_thread = threading.Thread(target=_steering_worker, args=(target_pos,), daemon=True)
+    steering_thread.start()
 
 
 def set_rotation_speed(speed):
@@ -222,9 +222,9 @@ def state_rotation():
     else:
         speed = 0
     
-    while  steering_thread and steering_thread.is_alive():
+    while steering_thread and steering_thread.is_alive():
         time.sleep(0.01)  # Wait for steering to finish
-        
+
     set_rotation_speed(speed)
 
 
