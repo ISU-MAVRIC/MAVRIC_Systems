@@ -4,27 +4,36 @@ Web-based Teleoperation Interface for MAVRIC Rover
 Provides a browser-based GUI for controlling the rover with keyboard support.
 """
 
+import logging
+import threading
+import time
+
 from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
+
 from config import *
 from SparkCANLib import SparkCAN, SparkController as COntroller
-from adafruit_servokit import ServoKit
-import time
-import threading
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "mavric_secret_key"
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
+logger = logging.getLogger("mavric.web_teleop")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
 # Initialize CAN bus and controllers
-print("Initializing CAN bus...")
+kit = None
+logger.info("Initializing CAN bus...")
 try:
-    kit = ServoKit(channels=16)
     bus = SparkCAN.SparkBus()
-    print("✓ CAN bus initialized (or running in simulation mode)")
+
+    from adafruit_servokit import ServoKit
+    kit = ServoKit(channels=16)
+    logger.info("✓ CAN bus initialized (or running in simulation mode)")
 except Exception as e:
-    print(f"⚠ CAN bus initialization warning: {e}")
-    print("  Continuing in simulation mode...")
+    logger.warning("⚠ CAN bus initialization warning: %s", e)
+    logger.warning("Continuing in simulation mode...")
     bus = SparkCAN.SparkBus()
 
 # Initialize drive motors (all 4 wheels)
@@ -52,142 +61,297 @@ arm_motors = {
     'WRIST_ROT': bus.init_controller(WRIST_ROT_ID)
 }
 
-# Track currently pressed keys and steering state
+# Track currently pressed keys; guard shared state with this lock
 pressed_keys = set()
 control_lock = threading.Lock()
-steering_thread = None
-steering_target = None
-steering_lock = threading.Lock()
-rotation_ready = threading.Event()  # Signals when wheels are positioned for rotation
-rotation_positioning_thread = None
+
+
+class ControlState:
+    """Cache of the last commands sent to each subsystem.
+
+    Prevents flooding the CAN bus with duplicate messages while keeping
+    the most recent command values easily accessible to worker threads.
+    """
+
+    def __init__(self):
+        self.drive_speed = None
+        self.rotation_speed = None
+        self.steer_positions = None  # Tuple FL, FR, BL, BR
+        self.arm_outputs = {}
+
+    def reset(self):
+        self.drive_speed = None
+        self.rotation_speed = None
+        self.steer_positions = None
+        for key in self.arm_outputs:
+            self.arm_outputs[key] = None
+
+
+control_state = ControlState()
+control_state.arm_outputs = {name: None for name in arm_motors}
+
+
+def _reset_control_state():
+    """Clear cached command state so the next command always sends."""
+    control_state.reset()
 
 
 def reset_all():
     """Reset all motors and servos to default state"""
-    set_drive_speeds(0)
-    set_steer_pos_immediate(DEFAULT_STEER_POS)
+    set_drive_speeds(0, force=True)
+    set_rotation_speed(0, force=True)
+    set_steer_pos_immediate(DEFAULT_STEER_POS, force=True)
     for motor in arm_motors.values():
         motor.percent_output(0)
-    kit.continuous_servo[CLAW_CHANNEL].throttle = 0
+    if kit is not None:
+        kit.continuous_servo[CLAW_CHANNEL].throttle = 0
+    _reset_control_state()
+    drive_manager.reset()
 
 
-def set_drive_speeds(speed):
+def set_drive_speeds(speed, *, force=False):
     """Set all drive motor speeds (accounts for motor direction)"""
-    print(f"    set_drive_speeds({speed})")
+    if not force and control_state.drive_speed == speed:
+        return
+
+    control_state.drive_speed = speed
     drive_motors['FLD'].percent_output(speed)
     drive_motors['FRD'].percent_output(-speed)
     drive_motors['BLD'].percent_output(speed)
     drive_motors['BRD'].percent_output(-speed)
 
 
-def set_steer_pos_immediate(pos):
+# ---------------------------------------------------------------------------
+# Steering helpers
+# ---------------------------------------------------------------------------
+
+
+def _apply_steer_positions(fls, frs, bls, brs, *, force=False):
+    """Apply steering outputs if they differ from the last command.
+
+    Returns True when a new command is sent, False otherwise.
+    """
+    positions = (fls, frs, bls, brs)
+    if not force and control_state.steer_positions == positions:
+        return False
+
+    control_state.steer_positions = positions
+    steer_motors['FLS'].position_output(fls)
+    steer_motors['FRS'].position_output(frs)
+    steer_motors['BLS'].position_output(bls)
+    steer_motors['BRS'].position_output(brs)
+    return True
+
+
+def set_steer_pos_immediate(pos, *, force=False):
     """Set steering position immediately without waiting"""
-    steer_motors['FLS'].position_output(pos)
-    steer_motors['FRS'].position_output(pos)
-    steer_motors['BLS'].position_output(-pos)
-    steer_motors['BRS'].position_output(-pos)
+    return _apply_steer_positions(pos, pos, -pos, -pos, force=force)
 
 
-def _steering_worker(target_pos, check_position=False):
-    """Background worker to handle steering transitions (non-blocking)"""
-    # set_steer_pos_immediate(target_pos)
-    
-    if check_position:
-        # Optional: wait for position to be reached in background
-        start_time = time.time()
-        timeout = 2.0  # 2 second timeout
-        
-        while time.time() - start_time < timeout:
-            with steering_lock:
-                # Check if we've been interrupted by a new steering command
-                if steering_target != target_pos:
-                    return
-            
-            # Check if position reached
-            if abs(steer_motors['FRS'].position - target_pos) <= POS_MARGIN_ERROR:
+def set_rotation_pos(*, force=False):
+    """Command wheels into rotation pose."""
+    return _apply_steer_positions(
+        STEER_ROTATION_POS,
+        -STEER_ROTATION_POS,
+        -STEER_ROTATION_POS,
+        STEER_ROTATION_POS,
+        force=force,
+    )
+
+
+def _current_steer_positions():
+    """Return the current encoder readouts for each steering motor."""
+    return (
+        steer_motors['FLS'].position,
+        steer_motors['FRS'].position,
+        steer_motors['BLS'].position,
+        steer_motors['BRS'].position,
+    )
+
+
+def _movement_targets(pos):
+    """Steering targets for conventional driving."""
+    return (pos, pos, -pos, -pos)
+
+
+def _rotation_targets():
+    """Steering targets for the rotation pose."""
+    return (
+        STEER_ROTATION_POS,
+        -STEER_ROTATION_POS,
+        -STEER_ROTATION_POS,
+        STEER_ROTATION_POS,
+    )
+
+
+def _positions_close(targets, margin=POS_MARGIN_ERROR):
+    """Determine if actual steering positions are within tolerance."""
+    return all(abs(actual - target) <= margin for actual, target in zip(_current_steer_positions(), targets))
+
+
+class DriveManager:
+    """Background worker that enforces steering/drive ordering rules.
+
+    The main Socket.IO handlers enqueue movement or rotation requests here.
+    The worker thread serializes those requests and blocks as needed so the
+    public constraints are always honored (stop before rotating, wait for
+    steering alignment before driving, etc.).
+    """
+
+    ROTATION_TIMEOUT = 2.0
+    STEER_TIMEOUT = 2.0
+
+    def __init__(self):
+        self._condition = threading.Condition()
+        self._command_id = 0
+        self._mode = "idle"  # idle, movement, rotation
+        self._target_speed = 0
+        self._target_steer = DEFAULT_STEER_POS
+        self._target_rotation_speed = 0
+        self._shutdown = False
+        self._worker = threading.Thread(target=self._run, daemon=True)
+        self._worker.start()
+
+    def shutdown(self):
+        with self._condition:
+            self._shutdown = True
+            self._condition.notify_all()
+        self._worker.join(timeout=1.0)
+
+    def request_movement(self, speed: float, steer_pos: float):
+        with self._condition:
+            self._command_id += 1
+            self._mode = "movement"
+            self._target_speed = speed
+            self._target_steer = steer_pos
+            self._condition.notify_all()
+
+    def request_rotation(self, rotation_speed: float):
+        with self._condition:
+            self._command_id += 1
+            self._mode = "rotation"
+            self._target_rotation_speed = rotation_speed
+            self._condition.notify_all()
+
+    def reset(self):
+        with self._condition:
+            self._command_id += 1
+            self._mode = "idle"
+            self._target_speed = 0
+            self._target_rotation_speed = 0
+            self._target_steer = DEFAULT_STEER_POS
+            self._condition.notify_all()
+
+    def _run(self):
+        while True:
+            with self._condition:
+                if not self._shutdown:
+                    self._condition.wait(timeout=0.02)
+                command_id = self._command_id
+                mode = self._mode
+                speed = self._target_speed
+                steer_pos = self._target_steer
+                rotation_speed = self._target_rotation_speed
+                shutdown = self._shutdown
+
+            if shutdown:
+                break
+
+            if mode == "rotation":
+                self._handle_rotation(command_id, rotation_speed)
+            elif mode == "movement":
+                self._handle_movement(command_id, speed, steer_pos)
+            else:
+                self._handle_idle(command_id)
+
+    def _is_stale(self, command_id: int) -> bool:
+        with self._condition:
+            return command_id != self._command_id
+
+    def _handle_rotation(self, command_id: int, rotation_speed: float):
+        """Wait for wheels to reach the rotation pose before spinning."""
+        # Ensure drive motors are stopped before any rotation attempt
+        set_drive_speeds(0, force=True)
+        set_rotation_speed(0, force=True)
+        set_rotation_pos()
+
+        deadline = time.time() + self.ROTATION_TIMEOUT
+        while time.time() < deadline:
+            if self._is_stale(command_id):
+                return
+            if _positions_close(_rotation_targets()):
                 break
             time.sleep(0.01)
+        else:
+            logger.warning("Rotation positioning timeout; keeping wheels stopped")
+            return
 
+        if self._is_stale(command_id):
+            return
 
-def set_steer_pos(pos, wait=False):
-    """Set steering position (non-blocking by default)"""
-    global steering_thread, steering_target
-    
-    with steering_lock:
-        steering_target = pos
-    
-    # Send command immediately
-    set_steer_pos_immediate(pos)
-    
-    # Optionally spawn background thread for position monitoring
-    if wait:
-        if steering_thread and steering_thread.is_alive():
-            pass  # Let existing thread finish or be interrupted
-        steering_thread = threading.Thread(target=_steering_worker, args=(pos, True), daemon=True)
-        steering_thread.start()
+        set_rotation_speed(rotation_speed)
 
+    def _handle_movement(self, command_id: int, speed: float, steer_pos: float):
+        """Ensure steering matches the requested angle before driving."""
+        # Always stop rotation when movement requested
+        # set_rotation_speed(0)
 
-def set_rotation_pos():
-    """Position wheels for rotation mode (non-blocking - uses background thread)"""
-    global steering_target, rotation_positioning_thread
-    
-    target_pos = STEER_ROTATION_POS
-    with steering_lock:
-        steering_target = target_pos
-    
-    # Send commands immediately to position wheels for rotation
-    steer_motors['FLS'].position_output(STEER_ROTATION_POS)
-    steer_motors['FRS'].position_output(-STEER_ROTATION_POS)
-    steer_motors['BLS'].position_output(-STEER_ROTATION_POS)
-    steer_motors['BRS'].position_output(STEER_ROTATION_POS)
+        blocking = speed != 0
+        if blocking:
+            set_drive_speeds(0, force=True)
+        if not self._ensure_steer_alignment(command_id, steer_pos, blocking):
+            return
 
-    # Clear the ready flag and start background monitoring
-    rotation_ready.clear()
-    
-    def _wait_for_rotation_position():
-        """Background thread that waits for wheels to reach rotation position"""
-        start_time = time.time()
-        timeout = 2.0  # 2 second timeout
+        if self._is_stale(command_id):
+            return
 
-        while time.time() - start_time < timeout:
-            # Check if all wheels have reached their target positions
-            fls_reached = abs(steer_motors['FLS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
-            frs_reached = abs(steer_motors['FRS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
-            bls_reached = abs(steer_motors['BLS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
-            brs_reached = abs(steer_motors['BRS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
+        set_drive_speeds(speed)
 
-            if fls_reached and frs_reached and bls_reached and brs_reached:
-                rotation_ready.set()  # Signal that wheels are ready
-                return
+    def _handle_idle(self, command_id: int):
+        """Return drivetrain to a neutral state."""
+        set_rotation_speed(0)
+        set_drive_speeds(0)
+        self._ensure_steer_alignment(command_id, DEFAULT_STEER_POS, blocking=False)
 
+    def _ensure_steer_alignment(self, command_id: int, steer_pos: float, blocking: bool) -> bool:
+        """Wait until the steering sensors read the desired pose."""
+        targets = _movement_targets(steer_pos)
+        command_sent = set_steer_pos_immediate(steer_pos)
+
+        if not blocking:
+            return True
+
+        if not command_sent and _positions_close(targets):
+            return True
+
+        deadline = time.time() + self.STEER_TIMEOUT
+        while time.time() < deadline:
+            if self._is_stale(command_id):
+                return False
+            if _positions_close(targets):
+                return True
             time.sleep(0.01)
-        
-        # Timeout - set ready anyway to avoid deadlock
-        rotation_ready.set()
-    
-    # Start background thread if not already running
-    if rotation_positioning_thread is None or not rotation_positioning_thread.is_alive():
-        rotation_positioning_thread = threading.Thread(target=_wait_for_rotation_position, daemon=True)
-        rotation_positioning_thread.start()
+
+        logger.warning("Steering alignment timeout (target=%s)", steer_pos)
+        return False
 
 
-def set_rotation_speed(speed):
+# Single global manager instance coordinates all drivetrain updates.
+drive_manager = DriveManager()
+
+
+def set_rotation_speed(speed, *, force=False):
     """Set rotation speed for all drive motors"""
+    if not force and control_state.rotation_speed == speed:
+        return
+
+    control_state.rotation_speed = speed
     for motor in drive_motors.values():
         motor.percent_output(speed)
 
 
-def is_in_rotation_mode():
-    """Check if wheels are currently in rotation position"""
-    try:
-        return (abs(STEER_ROTATION_POS - (-steer_motors['FRS'].position)) < POS_MARGIN_ERROR and 
-                abs(STEER_ROTATION_POS - (-steer_motors['BLS'].position)) < POS_MARGIN_ERROR)
-    except:
-        return False
-
-
 def state_movement():
-    """Handle movement state controls (W, A, S, D) - non-blocking"""
+    """Forward drive inputs to the manager while handling key modifiers."""
     speed = 0
     steer_pos = DEFAULT_STEER_POS
 
@@ -225,20 +389,11 @@ def state_movement():
     elif d_pressed:
         steer_pos = STEER_RIGHT_POS
 
-    # If wheels are in rotation mode and we want to move, reset steering first
-    if is_in_rotation_mode() and speed != 0:
-        set_steer_pos(steer_pos, wait=True)  # BLOCKING - wait for wheels to reach position
-    else:
-        set_steer_pos(steer_pos, wait=False)
-    
-    set_drive_speeds(speed)
+    drive_manager.request_movement(speed, steer_pos)
 
 
 def state_rotation():
-    """Handle rotation state controls (Q, E) - non-blocking, monitors rotation readiness"""
-    set_drive_speeds(0)  # Stop movement first
-    set_rotation_pos()  # Non-blocking - starts background positioning
-    
+    """Forward rotation inputs to the manager and compute desired speed."""
     q_pressed = "q" in pressed_keys
     e_pressed = "e" in pressed_keys
 
@@ -252,15 +407,7 @@ def state_rotation():
     else:
         desired_speed = 0
 
-    # Only apply rotation speed if wheels are in position (or no rotation requested)
-    if desired_speed == 0:
-        set_rotation_speed(0)
-    elif rotation_ready.is_set():
-        # Wheels are in position - safe to rotate
-        set_rotation_speed(desired_speed)
-    else:
-        # Wheels still positioning - don't rotate yet
-        set_rotation_speed(0)
+    drive_manager.request_rotation(desired_speed)
 
 
 def arm_controls():
@@ -289,6 +436,10 @@ def arm_controls():
         else:
             output = 0
         
+        if control_state.arm_outputs.get(motor_name) == output:
+            continue
+
+        control_state.arm_outputs[motor_name] = output
         arm_motors[motor_name].percent_output(output)
     
     # Handle claw (servo, not a motor controller)
@@ -301,22 +452,22 @@ def arm_controls():
     else:
         claw = 0
     
-    kit.continuous_servo[CLAW_CHANNEL].throttle = claw
+    if kit is not None:
+        kit.continuous_servo[CLAW_CHANNEL].throttle = claw
 
 
 def update_controls():
     """Main control update function (assumes caller holds control_lock)"""
-    print(f"update_controls() called - pressed_keys: {pressed_keys}")
+    logger.debug("update_controls() pressed_keys: %s", pressed_keys)
     # Arm controls are always active
     arm_controls()
 
     # Movement and rotation are mutually exclusive
     if "q" in pressed_keys or "e" in pressed_keys:
-        print("  -> Calling state_rotation()")
+        logger.debug("  -> Calling state_rotation()")
         state_rotation()
     else:
-        # reset_steer_pos()
-        print("  -> Calling state_movement()")
+        logger.debug("  -> Calling state_movement()")
         state_movement()
 
 
@@ -333,17 +484,22 @@ def status():
         return jsonify({"pressed_keys": list(pressed_keys), "status": "running"})
 
 
+# ---------------------------------------------------------------------------
+# Socket.IO event handlers
+# ---------------------------------------------------------------------------
+
+
 @socketio.on("connect")
 def handle_connect():
     """Handle client connection"""
-    print("Client connected")
+    logger.info("Client connected")
     emit("status", {"message": "Connected to MAVRIC Rover"})
 
 
 @socketio.on("disconnect")
 def handle_disconnect():
     """Handle client disconnection - stop all motors"""
-    print("Client disconnected")
+    logger.info("Client disconnected")
     with control_lock:
         pressed_keys.clear()
         update_controls()
@@ -352,10 +508,10 @@ def handle_disconnect():
 @socketio.on("key_down")
 def handle_key_down(data):
     """Handle key press event from web client"""
-    print(f"Received key_down event: {data}")
+    logger.debug("Received key_down event: %s", data)
     key = data.get("key", "").lower()
     if key:
-        print(f"Processing key down: {key}")
+        logger.debug("Processing key down: %s", key)
         with control_lock:
             pressed_keys.add(key)
             update_controls()
@@ -365,10 +521,10 @@ def handle_key_down(data):
 @socketio.on("key_up")
 def handle_key_up(data):
     """Handle key release event from web client"""
-    print(f"Received key_up event: {data}")
+    logger.debug("Received key_up event: %s", data)
     key = data.get("key", "").lower()
     if key:
-        print(f"Processing key up: {key}")
+        logger.debug("Processing key up: %s", key)
         with control_lock:
             pressed_keys.discard(key)
             update_controls()
@@ -378,7 +534,7 @@ def handle_key_up(data):
 @socketio.on("emergency_stop")
 def handle_emergency_stop():
     """Emergency stop - clear all controls"""
-    print("Emergency stop triggered")
+    logger.warning("Emergency stop triggered")
     with control_lock:
         pressed_keys.clear()
         update_controls()
@@ -439,6 +595,8 @@ def main(port=5000):
         import traceback
 
         traceback.print_exc()
+    finally:
+        drive_manager.shutdown()
 
 
 if __name__ == "__main__":
