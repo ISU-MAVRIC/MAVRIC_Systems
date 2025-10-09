@@ -222,6 +222,9 @@ def state_rotation():
     else:
         speed = 0
     
+    while  steering_thread and steering_thread.is_alive():
+        time.sleep(0.01)  # Wait for steering to finish
+        
     set_rotation_speed(speed)
 
 
