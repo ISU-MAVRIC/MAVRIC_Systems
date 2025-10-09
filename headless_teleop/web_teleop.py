@@ -207,6 +207,7 @@ def state_movement():
 
 def state_rotation():
     """Handle rotation state controls (Q, E) - non-blocking"""
+    set_drive_speeds(0)  # Stop movement first
     set_rotation_pos()  # Non-blocking now
     
     q_pressed = "q" in pressed_keys
