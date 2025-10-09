@@ -126,20 +126,36 @@ def set_steer_pos(pos, wait=False):
 
 
 def set_rotation_pos():
-    """Position wheels for rotation mode (non-blocking)"""
+    """Position wheels for rotation mode (blocking - waits for position)"""
     global steering_target
     
     target_pos = STEER_ROTATION_POS
     with steering_lock:
-        steering_target = -target_pos
+        steering_target = target_pos
     
+    # Send commands to position wheels for rotation
     steer_motors['FLS'].position_output(STEER_ROTATION_POS)
     steer_motors['FRS'].position_output(-STEER_ROTATION_POS)
     steer_motors['BLS'].position_output(-STEER_ROTATION_POS)
     steer_motors['BRS'].position_output(STEER_ROTATION_POS)
 
-    steering_thread = threading.Thread(target=_steering_worker, args=(target_pos, True), daemon=True)
-    steering_thread.start()
+    # Wait synchronously for wheels to reach rotation positions
+    start_time = time.time()
+    timeout = 2.0  # 2 second timeout
+
+    while time.time() - start_time < timeout:
+        # Check if all wheels have reached their target positions
+        fls_reached = abs(steer_motors['FLS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
+        frs_reached = abs(steer_motors['FRS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
+        bls_reached = abs(steer_motors['BLS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
+        brs_reached = abs(steer_motors['BRS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
+
+        if fls_reached and frs_reached and bls_reached and brs_reached:
+            return True  # All wheels in position
+
+        time.sleep(0.01)
+
+    return False  # Timeout reached
 
 
 def set_rotation_speed(speed):
@@ -206,9 +222,9 @@ def state_movement():
 
 
 def state_rotation():
-    """Handle rotation state controls (Q, E) - non-blocking"""
+    """Handle rotation state controls (Q, E) - waits for wheel positioning"""
     set_drive_speeds(0)  # Stop movement first
-    set_rotation_pos()  # Non-blocking now
+    set_rotation_pos()  # BLOCKING - waits for wheels to reach rotation positions
     
     q_pressed = "q" in pressed_keys
     e_pressed = "e" in pressed_keys
@@ -221,11 +237,8 @@ def state_rotation():
         speed = STEER_ROTATION_SPEED
     else:
         speed = 0
-    
-    while steering_thread and steering_thread.is_alive():
-        time.sleep(0.01)  # Wait for steering to finish
 
-    set_rotation_speed(speed)
+    set_rotation_speed(speed)  # Only executes after wheels are positioned
 
 
 def arm_controls():
