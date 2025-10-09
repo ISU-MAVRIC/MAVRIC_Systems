@@ -1,6 +1,6 @@
 from can.interface import Bus
 from can import Message
-from SparkCANLib import Statuses
+from utils.SparkCANLib import Statuses
 from struct import pack
 from rclpy.logging import get_logger
 

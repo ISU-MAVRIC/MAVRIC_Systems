@@ -18,8 +18,12 @@ setup(
     description='TODO: Package description',
     license='Apache-2.0',
     tests_require=['pytest'],
+    #Define what the package does/calls upon start up
+    #<command-name> = <module-path>:<function-name>
     entry_points={
         'console_scripts': [
+        'teleop.py = drive_system.teleop:main',
+        'can_control.py = drive_system.can_control:main',
         ],
     },
 )

@@ -6,7 +6,7 @@ import queue
 import traceback
 import logging
 
-from SparkCANLib import SparkController
+from utils.SparkCANLib import SparkController
 
 
 """

@@ -1,12 +1,12 @@
-from cysar.msg import SteerTrain
-from SparkCANLib.SparkCAN import SparkBus
+from mavric_msg.msg import SteerTrain
+from utils.SparkCANLib.SparkCAN import SparkBus
 from typing import Optional
 
 # CAN IDs for Drive Controllers
 FLS = 7
 FRS = 10
 BLS = 9
-BRS = 8
+BRS = 2
 
 INVERTED = -1
 

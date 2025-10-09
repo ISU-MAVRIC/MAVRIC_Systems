@@ -8,8 +8,8 @@ Author: Isaac Denning
 Date: 10/21/23
 """
 
-from cysar.msg import DriveTrain
-from SparkCANLib.SparkCAN import SparkBus
+from mavric_msg.msg import DriveTrain
+from utils.SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers
 FLD = 1
