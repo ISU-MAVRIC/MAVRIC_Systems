@@ -138,8 +138,8 @@ def set_rotation_pos():
     steer_motors['BLS'].position_output(-STEER_ROTATION_POS)
     steer_motors['BRS'].position_output(STEER_ROTATION_POS)
 
-    steering_thread = threading.Thread(target=_steering_worker, args=(target_pos,), daemon=True)
-    steering_thread.start()
+    # steering_thread = threading.Thread(target=_steering_worker, args=(target_pos,), daemon=True)
+    # steering_thread.start()
 
 
 def set_rotation_speed(speed):
