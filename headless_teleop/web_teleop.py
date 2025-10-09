@@ -58,6 +58,8 @@ control_lock = threading.Lock()
 steering_thread = None
 steering_target = None
 steering_lock = threading.Lock()
+rotation_ready = threading.Event()  # Signals when wheels are positioned for rotation
+rotation_positioning_thread = None
 
 
 def reset_all():
@@ -126,36 +128,47 @@ def set_steer_pos(pos, wait=False):
 
 
 def set_rotation_pos():
-    """Position wheels for rotation mode (blocking - waits for position)"""
-    global steering_target
+    """Position wheels for rotation mode (non-blocking - uses background thread)"""
+    global steering_target, rotation_positioning_thread
     
     target_pos = STEER_ROTATION_POS
     with steering_lock:
         steering_target = target_pos
     
-    # Send commands to position wheels for rotation
+    # Send commands immediately to position wheels for rotation
     steer_motors['FLS'].position_output(STEER_ROTATION_POS)
     steer_motors['FRS'].position_output(-STEER_ROTATION_POS)
     steer_motors['BLS'].position_output(-STEER_ROTATION_POS)
     steer_motors['BRS'].position_output(STEER_ROTATION_POS)
 
-    # Wait synchronously for wheels to reach rotation positions
-    start_time = time.time()
-    timeout = 2.0  # 2 second timeout
+    # Clear the ready flag and start background monitoring
+    rotation_ready.clear()
+    
+    def _wait_for_rotation_position():
+        """Background thread that waits for wheels to reach rotation position"""
+        start_time = time.time()
+        timeout = 2.0  # 2 second timeout
 
-    while time.time() - start_time < timeout:
-        # Check if all wheels have reached their target positions
-        fls_reached = abs(steer_motors['FLS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
-        frs_reached = abs(steer_motors['FRS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
-        bls_reached = abs(steer_motors['BLS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
-        brs_reached = abs(steer_motors['BRS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
+        while time.time() - start_time < timeout:
+            # Check if all wheels have reached their target positions
+            fls_reached = abs(steer_motors['FLS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
+            frs_reached = abs(steer_motors['FRS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
+            bls_reached = abs(steer_motors['BLS'].position - (-STEER_ROTATION_POS)) <= POS_MARGIN_ERROR
+            brs_reached = abs(steer_motors['BRS'].position - STEER_ROTATION_POS) <= POS_MARGIN_ERROR
 
-        if fls_reached and frs_reached and bls_reached and brs_reached:
-            return True  # All wheels in position
+            if fls_reached and frs_reached and bls_reached and brs_reached:
+                rotation_ready.set()  # Signal that wheels are ready
+                return
 
-        time.sleep(0.01)
-
-    return False  # Timeout reached
+            time.sleep(0.01)
+        
+        # Timeout - set ready anyway to avoid deadlock
+        rotation_ready.set()
+    
+    # Start background thread if not already running
+    if rotation_positioning_thread is None or not rotation_positioning_thread.is_alive():
+        rotation_positioning_thread = threading.Thread(target=_wait_for_rotation_position, daemon=True)
+        rotation_positioning_thread.start()
 
 
 def set_rotation_speed(speed):
@@ -222,23 +235,32 @@ def state_movement():
 
 
 def state_rotation():
-    """Handle rotation state controls (Q, E) - waits for wheel positioning"""
+    """Handle rotation state controls (Q, E) - non-blocking, monitors rotation readiness"""
     set_drive_speeds(0)  # Stop movement first
-    set_rotation_pos()  # BLOCKING - waits for wheels to reach rotation positions
+    set_rotation_pos()  # Non-blocking - starts background positioning
     
     q_pressed = "q" in pressed_keys
     e_pressed = "e" in pressed_keys
 
+    # Determine desired rotation speed
     if q_pressed and e_pressed:
-        speed = 0
+        desired_speed = 0
     elif q_pressed:
-        speed = -STEER_ROTATION_SPEED
+        desired_speed = -STEER_ROTATION_SPEED
     elif e_pressed:
-        speed = STEER_ROTATION_SPEED
+        desired_speed = STEER_ROTATION_SPEED
     else:
-        speed = 0
+        desired_speed = 0
 
-    set_rotation_speed(speed)  # Only executes after wheels are positioned
+    # Only apply rotation speed if wheels are in position (or no rotation requested)
+    if desired_speed == 0:
+        set_rotation_speed(0)
+    elif rotation_ready.is_set():
+        # Wheels are in position - safe to rotate
+        set_rotation_speed(desired_speed)
+    else:
+        # Wheels still positioning - don't rotate yet
+        set_rotation_speed(0)
 
 
 def arm_controls():
