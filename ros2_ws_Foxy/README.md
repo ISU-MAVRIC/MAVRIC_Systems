@@ -1,62 +1,128 @@
 # **General Workspace Structure**
 
 <details>
-<summary>Click to expand workspace structure</summary>
+<summary>Workspace</summary>
 
-```plaintext
-Workspace/
-├── build/
-│   └── Temporary build artifacts.
-│       Made by build tools; do not modify manually.
-│
-├── install/
-│   └── Final "installed" versions of all your packages.
-│
-├── log/
-│   └── Logs from builds and runtime — useful for debugging.
-│
-└── src/
-    ├── package - launch/
-    │   ├── launch/
-    │   │   └── *.launch.py files
-    │   ├── package.xml
-    │   └── CMakeLists.txt
-    │
-    ├── package - msg/
-    │   ├── msg/
-    │   │   └── *.msg files
-    │   ├── package.xml
-    │   └── CMakeLists.txt
-    │
-    ├── package - with Python/
-    │   ├── package_name/
-    │   │   ├── node/
-    │   │   ├── node/
-    │   │   └── script/
-    │   ├── resource/  (empty)
-    │   ├── package.xml
-    │   ├── setup.cfg
-    │   └── setup.py
-    │
-    ├── package - with C++/
-    │   ├── src/
-    │   │   ├── node/
-    │   │   ├── node/
-    │   │   └── script/
-    │   ├── include/
-    │   │   └── (C++ header files, optional)
-    │   ├── package.xml
-    │   └── CMakeLists.txt
-    │
-    └── package - with C++ and Python (not recommended)/
-        ├── src/                (C++ sources)
-        ├── include/            (C++ headers)
-        ├── package_name/       (Python modules)
-        ├── package.xml
-        ├── CMakeLists.txt
-        └── {setup.py, setup.cfg, resource} (optional)
-```
+<details>
+<summary>build</summary>
+
+Temporary build artifacts. Made by building tools and do not need to be tampered with.
 </details>
+
+<details>
+<summary>install</summary>
+
+Final "installed" versions of all your packages.
+</details>
+
+<details>
+<summary>log</summary>
+
+Logs from builds and runtime - useful for debugging.
+</details>
+
+<details>
+<summary>src</summary>
+
+<details>
+<summary>package - launch</summary>
+
+<details>
+<summary>launch</summary>
+
+Contains `.launch.py` files.
+</details>
+
+package.xml  
+CMakeLists.txt
+</details>
+
+<details>
+<summary>package - msg</summary>
+
+<details>
+<summary>msg</summary>
+
+Contains `.msg` files.
+</details>
+
+package.xml  
+CMakeLists.txt
+</details>
+
+<details>
+<summary>package - with Python</summary>
+
+<details>
+<summary>package_name</summary>
+
+node  
+node  
+script
+</details>
+
+<details>
+<summary>resource</summary>
+
+(empty)
+</details>
+
+package.xml  
+setup.cfg  
+setup.py
+</details>
+
+<details>
+<summary>package - with C++</summary>
+
+<details>
+<summary>src</summary>
+
+node  
+node  
+script
+</details>
+
+package.xml  
+CMakeLists.txt  
+
+<details>
+<summary>include</summary>
+
+C++ header files if you have any, otherwise you don’t need this folder.
+</details>
+</details>
+
+<details>
+<summary>package - with C++ and Python (not recommended)</summary>
+
+<details>
+<summary>src</summary>
+
+C++ sources
+</details>
+
+<details>
+<summary>include</summary>
+
+C++ headers
+</details>
+
+<details>
+<summary>package_name</summary>
+
+Python modules
+</details>
+
+package.xml  
+CMakeLists.txt  
+{setup.py, setup.cfg, resource} (optional: don’t need if Python is just helper scripts)
+</details>
+
+</details>
+</details>
+
+---
 
 
 
