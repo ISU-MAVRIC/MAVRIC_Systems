@@ -1,4 +1,4 @@
-# **General Workspace Structure**
+## **General Workspace Structure**
 
 <details>
 <summary>Click to expand workspace structure</summary>
@@ -57,7 +57,6 @@ Workspace/
         └── {setup.py, setup.cfg, resource} (optional)
 ```
 </details>
-
 
 
 **Packages** - Each "functional group" of ROS2 nodes should be bundled into packages. Examples might include a drive_system package containing steer_train, drive_train, and can_control nodes. Each includes a package.xml that describes the ROS2 specific dependencies of the package (doesn't include C++ or Python dependencies).
