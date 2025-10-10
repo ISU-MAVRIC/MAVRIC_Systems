@@ -1,53 +1,63 @@
-**See ros2_ws_Foxy for current development space and example of the following**
-#TODO: Fix following badly formatted structure/paragraph
-**General Workspace Structure**
-Workspace
-	build
-		Temporary build artifacts. Made by building tools and do not need to tampered with.
-	install
-		Final "installed" versions of all your packages
-	log
-		Logs from builds and runtime - useful for debugging
-	src
-		package - launch
-			launch
-				.launch.py files
-			package.xml
-			CMakeList.txt
-		package - msg
-			msg
-				.msg files
-			package.xml
-			CMakeList.txt
-		package - with Python
-			package_name
-				node
-				node
-				script
-			resource
-				empty
-			package.xml
-			setup.cfg
-			setup.py
-		package - with C++
-			src
-				node
-				node
-				script
-			package.xml
-			CMakeList.txt
-			include
-				C++ header files if you have any, otherwise don't need include folder
-		package - with C++ and Python (not recommended)
-			src
-				C++ sources
-			include
-				C++ headers
-			package_name
-				Python modules
-			package.xml 
-			CMakeLists.txt
-			{setup.py, setup.cfg, resource} (optional: don't need if python is just helper scripts)
+# **General Workspace Structure**
+
+<details>
+<summary>Click to expand workspace structure</summary>
+
+```plaintext
+Workspace/
+├── build/
+│   └── Temporary build artifacts.
+│       Made by build tools; do not modify manually.
+│
+├── install/
+│   └── Final "installed" versions of all your packages.
+│
+├── log/
+│   └── Logs from builds and runtime — useful for debugging.
+│
+└── src/
+    ├── package - launch/
+    │   ├── launch/
+    │   │   └── *.launch.py files
+    │   ├── package.xml
+    │   └── CMakeLists.txt
+    │
+    ├── package - msg/
+    │   ├── msg/
+    │   │   └── *.msg files
+    │   ├── package.xml
+    │   └── CMakeLists.txt
+    │
+    ├── package - with Python/
+    │   ├── package_name/
+    │   │   ├── node/
+    │   │   ├── node/
+    │   │   └── script/
+    │   ├── resource/  (empty)
+    │   ├── package.xml
+    │   ├── setup.cfg
+    │   └── setup.py
+    │
+    ├── package - with C++/
+    │   ├── src/
+    │   │   ├── node/
+    │   │   ├── node/
+    │   │   └── script/
+    │   ├── include/
+    │   │   └── (C++ header files, optional)
+    │   ├── package.xml
+    │   └── CMakeLists.txt
+    │
+    └── package - with C++ and Python (not recommended)/
+        ├── src/                (C++ sources)
+        ├── include/            (C++ headers)
+        ├── package_name/       (Python modules)
+        ├── package.xml
+        ├── CMakeLists.txt
+        └── {setup.py, setup.cfg, resource} (optional)
+```
+</details>
+
 
 
 **Packages** - Each "functional group" of ROS2 nodes should be bundled into packages. Examples might include a drive_system package containing steer_train, drive_train, and can_control nodes. Each includes a package.xml that describes the ROS2 specific dependencies of the package (doesn't include C++ or Python dependencies).
