@@ -35,7 +35,7 @@ class SparkBus:
         self.simulated = False
 
         class _DummyBus:
-            """Minimal stand‑in for python-can Bus when no CAN interface is present.
+            """Minimal stand-in for python-can Bus when no CAN interface is present.
             Stores sent messages in an internal queue so recv() can return them if desired.
             """
 
