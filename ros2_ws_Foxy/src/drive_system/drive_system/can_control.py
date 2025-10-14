@@ -3,8 +3,8 @@
 """
 can_control.py
 
-Desc: Sets up the can bus and calls the controllers for the corrisponding parts
-        when (drive, flippper, arm) when ROS data is recieved.
+Desc: Sets up the can bus and calls the controllers for the corresponding parts
+        when (drive, flipper, arm) when ROS data is received.
 Author: Isaac Denning
 Date: 10/21/23
 """
@@ -21,7 +21,7 @@ from drive_system.steer_control import SteerControl
 class CanControl(Node):
     """
     Sets up the can bus and calls the controllers for the corresponding parts
-        when (drive, flippper, arm) when ROS data is recieved.
+        when (drive, flippper, arm) when ROS data is received.
     """
 
     def __init__(self) -> None:
@@ -44,13 +44,13 @@ class CanControl(Node):
 
     def drive_listener(self, msg: DriveTrain) -> None:
         """
-        Called whenever new drive train data is recieved from ROS.
+        Called whenever new drive train data is received from ROS.
         """
         self.drive_control.set_velocity(msg)
 
     def steer_listener(self, msg: SteerTrain) -> None:
         """
-        Called whenever new steer train data is recieved from ROS.
+        Called whenever new steer train data is received from ROS.
         """
         self.steer_control.set_velocity(msg)
 
