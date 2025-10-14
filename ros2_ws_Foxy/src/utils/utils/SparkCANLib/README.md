@@ -5,7 +5,7 @@ A library for controlling SparkMax Electronic Speed Controllers using python and
 ## IMPORTANT NOTE
 *Motor controllers must have ramping enabled if running at more than 50% power, otherwise the motor will try to instantly go to the power level and will stutter.*
 
-## Dependancies
+## Dependencies
 
 - Python 3 (Not tested on 2.7)
 - python-can (https://python-can.readthedocs.io/en/master/)
