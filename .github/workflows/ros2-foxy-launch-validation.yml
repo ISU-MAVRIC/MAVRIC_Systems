@@ -20,7 +20,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Ensure cache directory exists
+        run: mkdir -p /tmp/devcontainer-cache
+
       - name: Cache dev container layers
+        id: cache
         uses: actions/cache@v4
         with:
           path: /tmp/devcontainer-cache
@@ -28,15 +32,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-devcontainer-
 
-      - name: Ensure cache directory exists
-        run: mkdir -p /tmp/devcontainer-cache
-
       - name: Build and Test in Dev Container
         uses: devcontainers/ci@v0.3
         with:
           imageName: mavric-foxy-dev
           cacheFrom: type=local,src=/tmp/devcontainer-cache
-          cacheTo: type=local,dest=/tmp/devcontainer-cache,mode=max
+          cacheTo: type=local,dest=/tmp/devcontainer-cache-new,mode=max
           runCmd: |
             set -e
             cd /workspaces/MAVRIC_Systems/ros2_ws_Foxy
@@ -68,5 +69,14 @@ jobs:
               fi
             done
 
-
-
+      - name: Move cache
+        if: always()
+        run: |
+          echo "Moving cache from temporary location to final location"
+          rm -rf /tmp/devcontainer-cache
+          if [ -d /tmp/devcontainer-cache-new ]; then 
+            mv /tmp/devcontainer-cache-new /tmp/devcontainer-cache
+            echo "✅ Cache moved successfully"
+          else
+            echo "⚠️  No new cache found"
+          fi
