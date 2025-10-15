@@ -69,9 +69,10 @@ jobs:
                 echo '========================================'; \
                 echo 'Testing launch file: '\$launch_file; \
                 echo '========================================'; \
-                timeout 10s ros2 launch \$launch_file & \
-                LAUNCH_PID=\$! && \
-                sleep 10 && \
+                timeout 60s ros2 launch $launch_file & \
+                LAUNCH_PID=$! && \
+                echo 'Waiting 15 seconds for launch stabilization...' && \
+                sleep 15 && \
                 if ps -p \$LAUNCH_PID > /dev/null 2>&1; then \
                   echo 'SUCCESS: Launch file '\$launch_file' is running successfully'; \
                   kill \$LAUNCH_PID 2>/dev/null || true; \
