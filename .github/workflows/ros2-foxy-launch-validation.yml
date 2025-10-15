@@ -17,68 +17,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
+      - name: Cache dev container image layers
         uses: actions/cache@v4
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ hashFiles('.devcontainer/Dockerfile') }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+          path: /tmp/devcontainer-image-cache.tar
+          key: ${{ runner.os }}-devcontainer-${{ hashFiles('.devcontainer/devcontainer.json', '.devcontainer/Dockerfile') }}
 
-      - name: Build Dev Container
-        run: |
-          docker buildx build -t mavric-foxy-dev \
-            -f .devcontainer/Dockerfile \
-            --cache-from=type=local,src=/tmp/.buildx-cache \
-            --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
-            --load \
-            .devcontainer/
+      - name: Build and Test in Dev Container
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: mavric-foxy-dev
+          cacheFrom: /tmp/devcontainer-image-cache.tar
+          cacheTo: /tmp/devcontainer-image-cache.tar
+          runCmd: |
+            set -e
+            cd /workspaces/MAVRIC_Systems/ros2_ws_Foxy
+            echo "Building ROS2 Workspace..."
+            colcon build --symlink-install
 
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-      - name: Build ROS2 Workspace
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/workspace \
-            -w /workspace/ros2_ws_Foxy \
-            mavric-foxy-dev \
-            /bin/bash -lc "colcon build --symlink-install"
-
-      - name: Find and Test Launch Files
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/workspace \
-            -w /workspace/ros2_ws_Foxy \
-            mavric-foxy-dev \
-            /bin/bash -lc '
-              source install/setup.bash
-              find src -name "*.launch.py" | while read launch_file; do
-                package_name=$(echo $launch_file | cut -d/ -f2)
-                launch_file_name=$(basename $launch_file)
-                echo "Attempting to launch $package_name $launch_file_name"
-                ros2 launch $package_name $launch_file_name &
-                pid=$!
-                sleep 15
-                if ps -p $pid > /dev/null; then
-                  echo "Launch file $package_name $launch_file_name is still running after 15s. Success."
-                  kill $pid
+            echo "Finding and Testing Launch Files..."
+            source install/setup.bash
+            find src -name "*.launch.py" | while read launch_file; do
+              package_name=$(echo $launch_file | cut -d/ -f2)
+              launch_file_name=$(basename $launch_file)
+              echo "Attempting to launch $package_name $launch_file_name"
+              ros2 launch $package_name $launch_file_name &
+              pid=$!
+              sleep 15
+              if ps -p $pid > /dev/null; then
+                echo "Launch file $package_name $launch_file_name is still running after 15s. Success."
+                kill $pid
+              else
+                echo "Launch file $package_name $launch_file_name exited prematurely."
+                wait $pid
+                exit_code=$?
+                if [ $exit_code -ne 0 ]; then
+                  echo "::error::Launch file $package_name $launch_file_name failed with exit code $exit_code"
+                  exit 1
                 else
-                  echo "Launch file $package_name $launch_file_name exited prematurely."
-                  wait $pid
-                  exit_code=$?
-                  if [ $exit_code -ne 0 ]; then
-                    echo "::error::Launch file $package_name $launch_file_name failed with exit code $exit_code"
-                    exit 1
-                  else
-                    echo "Launch file $package_name $launch_file_name exited cleanly before timeout."
-                  fi
+                  echo "Launch file $package_name $launch_file_name exited cleanly before timeout."
                 fi
-              done
-            '
+              fi
+            done
+
+
 
