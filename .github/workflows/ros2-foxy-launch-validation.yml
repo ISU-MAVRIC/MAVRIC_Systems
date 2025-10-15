@@ -19,6 +19,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        # with:
+        #   driver-opts: image=moby/buildkit:latest
 
       - name: Cache Docker layers
         uses: actions/cache@v4
@@ -30,10 +32,11 @@ jobs:
 
       - name: Build Dev Container
         run: |
-          docker build -t mavric-foxy-dev \
+          docker buildx build -t mavric-foxy-dev \
             -f .devcontainer/Dockerfile \
             --cache-from=type=local,src=/tmp/.buildx-cache \
             --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --load \
             .devcontainer/
 
       - name: Move cache
