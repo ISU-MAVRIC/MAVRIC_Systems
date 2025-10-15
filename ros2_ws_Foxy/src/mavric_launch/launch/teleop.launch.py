@@ -15,7 +15,7 @@ def generate_launch_description():
             name='rosapi'
         ),
         Node(
-            package='drive_systemmmm',
+            package='drive_system',
             executable='teleop.py',
             name='teleop',
             parameters=[{'max_speed': 1.0}]
