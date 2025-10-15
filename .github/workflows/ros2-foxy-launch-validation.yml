@@ -1,3 +1,4 @@
+# This Workflow can be easily modified once we move to ROS2 Jazzy
 name: ROS2 Foxy Build and Launch Validation
 
 on:
@@ -22,6 +23,7 @@ jobs:
           filters: |
             ros2:
               - 'ros2_ws_Foxy/**'
+              - '.devcontainer/*' # Include root devcontainer changes that affect ROS2 environment
 
   build-and-launch:
     runs-on: ubuntu-latest
