@@ -1,0 +1,76 @@
+name: ROS2 Foxy Build and Launch Validation
+
+on:
+  pull_request:
+    paths:
+      - "ros2_ws_Foxy/**"
+  push:
+    branches: [main]
+    paths:
+      - "ros2_ws_Foxy/**"
+
+jobs:
+  build-and-launch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('.devcontainer/Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Dev Container
+        run: |
+          docker build -t mavric-foxy-dev \
+            -f .devcontainer/Dockerfile \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            .devcontainer/
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Build ROS2 Workspace
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace/ros2_ws_Foxy \
+            mavric-foxy-dev \
+            /bin/bash -lc "colcon build --symlink-install"
+
+      - name: Find and Test Launch Files
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace/ros2_ws_Foxy \
+            mavric-foxy-dev \
+            /bin/bash -lc "source install/setup.bash && \
+              LAUNCH_FILES=\$(find src/mavric_launch/launch -name '*.launch.py' -o -name '*.launch.xml') && \
+              if [ -z \"\$LAUNCH_FILES\" ]; then \
+                echo 'No launch files found in mavric_launch package'; \
+                exit 1; \
+              fi && \
+              for launch_file in \$LAUNCH_FILES; do \
+                echo '========================================'; \
+                echo 'Testing launch file: '\$launch_file; \
+                echo '========================================'; \
+                timeout 10s ros2 launch \$launch_file || \
+                if [ \$? -eq 124 ]; then \
+                  echo 'Launch file '\$launch_file' started successfully (timed out as expected)'; \
+                else \
+                  echo 'Launch file '\$launch_file' failed to start'; \
+                  exit 1; \
+                fi; \
+              done && \
+              echo 'All launch files validated successfully'"
