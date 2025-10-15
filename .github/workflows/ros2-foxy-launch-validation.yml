@@ -20,20 +20,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers
+      - name: Cache dev container layers
         uses: actions/cache@v4
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          path: /tmp/devcontainer-cache
+          key: ${{ runner.os }}-devcontainer-${{ hashFiles('.devcontainer/devcontainer.json', '.devcontainer/Dockerfile') }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-devcontainer-
+
+      - name: Ensure cache directory exists
+        run: mkdir -p /tmp/devcontainer-cache
 
       - name: Build and Test in Dev Container
         uses: devcontainers/ci@v0.3
         with:
           imageName: mavric-foxy-dev
-          cacheFrom: /tmp/devcontainer-image-cache.tar
-          cacheTo: /tmp/devcontainer-image-cache.tar
+          cacheFrom: type=local,src=/tmp/devcontainer-cache
+          cacheTo: type=local,dest=/tmp/devcontainer-cache,mode=max
           runCmd: |
             set -e
             cd /workspaces/MAVRIC_Systems/ros2_ws_Foxy
