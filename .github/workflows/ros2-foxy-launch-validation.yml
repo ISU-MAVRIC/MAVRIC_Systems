@@ -64,16 +64,36 @@ jobs:
                 echo 'No launch files found in mavric_launch package'; \
                 exit 1; \
               fi && \
+              FAILED_LAUNCHES=() && \
               for launch_file in \$LAUNCH_FILES; do \
                 echo '========================================'; \
                 echo 'Testing launch file: '\$launch_file; \
                 echo '========================================'; \
-                timeout 10s ros2 launch \$launch_file || \
-                if [ \$? -eq 124 ]; then \
-                  echo 'Launch file '\$launch_file' started successfully (timed out as expected)'; \
+                timeout 10s ros2 launch \$launch_file & \
+                LAUNCH_PID=\$! && \
+                sleep 10 && \
+                if ps -p \$LAUNCH_PID > /dev/null 2>&1; then \
+                  echo 'SUCCESS: Launch file '\$launch_file' is running successfully'; \
+                  kill \$LAUNCH_PID 2>/dev/null || true; \
+                  wait \$LAUNCH_PID 2>/dev/null || true; \
                 else \
-                  echo 'Launch file '\$launch_file' failed to start'; \
-                  exit 1; \
+                  wait \$LAUNCH_PID 2>/dev/null; \
+                  EXIT_CODE=\$?; \
+                  echo 'FAILED: Launch file '\$launch_file' exited prematurely with code '\$EXIT_CODE; \
+                  FAILED_LAUNCHES+=(\"\$launch_file\"); \
                 fi; \
+                sleep 2; \
               done && \
-              echo 'All launch files validated successfully'"
+              if [ \${#FAILED_LAUNCHES[@]} -gt 0 ]; then \
+                echo '========================================'; \
+                echo 'FAILURE SUMMARY'; \
+                echo '========================================'; \
+                echo 'The following launch files failed:'; \
+                for failed in \"\${FAILED_LAUNCHES[@]}\"; do \
+                  echo '  - '\$failed; \
+                done; \
+                exit 1; \
+              fi && \
+              echo '========================================' && \
+              echo 'All launch files validated successfully' && \
+              echo '========================================'"
