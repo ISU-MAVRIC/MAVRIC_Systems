@@ -1,0 +1,19 @@
+# Requirements for rasp_test scripts
+# CAN support
+python-can>=4.0.0
+
+# Bit-level parsing used by SparkCANLib
+bitstring>=4.0.0
+
+# Adafruit Blinka (CircuitPython compatibility layer for Raspberry Pi)
+adafruit-blinka>=8.0.0
+
+# Sensors and peripherals
+adafruit-circuitpython-ms8607>=3.0.0
+
+# Adafruit ServoKit / PCA9685 support
+adafruit-circuitpython-servokit>=1.0.0
+adafruit-pca9685>=3.0.0
+
+# Optional: typing helpers (if using type checking)
+# typing-extensions>=4.0.0
