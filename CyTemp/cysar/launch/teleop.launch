@@ -1,6 +1,0 @@
-<launch>
-  <node pkg="cysar" exec="teleop.py" name="teleop">
-    <param name="max_speed" value="1.0"/>
-  </node>
-  <node pkg="cysar" exec="can_control.py" name="can_control"/>
-</launch>
