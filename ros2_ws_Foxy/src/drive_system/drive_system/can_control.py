@@ -3,10 +3,9 @@
 """
 can_control.py
 
-Desc: Sets up the can bus and calls the controllers for the corresponding parts
-        when (drive, flipper, arm) when ROS data is received.
-Author: Isaac Denning
-Date: 10/21/23
+Desc: Sets up the can bus and subscribers (with listener functions) for the drive system (drive_train, steer_train).
+Author: Andrew Boun, Aaron Miller
+Date: 10/20/2025
 """
 
 import rclpy
@@ -20,8 +19,7 @@ from drive_system.steer_control import SteerControl
 
 class CanControl(Node):
     """
-    Sets up the can bus and calls the controllers for the corresponding parts
-        when (drive, flippper, arm) when ROS data is received.
+    Sets up the can bus and subscribers (with listener functions) for the drive system (drive_train, steer_train).
     """
 
     def __init__(self) -> None:

@@ -1,3 +1,11 @@
+"""
+steer_control.py
+
+Desc: Uses the CANbus interface to set the velocity of the steer motors.
+Author: Andrew Boun, Aaron Miller
+Date: 10/20/2025
+"""
+
 from mavric_msg.msg import SteerTrain
 from utils.SparkCANLib.SparkCAN import SparkBus
 from typing import Optional
@@ -13,7 +21,7 @@ INVERTED = -1
 
 class SteerControl:
     """
-    Uses the CANbus interface to set the velocity of the motors.
+    Uses the CANbus interface to set the velocity of the steer motors.
 
     Args:
         bus (SparkCANLib.SparkCAN.SparkBus): CANbus interface
