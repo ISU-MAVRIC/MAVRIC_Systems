@@ -8,7 +8,7 @@ shoulder_pitch = 11
 shoulder_rot = 12
 elbow_pitch = 13
 wrist_pitch = 14
-writst_rot  = 15
+wrist_rot  = 15
 claw = 1 # PWM Controller BUS
 
 INVERTED = -1
@@ -31,7 +31,7 @@ class ArmControl:
         self.SRMotor = self.bus.init_controller(shoulder_rot)
         self.EPMotor = self.bus.init_controller(elbow_pitch)
         self.WPMotor = self.bus.init_controller(wrist_pitch)
-        self.WRMotor = self.bus.init_controller(writst_rot)
+        self.WRMotor = self.bus.init_controller(wrist_rot)
 
     def set_velocity(self, msg: Arm):
         """
