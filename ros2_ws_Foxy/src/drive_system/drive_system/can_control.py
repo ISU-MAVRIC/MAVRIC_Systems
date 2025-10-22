@@ -16,6 +16,8 @@ from utils.SparkCANLib import SparkController, SparkCAN
 from drive_system.drive_control import DriveControl
 from mavric_msg.msg import SteerTrain
 from drive_system.steer_control import SteerControl
+from drive_system.arm_control import ArmControl
+
 
 
 class CanControl(Node):
@@ -42,6 +44,11 @@ class CanControl(Node):
             SteerTrain, "steer_train", self.steer_listener, 10
         )
 
+        self.arm_control = ArmControl(self.bus)
+        self.arm_subscription = self.create_subscription(
+            Arm, "arm_control", self.arm_listener, 10
+        )
+
     def drive_listener(self, msg: DriveTrain) -> None:
         """
         Called whenever new drive train data is received from ROS.
@@ -53,6 +60,12 @@ class CanControl(Node):
         Called whenever new steer train data is received from ROS.
         """
         self.steer_control.set_velocity(msg)
+
+    def arm_listener(self, msg: Arm) -> None:
+        """
+        Called whenever new arm control data is received from ROS.
+        """
+        self.arm_control.set_velocity(msg)
 
 
 def main(args=None):

@@ -13,6 +13,7 @@ import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import DriveTrain
 from mavric_msg.msg import SteerTrain
+from mavric_msg.msg import Arm
 import numpy as np
 
 class Teleop(Node):
@@ -28,6 +29,8 @@ class Teleop(Node):
         self.drive_train = DriveTrain()
         self.mode: str = "Drive"
         self.steer_train = SteerTrain()
+        self.arm = Arm()
+        
 
         # Publisher/Subscribers
         self.drive_train_publisher = self.create_publisher(
@@ -35,6 +38,9 @@ class Teleop(Node):
         )
         self.steer_train_publisher = self.create_publisher(
             SteerTrain, "steer_train", 10
+        )
+        self.arm_publisher = self.create_publisher(
+            Arm, "arm_control", 10
         )
 
         # Paramerters
