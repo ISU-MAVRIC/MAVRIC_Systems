@@ -14,14 +14,9 @@ sudo apt install -y \
 ```
 sudo tee -a /etc/dhcpcd.conf > /dev/null <<EOF
 interface eth0
-# IPv4
 static ip_address=192.168.1.9/24
 static routers=192.168.1.1
-
-# IPv6
 static ip6_address=2001:db8:abcd:1234::50/64
-
-# DNS (both v4 + v6)
 static domain_name_servers=8.8.8.8 2001:4860:4860::8888
 EOF
 ```
@@ -61,7 +56,6 @@ SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", \
   RUN+="/sbin/ip link set can0 type can bitrate 1000000"
 EOF
 ```
-
 
 
 # I2C
