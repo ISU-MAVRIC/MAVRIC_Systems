@@ -1,5 +1,6 @@
 from mavric_msg.msg import Arm
 from utils.SparkCANLib.SparkCAN import SparkBus
+from adafruit_servokit import ServoKit
 from typing import Optional
 
 # CAN IDs for Drive Controllers
@@ -8,6 +9,7 @@ shoulder_rot = 12
 elbow_pitch = 13
 wrist_pitch = 14
 writst_rot  = 15
+claw = 1 # PWM Controller BUS
 
 INVERTED = -1
 
@@ -22,6 +24,7 @@ class ArmControl:
 
     def __init__(self, bus: SparkBus):
         self.bus = bus
+        self.kit = ServoKit(channels=16)
         # Initialize logger before any log calls and keep attribute name consistent
 
         self.SPMotor = self.bus.init_controller(shoulder_pitch)
@@ -43,4 +46,5 @@ class ArmControl:
         self.EPMotor.percent_output(msg.elbow_pitch)
         self.WPMotor.percent_output(msg.wrist_pitch)
         self.WRMotor.percent_output(INVERTED * msg.wrist_rot)
+        self.kit.continuous_servo[1].throttle = msg.claw
         
