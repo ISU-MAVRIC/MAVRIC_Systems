@@ -122,6 +122,7 @@ def main(stdscr):
     # Key mapping for more efficient processing
     # Format: key -> (function, args, message)
     key_actions = {
+        ord("shift"): (set_drive_speeds, (NORMAL_DRIVE_SPEED,), "Set normal drive speed"),
         ord("w"): (set_drive_speeds, (MIN_DRIVE_SPEED,), "Drive forward"),
         ord("s"): (set_drive_speeds, (-MIN_DRIVE_SPEED,), "Drive backward"),
         ord("a"): (set_steer_pos, (STEER_LEFT_POS,), "Steer left"),
