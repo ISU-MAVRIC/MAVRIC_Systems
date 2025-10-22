@@ -11,10 +11,9 @@ Date: 10/21/23
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import DriveTrain
+from mavric_msg.msg import DriveTrain, SteerTrain, Arm
 from utils.SparkCANLib import SparkController, SparkCAN
 from drive_system.drive_control import DriveControl
-from mavric_msg.msg import SteerTrain
 from drive_system.steer_control import SteerControl
 from drive_system.arm_control import ArmControl
 

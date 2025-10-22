@@ -22,8 +22,8 @@ setup(
     #<command-name> = <module-path>:<function-name>
     entry_points={
         'console_scripts': [
-        'teleop.py = drive_system.teleop:main',
-        'can_control.py = drive_system.can_control:main',
+            'teleop.py = drive_system.teleop:main',
+            'can_control.py = drive_system.can_control:main',
         ],
     },
 )
