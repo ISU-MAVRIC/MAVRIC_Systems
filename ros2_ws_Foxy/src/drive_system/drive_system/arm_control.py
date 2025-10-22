@@ -25,7 +25,7 @@ class ArmControl:
         # Initialize logger before any log calls and keep attribute name consistent
 
         self.SPMotor = self.bus.init_controller(shoulder_pitch)
-        self.SPMotor = self.bus.init_controller(shoulder_rot)
+        self.SRMotor = self.bus.init_controller(shoulder_rot)
         self.EPMotor = self.bus.init_controller(elbow_pitch)
         self.WPMotor = self.bus.init_controller(wrist_pitch)
         self.WRMotor = self.bus.init_controller(writst_rot)
