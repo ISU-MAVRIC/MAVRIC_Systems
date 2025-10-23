@@ -21,7 +21,7 @@ INVERTED = -1
 
 class SteerControl:
     """
-    Uses the CANbus interface to set the velocity of the steer motors.
+    Uses the CANbus interface to set the position of the steer motors.
 
     Args:
         bus (SparkCANLib.SparkCAN.SparkBus): CANbus interface
@@ -36,15 +36,15 @@ class SteerControl:
         self.BLMotor = self.bus.init_controller(BLS)
         self.BRMotor = self.bus.init_controller(BRS)
 
-    def set_velocity(self, msg: SteerTrain):
+    def set_position(self, msg: SteerTrain):
         """
-        Sets the velocity of the motors based on the ROS values.
+        Sets the positions of the motors based on the ROS values.
 
         Args:
             msg (SteerTrain): The values from ROS indicating the velocity of each motor.
         """
 
-        self.FLMotor.percent_output(msg.front_left)
-        self.FRMotor.percent_output(msg.front_right)
-        self.BLMotor.percent_output(INVERTED * msg.back_left)
-        self.BRMotor.percent_output(INVERTED * msg.back_right)
+        self.FLMotor.position_output(msg.front_left)
+        self.FRMotor.position_output(msg.front_right)
+        self.BLMotor.position_output(msg.back_left)
+        self.BRMotor.position_output(msg.back_right)
