@@ -20,7 +20,6 @@ WRIST_ROT_ID = 15
 # Claw PWM Channel
 CLAW_CHANNEL = 1
 
-
 # Drive Speed
 MAX_DRIVE_SPEED = 0.2
 NORMAL_DRIVE_SPEED = 0.1
