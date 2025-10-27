@@ -1,8 +1,6 @@
 setuptools
 python-can
 numpy
-bson
-pymongo
 pyyaml
 bitstring
 adafruit-circuitpython-servokit
