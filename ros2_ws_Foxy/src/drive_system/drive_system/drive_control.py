@@ -9,6 +9,7 @@ Date: 10/20/2025
 """
 
 from mavric_msg.msg import DriveTrain
+from mavric_msg.msg import SteerTrain
 from utils.SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers
