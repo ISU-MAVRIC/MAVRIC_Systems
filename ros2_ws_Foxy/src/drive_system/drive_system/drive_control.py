@@ -3,12 +3,13 @@
 """
 drive_control.py
 
-Desc: Uses the CANbus interface to set the velocity of the motors.
-Author: Isaac Denning
-Date: 10/21/23
+Desc: Uses the CANbus interface to set the velocity of the drive motors.
+Author: Andrew Boun, Aaron Miller
+Date: 10/20/2025
 """
 
 from mavric_msg.msg import DriveTrain
+from mavric_msg.msg import SteerTrain
 from utils.SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers
@@ -22,7 +23,7 @@ INVERTED = -1
 
 class DriveControl:
     """
-    Uses the CANbus interface to set the velocity of the motors.
+    Uses the CANbus interface to set the velocity of the drive motors.
 
     Args:
         bus (SparkCANLib.SparkCAN.SparkBus): CANbus interface
