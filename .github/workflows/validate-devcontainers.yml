@@ -2,16 +2,31 @@ name: Validate Devcontainers
 
 on:
   pull_request:
-    paths:
-      - '**/.devcontainer/**'
   push:
     branches: [ main ]
-    paths:
-      - '**/.devcontainer/**'
 
 jobs:
+  # Job to determine if we should run validation based on changed files
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.filter.outputs.devcontainer }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for devcontainer changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            devcontainer:
+              - '**/.devcontainer/**'
+
   devcontainer-check:
     runs-on: ubuntu-latest
+    needs: check-changes
+    if: needs.check-changes.outputs.should-run == 'true'
 
     steps:
       - name: Checkout code
@@ -182,3 +197,29 @@ jobs:
         run: |
           rm -rf /tmp/.buildx-cache
           if [ -d /tmp/.buildx-cache-new ]; then mv /tmp/.buildx-cache-new /tmp/.buildx-cache; fi
+
+  # This job always runs and provides the required status check
+  status-check:
+    runs-on: ubuntu-latest
+    needs: [check-changes, devcontainer-check]
+    if: always()
+    steps:
+      - name: Determine overall status
+        run: |
+          echo "Check changes result: ${{ needs.check-changes.outputs.should-run }}"
+          echo "Devcontainer check result: ${{ needs.devcontainer-check.result }}"
+          
+          # If changes were detected but validation failed, fail this check
+          if [[ "${{ needs.check-changes.outputs.should-run }}" == "true" && "${{ needs.devcontainer-check.result }}" != "success" ]]; then
+            echo "❌ Devcontainer validation failed"
+            exit 1
+          fi
+          
+          # If no changes detected, skip is acceptable
+          if [[ "${{ needs.check-changes.outputs.should-run }}" == "false" ]]; then
+            echo "✅ No devcontainer changes detected - skipping validation"
+            exit 0
+          fi
+          
+          # Otherwise, validation succeeded
+          echo "✅ Devcontainer validation passed"
