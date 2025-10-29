@@ -68,7 +68,7 @@ Smallest unit of computation is ROS2 structure, does one thing for the system
 # **Scripts**
 Similar to nodes but not using Node class. Generally helper scripts for nodes in the same package to use.
 
-#**Python-only packages**
+# **Python-only packages**
 Soft requirement to have setup.py, setup.cfg, and /resource. setup.py tells system how to use the python package (installation/inking), setup.cfg adds small configurations, and /resource allows ROS2 to recognize this python package. Source files are kept in a folder named after the package itself, which is required for Python. You can just Cmake instead of a setup.py, but you end up using setup.py in the CMake itself, and it is unconventional. This could be done for blending C++ and Python in one package, or to use CMake consistently throughout the system. 
 
 # **C++ packages**

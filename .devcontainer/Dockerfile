@@ -27,8 +27,7 @@ RUN pip3 install --no-cache-dir \
     adafruit-circuitpython-pca9685 \
     adafruit-circuitpython-motor \
     adafruit-blinka \
-    smbus2 \
-    robotpy-rev
+    smbus2
 
 # Create non-root user and enable passwordless sudo
 RUN groupadd --gid $USER_GID $USERNAME && \
