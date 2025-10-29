@@ -1,4 +1,4 @@
-float32 front_left
-float32 front_right
-float32 back_left
-float32 back_right
+float64 str_lf
+float64 str_lb
+float64 str_rf
+float64 str_rb

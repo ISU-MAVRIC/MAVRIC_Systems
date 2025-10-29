@@ -1,83 +1,103 @@
 #!/usr/bin/python3
 
 """
-can_control.py
+can_control_sim.py
 
-Desc: Sets up the can bus and calls the controllers for the corresponding parts
-        when (drive, flipper, arm) when ROS data is received.
+Desc: Simulated CAN control for development without hardware
 Author: Isaac Denning
-Date: 10/21/23
+Date: 10/29/25
 """
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import Float64
 from mavric_msg.msg import DriveTrain, SteerTrain, Arm
-from utils.SparkCANLib import SparkController, SparkCAN
-from drive_system.drive_control import DriveControl
-from drive_system.steer_control import SteerControl
-from drive_system.arm_control import ArmControl
 
-
-
-class CanControl(Node):
+class CanControlSim(Node):
     """
-    Sets up the can bus and calls the controllers for the corresponding parts
-        when (drive, flippper, arm) when ROS data is received.
+    Simulated CAN control for development without hardware
     """
 
     def __init__(self) -> None:
-        super().__init__("can_control")
-        self.bus = SparkCAN.SparkBus(
-            channel="can0", bustype="socketcan", bitrate=1000000
-        )
-
-        # Drive Control can bus
-        self.drive_control = DriveControl(self.bus)
+        super().__init__("can_control_sim")
+        
+        # Log that we're in simulation mode
+        self.get_logger().info("CAN Control running in SIMULATION MODE (no hardware)")
+        
+        # Drive Control subscribers
         self.drive_train_subscription = self.create_subscription(
-            DriveTrain, "drive_train", self.drive_listener, 10
+            DriveTrain, "/Drive/Drive_Command", self.drive_listener, 10
         )
 
-        # Steer Control can bus
-        self.steer_control = SteerControl(self.bus)
+        # Steer Control subscribers
         self.steer_train_subscription = self.create_subscription(
-            SteerTrain, "steer_train", self.steer_listener, 10
+            SteerTrain, "/Drive/Steer_Command", self.steer_listener, 10
         )
 
-        self.arm_control = ArmControl(self.bus)
-        self.arm_subscription = self.create_subscription(
-            Arm, "arm_control", self.arm_listener, 10
-        )
+        # Arm Control - Individual joint subscribers
+        self.arm_subscriptions = {}
+        arm_topics = {
+            "shoulder_rot": "/Arm/Shoulder_Rotation_Command",
+            "shoulder_pitch": "/Arm/Shoulder_Pitch_Command", 
+            "elbow_pitch": "/Arm/Elbow_Pitch_Command",
+            "wrist_pitch": "/Arm/Wrist_Pitch_Command",
+            "wrist_rot": "/Arm/Wrist_Rotation_Command",
+            "claw": "/Arm/Claw_Command",
+            "luminometer": "/Arm/Luminometer_Command",
+            "lumibutton": "/Arm/LumiButton_Command", 
+            "lumilid": "/Arm/LumiLid_Command",
+            "cache": "/Arm/Cache_Command",
+            "drill": "/Arm/Drill_Command",
+            "drillactuator": "/Arm/DrillActuator_Command"
+        }
+        
+        for joint, topic in arm_topics.items():
+            self.arm_subscriptions[joint] = self.create_subscription(
+                Float64, topic, self.create_arm_callback(joint), 10
+            )
+
+    def create_arm_callback(self, joint_name):
+        """Create a callback function for a specific arm joint"""
+        def arm_callback(msg):
+            self.arm_listener(joint_name, msg.data)
+        return arm_callback
 
     def drive_listener(self, msg: DriveTrain) -> None:
         """
-        Called whenever new drive train data is received from ROS.
+        Log drive commands (simulated) - UPDATED FOR 4 MOTORS
         """
-        self.drive_control.set_velocity(msg)
+        self.get_logger().info(
+            f"DRIVE SIM: FL:{msg.front_left:.2f} FR:{msg.front_right:.2f} "
+            f"BL:{msg.back_left:.2f} BR:{msg.back_right:.2f}"
+        )
 
     def steer_listener(self, msg: SteerTrain) -> None:
         """
-        Called whenever new steer train data is received from ROS.
+        Log steer commands (simulated)
         """
-        self.steer_control.set_velocity(msg)
+        self.get_logger().info(
+            f"STEER SIM: strLf:{msg.str_lf:.2f} strLb:{msg.str_lb:.2f} "
+            f"strRf:{msg.str_rf:.2f} strRb:{msg.str_rb:.2f}"
+        )
 
-    def arm_listener(self, msg: Arm) -> None:
+    def arm_listener(self, joint: str, value: float) -> None:
         """
-        Called whenever new arm control data is received from ROS.
+        Log arm commands (simulated)
         """
-        self.arm_control.set_velocity(msg)
+        self.get_logger().info(f"ARM SIM: {joint} = {value:.2f}")
 
 
 def main(args=None):
     rclpy.init(args=args)
 
     # Create the node
-    can_control = CanControl()
+    can_control_sim = CanControlSim()
 
     # Run the node
-    rclpy.spin(can_control)
+    rclpy.spin(can_control_sim)
 
     # Destroy it when done
-    can_control.destroy_node()
+    can_control_sim.destroy_node()
     rclpy.shutdown()
 
 
