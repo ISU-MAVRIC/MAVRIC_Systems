@@ -80,7 +80,6 @@ class SteerControlNode(Node):
             cmd.command_type = CANCommand.POSITION_OUTPUT
             cmd.controller_id = motor_id
             cmd.value = value
-            cmd.timestamp = self.get_clock().now().to_msg()
 
             self.pub_can_commands.publish(cmd)
 

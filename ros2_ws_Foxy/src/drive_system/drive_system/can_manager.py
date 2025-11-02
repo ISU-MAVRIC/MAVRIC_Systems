@@ -122,8 +122,8 @@ class CANManager(Node):
             # Create and publish status message
             status_msg = CANStatus(
                 controller_id=controller_id,
-                position=state.position,
-                velocity=state.velocity
+                position=float(state.position),
+                velocity=float(state.velocity)
             )
             self.pub_can_status.publish(status_msg)
 
