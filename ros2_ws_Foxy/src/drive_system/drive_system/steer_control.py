@@ -77,7 +77,7 @@ class SteerControlNode(Node):
                 value = value * INVERTED
 
             cmd = CANCommand()
-            cmd.command_type = CANCommand.PERCENT_OUTPUT
+            cmd.command_type = CANCommand.POSITION_OUTPUT
             cmd.controller_id = motor_id
             cmd.value = value
             cmd.timestamp = self.get_clock().now().to_msg()

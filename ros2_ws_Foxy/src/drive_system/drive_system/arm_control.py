@@ -13,7 +13,6 @@ Date: 2025-11-02
 import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import Arm, CANCommand
-from adafruit_servokit import ServoKit
 
 # CAN IDs for Arm Controllers
 SHOULDER_PITCH = 11
@@ -50,6 +49,7 @@ class ArmControlNode(Node):
 
         # Initialize ServoKit for PWM claw control
         try:
+            from adafruit_servokit import ServoKit
             self.kit = ServoKit(channels=16)
             self.servo_channel = servo_channel
             self.get_logger().info(f"ServoKit initialized for claw on channel {servo_channel}")

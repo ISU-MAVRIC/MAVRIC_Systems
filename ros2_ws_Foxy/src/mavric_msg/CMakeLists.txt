@@ -4,6 +4,7 @@ project(mavric_msg)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 # Find all .msg files in this package
@@ -12,9 +13,10 @@ file(GLOB msg_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "msg/*.msg")
 # Generate all message interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
+  DEPENDENCIES builtin_interfaces geometry_msgs
 )
 
-ament_export_dependencies(rosidl_default_runtime)
+ament_export_dependencies(rosidl_default_runtime builtin_interfaces)
 ament_package()
 
 
