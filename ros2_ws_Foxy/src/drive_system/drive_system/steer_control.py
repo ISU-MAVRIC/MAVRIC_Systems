@@ -35,7 +35,6 @@ class SteerControlNode(Node):
 
         # Declare parameters
         self.declare_parameter("motor_ids", [FLS, FRS, BLS, BRS])
-        self.declare_parameter("invert_motors", [BLS, BRS])
 
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
@@ -72,10 +71,6 @@ class SteerControlNode(Node):
 
         # Create and publish CANCommand for each motor
         for motor_id, value in motor_commands:
-            # Apply inversion if configured
-            if motor_id in self.invert_motors:
-                value = value * INVERTED
-
             cmd = CANCommand(
                 command_type = CANCommand.POSITION_OUTPUT,
                 controller_id = motor_id,
