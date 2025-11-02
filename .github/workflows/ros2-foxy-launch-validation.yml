@@ -52,7 +52,7 @@ jobs:
       - name: Build and Test in Dev Container
         uses: devcontainers/ci@v0.3
         with:
-          imageName: mavric-foxy-dev
+          push: never
           cacheFrom: type=local,src=/tmp/devcontainer-cache
           cacheTo: type=local,dest=/tmp/devcontainer-cache-new,mode=max
           runCmd: |
