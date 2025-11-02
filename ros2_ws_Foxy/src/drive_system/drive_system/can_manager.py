@@ -96,7 +96,6 @@ class CANManager(Node):
 
     def can_command_callback(self, msg: CANCommand) -> None:
         controller = self.get_or_init_controller(msg.controller_id)
-        state = self.motor_states[msg.controller_id]
 
         if msg.command_type == CANCommand.PERCENT_OUTPUT:
             controller.percent_output(msg.value)
@@ -113,11 +112,8 @@ class CANManager(Node):
             controller = self.controllers[controller_id]
 
             # Read status from controller
-            position = controller.position
-            velocity = controller.velocity
-
-            state.position = position
-            state.velocity = velocity
+            state.position = controller.position
+            state.velocity = controller.velocity
 
             # Create and publish status message
             status_msg = CANStatus(
@@ -127,13 +123,13 @@ class CANManager(Node):
             )
             self.pub_can_status.publish(status_msg)
 
-    def get_motor_position(self, controller_id: int) -> Optional[float]:
+    def get_motor_position(self, controller_id: int) -> float:
         return self.controllers[controller_id].position
 
-    def get_motor_velocity(self, controller_id: int) -> Optional[float]:
+    def get_motor_velocity(self, controller_id: int) -> float:
         return self.controllers[controller_id].velocity
 
-    def get_motor_last_percent_output(self, controller_id: int) -> Optional[float]:
+    def get_motor_last_percent_output(self, controller_id: int) -> float:
         return self.motor_states[controller_id].last_percent_output
 
     def get_all_motor_states(self) -> Dict[int, MotorState]:

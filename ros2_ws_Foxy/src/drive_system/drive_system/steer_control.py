@@ -76,10 +76,11 @@ class SteerControlNode(Node):
             if motor_id in self.invert_motors:
                 value = value * INVERTED
 
-            cmd = CANCommand()
-            cmd.command_type = CANCommand.POSITION_OUTPUT
-            cmd.controller_id = motor_id
-            cmd.value = value
+            cmd = CANCommand(
+                command_type = CANCommand.POSITION_OUTPUT,
+                controller_id = motor_id,
+                value = value
+            )
 
             self.pub_can_commands.publish(cmd)
 
