@@ -16,13 +16,22 @@ def generate_launch_description():
         ),
         Node(
             package='drive_system',
-            executable='teleop.py',
-            name='teleop',
-            parameters=[{'max_speed': 1.0}]
+            executable='can_composer.py',
+            name='can_composer'
         ),
-        Node(
-            package='drive_system',
-            executable='can_control.py',
-            name='can_control'
-        )
+        # Node(
+        #     package='drive_system',
+        #     executable='drive_control.py',
+        #     name='drive_control'
+        # ),
+        # Node(
+        #     package='drive_system',
+        #     executable='steer_control.py',
+        #     name='steer_control'
+        # ),
+        # Node(
+        #     package='drive_system',
+        #     executable='arm_control.py',
+        #     name='arm_control'
+        # ),
     ])

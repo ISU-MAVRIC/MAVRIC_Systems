@@ -23,7 +23,10 @@ setup(
     entry_points={
         'console_scripts': [
             'teleop.py = drive_system.teleop:main',
-            'can_control.py = drive_system.can_control:main',
+            'can_composer.py = drive_system.can_composer:main',
+            # 'drive_control.py = drive_system.drive_control:main',
+            # 'steer_control.py = drive_system.steer_control:main',
+            # 'arm_control.py = drive_system.arm_control:main',
         ],
     },
 )

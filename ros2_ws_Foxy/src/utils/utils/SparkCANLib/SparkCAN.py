@@ -15,6 +15,50 @@ CAN.
 Author: Jacob Peskuski, Gabriel Carlson
 """
 
+# helper for ROS logging if rclpy available
+def _ros_log(level: str, msg: str):
+    # try:
+    #     from rclpy.logging import get_logger
+
+    #     logger = get_logger("SparkCAN")
+    #     if level == "info":
+    #         logger.info(msg)
+    #     elif level == "warn":
+    #         logger.warn(msg)
+    #     elif level == "error":
+    #         logger.error(msg)
+    #     else:
+    #         logger.info(msg)
+    # except Exception:
+    #     # fallback to print
+    #     print(msg)
+    pass
+
+class SparkBusManager:
+    """
+    Singleton manager for SparkBus instance to ensure only one CAN bus is initialized.
+    """
+    _instance = None
+    _counter = 0
+
+    @classmethod
+    def get_instance(cls, channel="can0", bustype="socketcan", bitrate=1000000, suppress_errors=True):
+        """
+        Returns the singleton SparkBus instance, creating it if necessary.
+
+        @param channel: Serial channel the CAN interface is on.
+        @param bustype: Type of bus.
+        @param bitrate: Rate at which bits are sent through the CAN bus.
+        @param suppress_errors: Whether to suppress CAN-related errors.
+        @return: The singleton SparkBus instance.
+        """
+        _ros_log("info", f"SparkBusManager get_instance called {cls._counter} times.")
+        cls._counter += 1
+
+        if cls._instance is None:
+            cls._instance = SparkBus(channel, bustype, bitrate, suppress_errors)
+        return cls._instance
+
 
 class SparkBus:
     def __init__(
@@ -54,26 +98,9 @@ class SparkBus:
                     return None
 
         # optionally suppress python-can logger noise if interface missing
-        if suppress_errors:
-            logging.getLogger("can").setLevel(logging.CRITICAL)
+        # if suppress_errors:
+        #     logging.getLogger("can").setLevel(logging.CRITICAL)
 
-        # helper for ROS logging if rclpy available
-        def _ros_log(level: str, msg: str):
-            try:
-                from rclpy.logging import get_logger
-
-                logger = get_logger("SparkCAN")
-                if level == "info":
-                    logger.info(msg)
-                elif level == "warn":
-                    logger.warn(msg)
-                elif level == "error":
-                    logger.error(msg)
-                else:
-                    logger.info(msg)
-            except Exception:
-                # fallback to print
-                print(msg)
 
         try:
             self.bus = Bus(channel=channel, bustype=bustype, bitrate=bitrate)

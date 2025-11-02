@@ -1,6 +1,8 @@
+import rclpy
+from rclpy.node import Node
 from mavric_msg.msg import Arm
-from utils.SparkCANLib.SparkCAN import SparkBus
-from adafruit_servokit import ServoKit
+from utils.SparkCANLib.SparkCAN import SparkBusManager
+# from adafruit_servokit import ServoKit
 from typing import Optional
 
 # CAN IDs for Drive Controllers
@@ -14,7 +16,7 @@ claw = 1 # PWM Controller BUS
 INVERTED = -1
 
 
-class ArmControl:
+class ArmControl(Node):
     """
     Uses the CANbus interface to set the velocity of the motors.
 
@@ -22,16 +24,20 @@ class ArmControl:
         bus (SparkCANLib.SparkCAN.SparkBus): CANbus interface
     """
 
-    def __init__(self, bus: SparkBus):
-        self.bus = bus
-        self.kit = ServoKit(channels=16)
-        # Initialize logger before any log calls and keep attribute name consistent
-
+    def __init__(self):
+        super().__init__("arm_control")
+        
+        self.bus = SparkBusManager.get_instance()
         self.SPMotor = self.bus.init_controller(shoulder_pitch)
         self.SRMotor = self.bus.init_controller(shoulder_rot)
         self.EPMotor = self.bus.init_controller(elbow_pitch)
         self.WPMotor = self.bus.init_controller(wrist_pitch)
         self.WRMotor = self.bus.init_controller(wrist_rot)
+        # self.kit = ServoKit(channels=16)
+
+        # self.arm_subscription = self.create_subscription(
+        #     Arm, "arm_control", self.set_velocity, 10
+        # )
 
     def set_velocity(self, msg: Arm):
         """
@@ -46,5 +52,20 @@ class ArmControl:
         self.EPMotor.percent_output(msg.elbow_pitch)
         self.WPMotor.percent_output(msg.wrist_pitch)
         self.WRMotor.percent_output(INVERTED * msg.wrist_rot)
-        self.kit.continuous_servo[1].throttle = msg.claw
+        # self.kit.continuous_servo[1].throttle = msg.claw
+
+# def main(args=None):
+#     rclpy.init(args=args)
+
+#     # Create the node
+#     arm_control = ArmControl()
+
+#     # Run the node
+#     rclpy.spin(arm_control)
+
+#     # Destroy it when done
+#     arm_control.destroy_node()
+#     rclpy.shutdown()
         
+# if __name__ == "__main__":
+#     main()
