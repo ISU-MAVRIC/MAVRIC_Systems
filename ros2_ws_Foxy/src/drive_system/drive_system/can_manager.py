@@ -15,16 +15,6 @@ from rclpy.timer import Timer
 from mavric_msg.msg import CANCommand, CANStatus
 from utils.SparkCANLib import SparkController, SparkCAN
 from typing import Dict, Optional
-import traceback
-
-
-class MotorState:
-    """Tracks state for a single motor controller"""
-
-    def __init__(self, controller_id: int):
-        self.controller_id = controller_id
-        self.position = 0.0
-        self.velocity = 0.0
 
 
 class CANManager(Node):
@@ -60,8 +50,7 @@ class CANManager(Node):
             channel=can_channel, bustype=can_bustype, bitrate=can_bitrate
         )
 
-        # Motor state tracking
-        self.motor_states: Dict[int, MotorState] = {}
+        # Contoller dictionary
         self.controllers: Dict[int, SparkController.Controller] = {}
 
         # Create subscriber for CAN commands
@@ -82,17 +71,14 @@ class CANManager(Node):
             f"CAN Manager initialized. Status publishing at {status_rate}Hz"
         )
 
-
     def get_or_init_controller(self, controller_id: int) -> Optional[SparkController.Controller]:
         if controller_id in self.controllers:
             return self.controllers[controller_id]
 
         controller = self.bus.init_controller(controller_id)
         self.controllers[controller_id] = controller
-        self.motor_states[controller_id] = MotorState(controller_id)
 
         return controller
-
 
     def can_command_callback(self, msg: CANCommand) -> None:
         controller = self.get_or_init_controller(msg.controller_id)
@@ -106,20 +92,15 @@ class CANManager(Node):
         elif msg.command_type == CANCommand.POSITION_OUTPUT:
             controller.position_output(msg.value)
 
-
     def status_publish_timer_callback(self) -> None:
-        for controller_id, state in self.motor_states.items():
+        for controller_id in self.controllers.keys():
             controller = self.controllers[controller_id]
-
-            # Read status from controller
-            state.position = controller.position
-            state.velocity = controller.velocity
 
             # Create and publish status message
             status_msg = CANStatus(
                 controller_id=controller_id,
-                position=float(state.position),
-                velocity=float(state.velocity)
+                position=float(controller.position),
+                velocity=float(controller.velocity)
             )
             self.pub_can_status.publish(status_msg)
 
@@ -128,12 +109,6 @@ class CANManager(Node):
 
     def get_motor_velocity(self, controller_id: int) -> float:
         return self.controllers[controller_id].velocity
-
-    def get_motor_last_percent_output(self, controller_id: int) -> float:
-        return self.motor_states[controller_id].last_percent_output
-
-    def get_all_motor_states(self) -> Dict[int, MotorState]:
-        return self.motor_states.copy()
 
 
 def main(args=None):
