@@ -44,7 +44,7 @@ class SteerControl:
             msg (SteerTrain): The values from ROS indicating the velocity of each motor.
         """
 
-        self.FLMotor.position_output(msg.front_left)
-        self.FRMotor.position_output(msg.front_right)
-        self.BLMotor.position_output(msg.back_left)
-        self.BRMotor.position_output(msg.back_right)
+        self.FLMotor.position_output(msg.steer_front_left)
+        self.FRMotor.position_output(msg.steer_front_right)
+        self.BLMotor.position_output(msg.steer_back_left)
+        self.BRMotor.position_output(msg.steer_back_right)

@@ -1,4 +1,4 @@
-float32 front_left
-float32 front_right
-float32 back_left
-float32 back_right
+float32 steer_front_left
+float32 steer_front_right
+float32 steer_back_left
+float32 steer_back_right
