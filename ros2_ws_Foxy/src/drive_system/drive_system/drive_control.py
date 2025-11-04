@@ -21,6 +21,8 @@ BRD = 3  # Back Right Drive
 
 INVERTED = -1
 
+c_Scale_Max = 1.2*20
+c_Scale = c_Scale_Max
 
 class DriveControlNode(Node):
     """
@@ -79,7 +81,7 @@ class DriveControlNode(Node):
             cmd = CANCommand(
                 command_type = CANCommand.VELOCITY_OUTPUT,
                 controller_id = motor_id,
-                value = value
+                value = value * c_Scale
             )
 
             self.pub_can_commands.publish(cmd)
