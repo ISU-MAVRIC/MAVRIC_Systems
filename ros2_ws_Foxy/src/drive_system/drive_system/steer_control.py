@@ -38,7 +38,6 @@ class SteerControlNode(Node):
 
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
-        self.invert_motors = self.get_parameter("invert_motors").value
 
         # Create publisher for CAN commands
         self.pub_can_commands = self.create_publisher(
