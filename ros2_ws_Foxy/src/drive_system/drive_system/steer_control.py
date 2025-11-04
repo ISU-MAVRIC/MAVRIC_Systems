@@ -68,10 +68,10 @@ class SteerControlNode(Node):
         """
         # Define motor-to-value mapping
         motor_commands = [
-            (self.motor_ids[0], msg.front_left * c_str_lfDir),    # FLS
-            (self.motor_ids[1], msg.front_right * c_str_rfDir),   # FRS
-            (self.motor_ids[2], msg.back_left * c_str_lbDir),     # BLS
-            (self.motor_ids[3], msg.back_right * c_str_rbDir),    # BRS
+            (self.motor_ids[0], msg.steer_front_left * c_str_lfDir),    # FLS
+            (self.motor_ids[1], msg.steer_front_right * c_str_rfDir),   # FRS
+            (self.motor_ids[2], msg.steer_back_left * c_str_lbDir),     # BLS
+            (self.motor_ids[3], msg.steer_back_right * c_str_rbDir),    # BRS
         ]
 
         # Create and publish CANCommand for each motor
