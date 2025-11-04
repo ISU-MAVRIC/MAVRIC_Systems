@@ -10,6 +10,12 @@ BRS = 2
 
 INVERTED = -1
 
+c_str_Scale = 0.15
+c_str_lfDir = 1
+c_str_lbDir = 1
+c_str_rfDir = 1
+c_str_rbDir = 0.9
+
 
 class SteerControl:
     """
@@ -36,7 +42,7 @@ class SteerControl:
             msg (SteerTrain): The values from ROS indicating the velocity of each motor.
         """
 
-        self.FLMotor.percent_output(msg.front_left)
-        self.FRMotor.percent_output(msg.front_right)
-        self.BLMotor.percent_output(INVERTED * msg.back_left)
-        self.BRMotor.percent_output(INVERTED * msg.back_right)
+        self.FLMotor.percent_output(msg.front_left * c_str_Scale * c_str_lfDir)
+        self.FRMotor.percent_output(msg.front_right * c_str_Scale * c_str_rfDir)
+        self.BLMotor.percent_output(msg.back_left * c_str_Scale * c_str_lbDir)
+        self.BRMotor.percent_output(msg.back_right * c_str_Scale * c_str_rbDir)
