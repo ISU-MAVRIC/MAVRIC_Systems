@@ -21,6 +21,12 @@ BRS = 2   # Back Right Steer
 
 INVERTED = -1
 
+c_str_Scale = 0.15
+c_str_lfDir = 1
+c_str_lbDir = 1
+c_str_rfDir = 1
+c_str_rbDir = 0.9
+
 
 class SteerControlNode(Node):
     """
@@ -62,10 +68,10 @@ class SteerControlNode(Node):
         """
         # Define motor-to-value mapping
         motor_commands = [
-            (self.motor_ids[0], msg.front_left),    # FLS
-            (self.motor_ids[1], msg.front_right),   # FRS
-            (self.motor_ids[2], msg.back_left),     # BLS
-            (self.motor_ids[3], msg.back_right),    # BRS
+            (self.motor_ids[0], msg.front_left * c_str_lfDir),    # FLS
+            (self.motor_ids[1], msg.front_right * c_str_rfDir),   # FRS
+            (self.motor_ids[2], msg.back_left * c_str_lbDir),     # BLS
+            (self.motor_ids[3], msg.back_right * c_str_rbDir),    # BRS
         ]
 
         # Create and publish CANCommand for each motor
@@ -73,7 +79,7 @@ class SteerControlNode(Node):
             cmd = CANCommand(
                 command_type = CANCommand.POSITION_OUTPUT,
                 controller_id = motor_id,
-                value = value
+                value = value * c_str_Scale
             )
 
             self.pub_can_commands.publish(cmd)
