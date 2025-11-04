@@ -60,5 +60,5 @@ class ArmControl:
         self.EPMotor.percent_output(msg.elbow_pitch * c_ElbowPitch * c_ElbowPitchDir/100)
         self.WPMotor.percent_output(msg.wrist_pitch * c_WristPitch * c_WristPitchDir/100)
         self.WRMotor.percent_output(msg.wrist_rot * c_WristRot * c_WristRotDir/100)
-        # self.kit.continuous_servo[1].throttle = msg.claw
+        self.kit.continuous_servo[1].throttle = msg.claw
         
