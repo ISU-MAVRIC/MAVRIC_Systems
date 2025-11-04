@@ -47,16 +47,9 @@ class DriveControlNode(Node):
         self.use_batch = self.get_parameter("use_batch_commands").value
 
         # Create publishers based on batch mode
-        if self.use_batch:
-            self.pub_can_batch = self.create_publisher(
-                CANCommandBatch, "can_commands_batch", 10
-            )
-            self.get_logger().info("Using batched CAN commands (optimized)")
-        else:
-            self.pub_can_commands = self.create_publisher(
-                CANCommand, "can_commands", 10
-            )
-            self.get_logger().info("Using individual CAN commands (legacy)")
+        self.pub_can_batch = self.create_publisher(
+            CANCommandBatch, "can_commands_batch", 10
+        )
 
         # Create subscriber for drive train commands
         self.sub_drive_train = self.create_subscription(

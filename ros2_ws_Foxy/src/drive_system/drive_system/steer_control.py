@@ -52,7 +52,6 @@ class SteerControlNode(Node):
         self.pub_can_batch = self.create_publisher(
             CANCommandBatch, "can_commands_batch", 10
         )
-        self.get_logger().info("Using batched CAN commands (optimized)")
 
         # Create subscriber for steer train commands
         self.sub_steer_train = self.create_subscription(

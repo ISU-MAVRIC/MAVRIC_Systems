@@ -17,7 +17,11 @@ def generate_launch_description():
         Node(
             package='drive_system',
             executable='can_manager',
-            name='can_manager'
+            name='can_manager',
+            parameters=[{
+                'status_mode': 'service',  # 'service', 'publish', or 'both'
+                # 'status_publish_rate': 20  # Only used if mode is 'publish' or 'both'
+            }]
         ),
         Node(
             package='drive_system',
