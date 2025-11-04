@@ -13,6 +13,20 @@ claw = 1 # PWM Controller BUS
 
 INVERTED = -1
 
+# Arm Scales
+c_ShoulderPitch = 1         # Define individual arm rates
+c_ShoulderRot = 1           # If one axis is faster/slower than the others, change these values
+c_ElbowPitch = 1
+c_WristPitch = 1
+c_WristRot = 1
+
+# Arm Directions
+c_ShoulderRotDir = 1        
+c_ShoulderPitchDir = 1     # If axis is moving wrong way, invert these 
+c_ElbowPitchDir = 1
+c_WristPitchDir = 1
+c_WristRotDir = -1
+
 
 class ArmControl:
     """
@@ -41,10 +55,10 @@ class ArmControl:
             msg (SteerTrain): The values from ROS indicating the velocity of each motor.
         """
 
-        self.SPMotor.percent_output(msg.shoulder_pitch)
-        self.SRMotor.percent_output(msg.shoulder_rot)
-        self.EPMotor.percent_output(msg.elbow_pitch)
-        self.WPMotor.percent_output(msg.wrist_pitch)
-        self.WRMotor.percent_output(INVERTED * msg.wrist_rot)
+        self.SPMotor.percent_output(msg.shoulder_pitch * c_ShoulderPitch *c_ShoulderPitchDir/100)
+        self.SRMotor.percent_output(msg.shoulder_rot * c_ShoulderRot * c_ShoulderRotDir/100)
+        self.EPMotor.percent_output(msg.elbow_pitch * c_ElbowPitch * c_ElbowPitchDir/100)
+        self.WPMotor.percent_output(msg.wrist_pitch * c_WristPitch * c_WristPitchDir/100)
+        self.WRMotor.percent_output(msg.wrist_rot * c_WristRot * c_WristRotDir/100)
         self.kit.continuous_servo[1].throttle = msg.claw
         
