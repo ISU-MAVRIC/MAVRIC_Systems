@@ -19,6 +19,8 @@ BRD = 3
 
 INVERTED = -1
 
+c_Scale_Max = 1.2*20
+c_Scale = c_Scale_Max
 
 class DriveControl:
     """
@@ -42,7 +44,7 @@ class DriveControl:
         Args:
             msg (DriveTrain): The values from ROS indicating the velocity of each motor.
         """
-        self.FLMotor.percent_output(msg.front_left)
-        self.FRMotor.percent_output(INVERTED * msg.front_right)
-        self.BLMotor.percent_output(msg.back_left)
-        self.BRMotor.percent_output(INVERTED * msg.back_right)
+        self.FLMotor.percent_output(msg.front_left * c_Scale)
+        self.FRMotor.percent_output(INVERTED * msg.front_right * c_Scale)
+        self.BLMotor.percent_output(msg.back_left * c_Scale)
+        self.BRMotor.percent_output(INVERTED * msg.back_right * c_Scale)
