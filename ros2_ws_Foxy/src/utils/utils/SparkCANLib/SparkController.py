@@ -55,6 +55,7 @@ class Controller:
         )
         msg = Message(arbitration_id=0x02050480 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
+        self.logger.info(f"Sent velocity output {mod_value} to controller ID {self.id}")
 
     def position_output(self, value):
         mod_value = (
@@ -62,6 +63,7 @@ class Controller:
         )
         msg = Message(arbitration_id=0x02050C80 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
+        self.logger.info(f"Sent position output {mod_value} to controller ID {self.id}")
 
     @property
     def velocity(self):
