@@ -31,14 +31,6 @@ c_ElbowPitch = 1
 c_WristPitch = 1
 c_WristRot = 1
 
-# Arm Directions
-c_ShoulderRotDir = 1        
-c_ShoulderPitchDir = 1     # If axis is moving wrong way, invert these 
-c_ElbowPitchDir = 1
-c_WristPitchDir = 1
-c_WristRotDir = -1
-
-
 class ArmControlNode(Node):
     """
     ROS2 node for arm subsystem control.
@@ -94,11 +86,11 @@ class ArmControlNode(Node):
         """
         # Define CAN motor-to-value mapping
         can_motor_commands = [
-            (self.can_motor_ids[0], msg.shoulder_pitch * c_ShoulderPitch * c_ShoulderPitchDir/100),   # SHOULDER_PITCH
-            (self.can_motor_ids[1], msg.shoulder_rot * c_ShoulderRot * c_ShoulderRotDir/100),         # SHOULDER_ROT
-            (self.can_motor_ids[2], msg.elbow_pitch * c_ElbowPitch * c_ElbowPitchDir/100),            # ELBOW_PITCH
-            (self.can_motor_ids[3], msg.wrist_pitch * c_WristPitch * c_WristPitchDir/100),            # WRIST_PITCH
-            (self.can_motor_ids[4], msg.wrist_rot * c_WristRot * c_WristRotDir/100),                  # WRIST_ROT
+            (self.can_motor_ids[0], msg.shoulder_pitch * c_ShoulderPitch),   # SHOULDER_PITCH
+            (self.can_motor_ids[1], msg.shoulder_rot * c_ShoulderRot),         # SHOULDER_ROT
+            (self.can_motor_ids[2], msg.elbow_pitch * c_ElbowPitch),            # ELBOW_PITCH
+            (self.can_motor_ids[3], msg.wrist_pitch * c_WristPitch),            # WRIST_PITCH
+            (self.can_motor_ids[4], msg.wrist_rot * c_WristRot),                  # WRIST_ROT
         ]
 
         # Create and publish CANCommand for each CAN motor
@@ -110,7 +102,7 @@ class ArmControlNode(Node):
             cmd = CANCommand(
                 command_type = CANCommand.PERCENT_OUTPUT,
                 controller_id = motor_id,
-                value = value
+                value = value/100.0
             )
 
             self.pub_can_commands.publish(cmd)
