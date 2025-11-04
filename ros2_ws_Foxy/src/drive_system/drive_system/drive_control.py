@@ -44,7 +44,7 @@ class DriveControl:
         Args:
             msg (DriveTrain): The values from ROS indicating the velocity of each motor.
         """
-        self.FLMotor.percent_output(msg.front_left * c_Scale)
-        self.FRMotor.percent_output(INVERTED * msg.front_right * c_Scale)
-        self.BLMotor.percent_output(msg.back_left * c_Scale)
-        self.BRMotor.percent_output(INVERTED * msg.back_right * c_Scale)
+        self.FLMotor.velocity_output(msg.front_left * c_Scale)
+        self.FRMotor.velocity_output(INVERTED * msg.front_right * c_Scale)
+        self.BLMotor.velocity_output(msg.back_left * c_Scale)
+        self.BRMotor.velocity_output(INVERTED * msg.back_right * c_Scale)
