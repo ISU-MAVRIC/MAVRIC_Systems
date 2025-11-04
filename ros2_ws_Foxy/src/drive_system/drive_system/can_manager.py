@@ -12,7 +12,9 @@ Date: 2025-11-02
 import rclpy
 from rclpy.node import Node
 from rclpy.timer import Timer
-from mavric_msg.msg import CANCommand, CANStatus
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
+from mavric_msg.msg import CANCommand, CANStatus, CANCommandBatch
 from utils.SparkCANLib import SparkController, SparkCAN
 from typing import Dict, Optional
 
@@ -23,6 +25,7 @@ class CANManager(Node):
 
     Owns the single SparkBus instance and coordinates all CAN communication.
     - Subscribes to CANCommand messages from control nodes
+    - Subscribes to CANCommandBatch messages for synchronized multi-motor commands
     - Publishes CANStatus messages with motor state
     - Maintains motor state dictionary
     """
@@ -50,12 +53,19 @@ class CANManager(Node):
             channel=can_channel, bustype=can_bustype, bitrate=can_bitrate
         )
 
-        # Contoller dictionary
+        # Controller dictionary
         self.controllers: Dict[int, SparkController.Controller] = {}
 
-        # Create subscriber for CAN commands
-        self.sub_can_commands = self.create_subscription(
-            CANCommand, "can_commands", self.can_command_callback, 10
+        # Use reentrant callback group for parallel processing
+        self.callback_group = ReentrantCallbackGroup()
+
+        # Create subscriber for batched CAN commands (optimized path)
+        self.sub_can_batch = self.create_subscription(
+            CANCommandBatch,
+            "can_commands_batch",
+            self.can_batch_callback,
+            10,
+            callback_group=self.callback_group
         )
 
         # Create publisher for CAN status
@@ -80,7 +90,13 @@ class CANManager(Node):
 
         return controller
 
-    def can_command_callback(self, msg: CANCommand) -> None:
+    def can_batch_callback(self, msg: CANCommandBatch) -> None:
+        """Process batched CAN commands (optimized path) - all commands executed in tight loop"""
+        for cmd in msg.commands:
+            self._execute_command(cmd)
+
+    def _execute_command(self, msg: CANCommand) -> None:
+        """Execute a single CAN command"""
         controller = self.get_or_init_controller(msg.controller_id)
 
         if msg.command_type == CANCommand.PERCENT_OUTPUT:
@@ -114,11 +130,13 @@ class CANManager(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    # Create and run the node
+    # Create and run the node with multi-threaded executor for better performance
     can_manager = CANManager()
+    executor = MultiThreadedExecutor(num_threads=4)
+    executor.add_node(can_manager)
 
     try:
-        rclpy.spin(can_manager)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:

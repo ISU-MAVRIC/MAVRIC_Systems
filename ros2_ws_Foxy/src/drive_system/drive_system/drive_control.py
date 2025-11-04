@@ -11,7 +11,7 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import DriveTrain, CANCommand
+from mavric_msg.msg import DriveTrain, CANCommand, CANCommandBatch
 
 # CAN IDs for Drive Controllers
 FLD = 1  # Front Left Drive
@@ -30,6 +30,7 @@ class DriveControlNode(Node):
     
     Subscribes to high-level DriveTrain messages and publishes
     low-level CANCommand messages to the CAN manager.
+    Uses batched commands for improved synchronization.
     """
 
     def __init__(self) -> None:
@@ -38,15 +39,24 @@ class DriveControlNode(Node):
         # Declare parameters
         self.declare_parameter("motor_ids", [FLD, FRD, BLD, BRD])
         self.declare_parameter("invert_motors", [FRD, BRD])
+        self.declare_parameter("use_batch_commands", True)
 
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
+        self.use_batch = self.get_parameter("use_batch_commands").value
 
-        # Create publisher for CAN commands
-        self.pub_can_commands = self.create_publisher(
-            CANCommand, "can_commands", 10
-        )
+        # Create publishers based on batch mode
+        if self.use_batch:
+            self.pub_can_batch = self.create_publisher(
+                CANCommandBatch, "can_commands_batch", 10
+            )
+            self.get_logger().info("Using batched CAN commands (optimized)")
+        else:
+            self.pub_can_commands = self.create_publisher(
+                CANCommand, "can_commands", 10
+            )
+            self.get_logger().info("Using individual CAN commands (legacy)")
 
         # Create subscriber for drive train commands
         self.sub_drive_train = self.create_subscription(
@@ -72,19 +82,23 @@ class DriveControlNode(Node):
             (self.motor_ids[3], msg.back_right),    # BRD
         ]
 
-        # Create and publish CANCommand for each motor
+        # Create batch message with all commands
+        batch = CANCommandBatch()
         for motor_id, value in motor_commands:
             # Apply inversion if configured
             if motor_id in self.invert_motors:
                 value = value * INVERTED
 
             cmd = CANCommand(
-                command_type = CANCommand.VELOCITY_OUTPUT,
-                controller_id = motor_id,
-                value = value * c_Scale
+                command_type=CANCommand.VELOCITY_OUTPUT,
+                controller_id=motor_id,
+                value=value * c_Scale
             )
+            batch.commands.append(cmd)
+        
+        # Publish single batch message
+        self.pub_can_batch.publish(batch)
 
-            self.pub_can_commands.publish(cmd)
 
 
 def main(args=None):

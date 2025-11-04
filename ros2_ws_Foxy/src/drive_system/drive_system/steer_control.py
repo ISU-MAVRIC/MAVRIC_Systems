@@ -11,7 +11,7 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import SteerTrain, CANCommand
+from mavric_msg.msg import SteerTrain, CANCommand, CANCommandBatch
 
 # CAN IDs for Steer Controllers
 FLS = 7   # Front Left Steer
@@ -34,6 +34,7 @@ class SteerControlNode(Node):
 
     Subscribes to high-level SteerTrain messages and publishes
     low-level CANCommand messages to the CAN manager.
+    Uses batched commands for improved synchronization.
     """
 
     def __init__(self) -> None:
@@ -41,14 +42,17 @@ class SteerControlNode(Node):
 
         # Declare parameters
         self.declare_parameter("motor_ids", [FLS, FRS, BLS, BRS])
+        self.declare_parameter("use_batch_commands", True)
 
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
+        self.use_batch = self.get_parameter("use_batch_commands").value
 
-        # Create publisher for CAN commands
-        self.pub_can_commands = self.create_publisher(
-            CANCommand, "can_commands", 10
+        # Create publishers based on batch mode
+        self.pub_can_batch = self.create_publisher(
+            CANCommandBatch, "can_commands_batch", 10
         )
+        self.get_logger().info("Using batched CAN commands (optimized)")
 
         # Create subscriber for steer train commands
         self.sub_steer_train = self.create_subscription(
@@ -74,15 +78,18 @@ class SteerControlNode(Node):
             (self.motor_ids[3], msg.steer_back_right * c_str_rbDir),    # BRS
         ]
 
-        # Create and publish CANCommand for each motor
+        # Create batch message with all commands
+        batch = CANCommandBatch()
         for motor_id, value in motor_commands:
             cmd = CANCommand(
-                command_type = CANCommand.POSITION_OUTPUT,
-                controller_id = motor_id,
-                value = value * c_str_Scale
+                command_type=CANCommand.POSITION_OUTPUT,
+                controller_id=motor_id,
+                value=value * c_str_Scale
             )
-
-            self.pub_can_commands.publish(cmd)
+            batch.commands.append(cmd)
+        
+        # Publish single batch message
+        self.pub_can_batch.publish(batch)
 
 
 def main(args=None):

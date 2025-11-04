@@ -12,7 +12,7 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import Arm, CANCommand
+from mavric_msg.msg import Arm, CANCommand,CANCommandBatch
 
 # CAN IDs for Arm Controllers
 SHOULDER_PITCH = 11
@@ -65,7 +65,7 @@ class ArmControlNode(Node):
 
         # Create publisher for CAN commands
         self.pub_can_commands = self.create_publisher(
-            CANCommand, "can_commands", 10
+            CANCommandBatch, "can_commands", 10
         )
 
         # Create subscriber for arm commands
@@ -94,6 +94,7 @@ class ArmControlNode(Node):
         ]
 
         # Create and publish CANCommand for each CAN motor
+        batch = CANCommandBatch()
         for motor_id, value in can_motor_commands:
             # Apply inversion if configured
             if motor_id in self.invert_motors:
@@ -104,8 +105,11 @@ class ArmControlNode(Node):
                 controller_id = motor_id,
                 value = value/100.0
             )
+            
+            batch.commands.append(cmd)
 
-            self.pub_can_commands.publish(cmd)
+        self.pub_can_batch.publish(batch)
+        
 
         # Handle PWM servo for claw
         if self.kit is not None:

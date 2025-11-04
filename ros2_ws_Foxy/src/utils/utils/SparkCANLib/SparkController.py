@@ -47,7 +47,7 @@ class Controller:
         mod_value = value * self.percentProps["dir"] * self.percentProps["scale"]
         msg = Message(arbitration_id=0x02050080 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
-        self.logger.info(f"Sent percent output {mod_value} to controller ID {self.id}")
+        self.logger.debug(f"Sent percent output {mod_value} to controller ID {self.id}")
 
     def velocity_output(self, value):
         mod_value = (
@@ -55,7 +55,7 @@ class Controller:
         )
         msg = Message(arbitration_id=0x02050480 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
-        self.logger.info(f"Sent velocity output {mod_value} to controller ID {self.id}")
+        self.logger.debug(f"Sent velocity output {mod_value} to controller ID {self.id}")
 
     def position_output(self, value):
         mod_value = (
@@ -63,7 +63,7 @@ class Controller:
         )
         msg = Message(arbitration_id=0x02050C80 + self.id, data=packer_float(mod_value))
         self.bus.send_msg(msg)
-        self.logger.info(f"Sent position output {mod_value} to controller ID {self.id}")
+        self.logger.debug(f"Sent position output {mod_value} to controller ID {self.id}")
 
     @property
     def velocity(self):
