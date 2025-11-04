@@ -12,7 +12,8 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import Arm, CANCommand,CANCommandBatch
+from mavric_msg.msg import Arm, CANCommand, CANCommandBatch
+from utils.command_filter import CommandDeduplicator
 
 # CAN IDs for Arm Controllers
 SHOULDER_PITCH = 11
@@ -47,11 +48,16 @@ class ArmControlNode(Node):
         self.declare_parameter("can_motor_ids", [SHOULDER_PITCH, SHOULDER_ROT, ELBOW_PITCH, WRIST_PITCH, WRIST_ROT])
         self.declare_parameter("invert_motors", [WRIST_ROT])
         self.declare_parameter("servo_channel", CLAW_SERVO_CHANNEL)
+        self.declare_parameter("command_deadband", 0.001)  # Threshold for duplicate detection
 
         # Get parameters
         self.can_motor_ids = self.get_parameter("can_motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
         servo_channel = self.get_parameter("servo_channel").value
+        command_deadband = self.get_parameter("command_deadband").value
+
+        # Initialize command deduplicator
+        self.deduplicator = CommandDeduplicator(deadband=command_deadband)
 
         # Initialize ServoKit for PWM claw control
         try:
@@ -64,8 +70,8 @@ class ArmControlNode(Node):
             self.kit = None
 
         # Create publisher for CAN commands
-        self.pub_can_commands = self.create_publisher(
-            CANCommandBatch, "can_commands", 10
+        self.pub_can_batch = self.create_publisher(
+            CANCommandBatch, "can_commands_batch", 10
         )
 
         # Create subscriber for arm commands
@@ -100,15 +106,20 @@ class ArmControlNode(Node):
             if motor_id in self.invert_motors:
                 value = value * INVERTED
 
-            cmd = CANCommand(
-                command_type = CANCommand.PERCENT_OUTPUT,
-                controller_id = motor_id,
-                value = value/100.0
-            )
-            
-            batch.commands.append(cmd)
+            final_value = value / 100.0
 
-        self.pub_can_batch.publish(batch)
+            # Only add to batch if value changed significantly
+            if self.deduplicator.should_send(motor_id, final_value):
+                cmd = CANCommand(
+                    command_type=CANCommand.PERCENT_OUTPUT,
+                    controller_id=motor_id,
+                    value=final_value
+                )
+                batch.commands.append(cmd)
+
+        # Only publish if batch has commands
+        if batch.commands:
+            self.pub_can_batch.publish(batch)
         
 
         # Handle PWM servo for claw

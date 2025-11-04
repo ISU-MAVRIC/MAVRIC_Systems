@@ -12,6 +12,8 @@ Date: 2025-11-02
 import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import SteerTrain, CANCommand, CANCommandBatch
+from utils.command_filter import CommandDeduplicator
+
 
 # CAN IDs for Steer Controllers
 FLS = 7   # Front Left Steer
@@ -42,11 +44,14 @@ class SteerControlNode(Node):
 
         # Declare parameters
         self.declare_parameter("motor_ids", [FLS, FRS, BLS, BRS])
-        self.declare_parameter("use_batch_commands", True)
+        self.declare_parameter("command_deadband", 0.01) 
 
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
-        self.use_batch = self.get_parameter("use_batch_commands").value
+        command_deadband = self.get_parameter("command_deadband").value
+
+        # Initialize command deduplicator
+        self.deduplicator = CommandDeduplicator(deadband=command_deadband)
 
         # Create publishers based on batch mode
         self.pub_can_batch = self.create_publisher(
@@ -80,12 +85,16 @@ class SteerControlNode(Node):
         # Create batch message with all commands
         batch = CANCommandBatch()
         for motor_id, value in motor_commands:
-            cmd = CANCommand(
-                command_type=CANCommand.POSITION_OUTPUT,
-                controller_id=motor_id,
-                value=value * c_str_Scale
-            )
-            batch.commands.append(cmd)
+
+            final_value = value * c_str_Scale
+
+            if self.deduplicator.should_send(motor_id, final_value):    
+                cmd = CANCommand(
+                    command_type=CANCommand.POSITION_OUTPUT,
+                    controller_id=motor_id,
+                    value=final_value
+                )
+                batch.commands.append(cmd)
         
         # Publish single batch message
         self.pub_can_batch.publish(batch)

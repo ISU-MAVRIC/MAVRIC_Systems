@@ -12,6 +12,7 @@ Date: 2025-11-02
 import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import DriveTrain, CANCommand, CANCommandBatch
+from utils.command_filter import CommandDeduplicator
 
 # CAN IDs for Drive Controllers
 FLD = 1  # Front Left Drive
@@ -39,12 +40,16 @@ class DriveControlNode(Node):
         # Declare parameters
         self.declare_parameter("motor_ids", [FLD, FRD, BLD, BRD])
         self.declare_parameter("invert_motors", [FRD, BRD])
-        self.declare_parameter("use_batch_commands", True)
+        self.declare_parameter("command_deadband", 0.01)  # Slightly larger for velocity commands
 
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
         self.use_batch = self.get_parameter("use_batch_commands").value
+        command_deadband = self.get_parameter("command_deadband").value
+
+        # Initialize command deduplicator
+        self.deduplicator = CommandDeduplicator(deadband=command_deadband)
 
         # Create publishers based on batch mode
         self.pub_can_batch = self.create_publisher(
@@ -82,15 +87,20 @@ class DriveControlNode(Node):
             if motor_id in self.invert_motors:
                 value = value * INVERTED
 
-            cmd = CANCommand(
-                command_type=CANCommand.VELOCITY_OUTPUT,
-                controller_id=motor_id,
-                value=value * c_Scale
-            )
-            batch.commands.append(cmd)
+            final_value = value * c_Scale
+
+            # Only add to batch if value changed significantly
+            if self.deduplicator.should_send(motor_id, final_value):
+                cmd = CANCommand(
+                    command_type=CANCommand.VELOCITY_OUTPUT,
+                    controller_id=motor_id,
+                    value=final_value
+                )
+                batch.commands.append(cmd)
         
-        # Publish single batch message
-        self.pub_can_batch.publish(batch)
+        # Only publish if batch has commands
+        if batch.commands:
+            self.pub_can_batch.publish(batch)
 
 
 
