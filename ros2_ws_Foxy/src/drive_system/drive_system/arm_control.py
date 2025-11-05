@@ -47,7 +47,7 @@ class ArmControlNode(Node):
         # Get parameters
         self.can_motor_ids = self.get_parameter("can_motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
-        self.servo_channel = self.get_parameter("servo_channel").value
+        servo_channel = self.get_parameter("servo_channel").value
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
@@ -76,6 +76,7 @@ class ArmControlNode(Node):
         #     self.get_logger().warn(f"Failed to initialize ServoKit: {e}. Claw will not work.")
         #     self.kit = None
 
+        self.servo_channel = servo_channel
         self.kit = ServoProvider.get_servo_kit()
 
         # Create subscriber for arm commands

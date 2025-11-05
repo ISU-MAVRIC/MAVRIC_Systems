@@ -1,31 +1,31 @@
 from .abstract_servo import AbstractServoKit, AbstractServo, AbstractContinuousServo
-from typing import List
+from typing import List, Any
 
 class MockServo(AbstractServo):
     def __init__(self):
-        self.angle = None
+        self._angle = None
 
     @property
     def angle(self) -> float:
-        return self.angle
+        return self._angle
 
     @angle.setter
     def angle(self, value: float) -> None:
-        self.angle = value
+        self._angle = value
 
 
 # --- Mock Continuous Servo Channel ---
 class MockContinuousServo(AbstractContinuousServo):
     def __init__(self):
-        self.throttle = None
+        self._throttle = None
 
     @property
     def throttle(self) -> float:
-        return self.throttle
+        return self._throttle
 
     @throttle.setter
     def throttle(self, value: float) -> None:
-        self.throttle = value
+        self._throttle = value
 
 
 # --- Mock ServoKit (drop-in replacement) ---
@@ -33,20 +33,20 @@ class MockServoKit(AbstractServoKit):
     def __init__(
         self,
         channels: int,
-        i2c: any = None,
+        i2c: Any = None,
         address: int = 0x40,
         reference_clock_speed: int = 25000000,
         frequency: int = 50,
     ):
         self.channels = channels
         self.address = address
-        self.servo = [MockServo() for _ in range(channels)]
-        self.continuous_servo = [MockContinuousServo() for _ in range(channels)]
+        self._servo = [MockServo() for _ in range(channels)]
+        self._continuous_servo = [MockContinuousServo() for _ in range(channels)]
 
     @property
     def servo(self) -> List[AbstractServo]:
-        return self.servo
+        return self._servo
 
     @property
     def continuous_servo(self) -> List[AbstractContinuousServo]:
-        return self.continuous_servo
+        return self._continuous_servo

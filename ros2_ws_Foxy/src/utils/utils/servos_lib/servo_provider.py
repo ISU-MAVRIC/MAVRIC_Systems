@@ -1,4 +1,5 @@
 from .abstract_servo import AbstractServoKit
+from rclpy.logging import get_logger
 
 
 class ServoProvider:
@@ -9,8 +10,14 @@ class ServoProvider:
         try:
             from .real_servo import RealServoKit
 
-            return RealServoKit(channels=channels)
+            tmp =  RealServoKit(channels=channels)
+            logger = get_logger("ServoProvider")
+            logger.info("Using RealServoKit for servo control.")
+            return tmp
         except AttributeError:
             from .mock_servo import MockServoKit
-
-            return MockServoKit(channels=channels)
+            
+            tmp =  MockServoKit(channels=channels)
+            logger = get_logger("ServoProvider")
+            logger.warn("RealServoKit not available, using MockServoKit for servo control.")
+            return tmp
