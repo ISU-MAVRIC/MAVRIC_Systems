@@ -9,7 +9,7 @@ Author: MAVRIC Team
 Date: 2025-11-04
 """
 
-from typing import List, Tuple, Callable, Optional, Any
+from typing import List, Tuple, Optional, Any
 from mavric_msg.msg import CANCommand, CANCommandBatch
 from .command_filter import CommandDeduplicator
 

@@ -182,7 +182,7 @@ def main(args=None):
 
     # Create and run the node with multi-threaded executor for better performance
     can_manager = CANManager()
-    executor = MultiThreadedExecutor(num_threads=4)
+    executor = MultiThreadedExecutor(num_threads=2)
     executor.add_node(can_manager)
 
     try:
