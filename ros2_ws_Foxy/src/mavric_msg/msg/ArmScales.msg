@@ -1,5 +1,5 @@
-float32 ShoulderRot
-float32 ShoulderPitch
-float32 ElbowPitch
-float32 WristPitch
-float32 WristRot
+float32 shoulder_rot
+float32 shoulder_pitch
+float32 elbow_pitch
+float32 wrist_pitch
+float32 wrist_rot

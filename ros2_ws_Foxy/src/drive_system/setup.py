@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'teleop.py = drive_system.teleop:main',
             'can_control.py = drive_system.can_control:main',
+            'scale_tuning.py = drive_system.scale_tuning:main',
         ],
     },
 )

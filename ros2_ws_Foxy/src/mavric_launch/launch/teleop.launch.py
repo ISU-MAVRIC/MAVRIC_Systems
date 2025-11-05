@@ -16,13 +16,12 @@ def generate_launch_description():
         ),
         Node(
             package='drive_system',
-            executable='teleop.py',
-            name='teleop',
-            parameters=[{'max_speed': 1.0}]
+            executable='can_control.py',
+            name='can_control'
         ),
         Node(
             package='drive_system',
-            executable='can_control.py',
-            name='can_control'
+            executable='scale_tuning.py',
+            name='scale_tuning'
         )
     ])

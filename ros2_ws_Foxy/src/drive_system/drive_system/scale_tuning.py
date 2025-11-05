@@ -20,11 +20,11 @@ class ScaleTuning(Node):
         
         #Startup values
         drive_scale = 1.0
-        arm_scales.ShoulderRot = 0.25
-        arm_scales.ShoulderPitch = 0.75
-        arm_scales.ElbowPitch = 0.75
-        arm_scales.WritePitch = 0.3
-        arm_scales.WristRot = 0.75
+        arm_scales.shoulder_rot = 0.25
+        arm_scales.shoulder_pitch = 0.75
+        arm_scales.shoulder_pitch = 0.75
+        arm_scales.wrist_pitch = 0.3
+        arm_scales.wrist_rot = 0.75
 
         #Drive Scale Subscriber
         self.driveScale_subscription = self.create_subscription(
@@ -76,12 +76,12 @@ class ScaleTuning(Node):
     def publish_feedback(self) -> None:
         """Publishes the current scaling values as feedback."""
         feedback = ScaleFeedback()
-        feedback.Drive = self.drive_scale
-        feedback.ShoulderRot = self.arm_scales.ShoulderRot
-        feedback.ShoulderPitch = self.arm_scales.ShoulderPitch
-        feedback.ElbowPitch = self.arm_scales.ElbowPitch
-        feedback.WristPitch = self.arm_scales.WristPitch
-        feedback.WristRot = self.arm_scales.WristRot
+        feedback.drive = self.drive_scale
+        feedback.shoulder_rot = self.arm_scales.shoulder_rot
+        feedback.shoulder_pitch = self.arm_scales.shoulder_pitch
+        feedback.shoulder_pitch = self.arm_scales.shoulder_pitch
+        feedback.wrist_pitch = self.arm_scales.wrist_pitch
+        feedback.wrist_rot = self.arm_scales.wrist_rot
         self.scaleFeedback_publisher.publish(feedback)  
 
 def main(args=None):
