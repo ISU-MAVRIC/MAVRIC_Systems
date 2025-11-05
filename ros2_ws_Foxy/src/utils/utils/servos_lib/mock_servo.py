@@ -1,5 +1,5 @@
-from abstract_servo import AbstractServoKit, AbstractServo, AbstractContinuousServo
-
+from .abstract_servo import AbstractServoKit, AbstractServo, AbstractContinuousServo
+from typing import List
 
 class MockServo(AbstractServo):
     def __init__(self):
@@ -32,9 +32,8 @@ class MockContinuousServo(AbstractContinuousServo):
 class MockServoKit(AbstractServoKit):
     def __init__(
         self,
-        *,
         channels: int,
-        i2c: None,
+        i2c: any = None,
         address: int = 0x40,
         reference_clock_speed: int = 25000000,
         frequency: int = 50,
@@ -45,9 +44,9 @@ class MockServoKit(AbstractServoKit):
         self.continuous_servo = [MockContinuousServo() for _ in range(channels)]
 
     @property
-    def servo(self) -> list[AbstractServo]:
+    def servo(self) -> List[AbstractServo]:
         return self.servo
 
     @property
-    def continuous_servo(self) -> list[AbstractContinuousServo]:
+    def continuous_servo(self) -> List[AbstractContinuousServo]:
         return self.continuous_servo

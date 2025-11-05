@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 
 
 # --- Abstract Interfaces ---
@@ -36,10 +36,10 @@ class AbstractServoKit(ABC):
 
     @property
     @abstractmethod
-    def servo(self) -> list[AbstractServo]:
+    def servo(self) -> List[AbstractServo]:
         pass
 
     @property
     @abstractmethod
-    def continuous_servo(self) -> list[AbstractContinuousServo]:
+    def continuous_servo(self) -> List[AbstractContinuousServo]:
         pass

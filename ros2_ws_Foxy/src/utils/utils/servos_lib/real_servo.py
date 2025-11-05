@@ -1,6 +1,6 @@
-from abstract_servo import AbstractServoKit, AbstractServo, AbstractContinuousServo
+from .abstract_servo import AbstractServoKit, AbstractServo, AbstractContinuousServo
 from adafruit_servokit import ServoKit
-from typing import Optional
+from typing import Optional, List
 from busio import I2C
 
 
@@ -56,9 +56,9 @@ class RealServoKit(AbstractServoKit):
         ]
 
     @property
-    def servo(self) -> list[AbstractServo]:
+    def servo(self) -> List[AbstractServo]:
         return self._servo
 
     @property
-    def continuous_servo(self) -> list[AbstractContinuousServo]:
+    def continuous_servo(self) -> List[AbstractContinuousServo]:
         return self._continuous

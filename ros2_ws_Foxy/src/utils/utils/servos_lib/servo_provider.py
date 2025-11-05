@@ -1,4 +1,4 @@
-from abstract_servo import AbstractServoKit
+from .abstract_servo import AbstractServoKit
 
 
 class ServoProvider:
@@ -7,10 +7,10 @@ class ServoProvider:
     @staticmethod
     def get_servo_kit(channels: int = 16) -> AbstractServoKit:
         try:
-            from real_servo import RealServoKit
+            from .real_servo import RealServoKit
 
             return RealServoKit(channels=channels)
-        except ImportError:
-            from mock_servo import MockServoKit
+        except AttributeError:
+            from .mock_servo import MockServoKit
 
             return MockServoKit(channels=channels)

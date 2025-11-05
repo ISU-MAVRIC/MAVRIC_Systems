@@ -15,6 +15,7 @@ from rclpy.node import Node
 from mavric_msg.msg import Arm, CANCommand, CANCommandBatch
 from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
+from utils.servos_lib import ServoProvider
 
 # CAN IDs for Arm Controllers
 SHOULDER_PITCH = 11
@@ -46,7 +47,7 @@ class ArmControlNode(Node):
         # Get parameters
         self.can_motor_ids = self.get_parameter("can_motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
-        servo_channel = self.get_parameter("servo_channel").value
+        self.servo_channel = self.get_parameter("servo_channel").value
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
@@ -66,14 +67,16 @@ class ArmControlNode(Node):
         )
 
         # Initialize ServoKit for PWM claw control
-        try:
-            from adafruit_servokit import ServoKit
-            self.kit = ServoKit(channels=16)
-            self.servo_channel = servo_channel
-            self.get_logger().info(f"ServoKit initialized for claw on channel {servo_channel}")
-        except Exception as e:
-            self.get_logger().warn(f"Failed to initialize ServoKit: {e}. Claw will not work.")
-            self.kit = None
+        # try:
+        #     from adafruit_servokit import ServoKit
+        #     self.kit = ServoKit(channels=16)
+        #     self.servo_channel = servo_channel
+        #     self.get_logger().info(f"ServoKit initialized for claw on channel {servo_channel}")
+        # except Exception as e:
+        #     self.get_logger().warn(f"Failed to initialize ServoKit: {e}. Claw will not work.")
+        #     self.kit = None
+
+        self.kit = ServoProvider.get_servo_kit()
 
         # Create subscriber for arm commands
         self.sub_arm = self.create_subscription(
