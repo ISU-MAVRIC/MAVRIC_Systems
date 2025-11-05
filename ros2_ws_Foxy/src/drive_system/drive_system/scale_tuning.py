@@ -19,7 +19,7 @@ class ScaleTuning(Node):
         super().__init__("scale_tuning")
         
         #Startup values
-        drive_scale = 1.0
+        drive_scale.data = 1.0
         arm_scales.shoulder_rot = 0.25
         arm_scales.shoulder_pitch = 0.75
         arm_scales.shoulder_pitch = 0.75
