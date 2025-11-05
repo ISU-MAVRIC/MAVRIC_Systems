@@ -51,10 +51,8 @@ class RealServoKit(AbstractServoKit):
             address=address,
         )
         self._servo = [RealServo(self._kit.servo[i]) for i in range(channels)]
-        # Note: ServoKit doesn't have a separate continuous_servo attribute.
-        # The difference is in how you set the throttle vs angle
         self._continuous = [
-            RealContinuousServo(self._kit.servo[i]) for i in range(channels)
+            RealContinuousServo(self._kit.continuous_servo[i]) for i in range(channels)
         ]
 
     @property
