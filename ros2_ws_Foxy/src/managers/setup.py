@@ -14,7 +14,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='mavric',
-    maintainer_email='',
+    maintainer_email='ronsecondmail@gmail.com',
     description='Singleton manager nodes for CAN and servo control in MAVRIC',
     license='Apache-2.0',
     tests_require=['pytest'],

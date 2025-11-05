@@ -4,7 +4,7 @@
   <name>managers</name>
   <version>0.0.0</version>
   <description>Singleton manager nodes for CAN and servo control in MAVRIC</description>
-  <maintainer email="">mavric</maintainer>
+  <maintainer email="todo@gmail.com">mavric</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>

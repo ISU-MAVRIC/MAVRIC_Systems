@@ -12,6 +12,7 @@
   <!-- Other MAVRIC Packages -->
   <exec_depend>msg</exec_depend>
   <exec_depend>utils</exec_depend>
+  <exec_depend>managers</exec_depend>
 
   <!-- ROS2 Packages -->
   <exec_depend>rclpy</exec_depend>
