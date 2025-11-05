@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'can_manager = drive_system.can_manager:main',
+            'servo_manager = drive_system.servo_manager:main',
             'drive_control = drive_system.drive_control:main',
             'steer_control = drive_system.steer_control:main',
             'arm_control = drive_system.arm_control:main',

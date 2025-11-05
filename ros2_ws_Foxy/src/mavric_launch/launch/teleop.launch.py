@@ -25,6 +25,11 @@ def generate_launch_description():
         ),
         Node(
             package='drive_system',
+            executable='servo_manager',
+            name='servo_manager'
+        ),
+        Node(
+            package='drive_system',
             executable='drive_control',
             name='drive_control'
         ),

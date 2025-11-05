@@ -13,7 +13,7 @@ class ServoManager(Node):
         self.address = self.get_parameter("address").value
 
         # Initialize ServoKit
-        self.kit = ServoProvider.get_servo_kit(andress=self.address)
+        self.kit = ServoProvider.get_servo_kit(address=self.address)
 
         # Create subscriber for servo commands
         self.sub_servo_command = self.create_subscription(
@@ -33,3 +33,19 @@ class ServoManager(Node):
             servo.throttle = msg.value
         else:
             self.get_logger().warn(f"Unknown servo type {msg.servo_type} for channel {msg.channel}")
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    servo_manager = ServoManager()
+
+    try:
+        rclpy.spin(servo_manager)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        servo_manager.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
