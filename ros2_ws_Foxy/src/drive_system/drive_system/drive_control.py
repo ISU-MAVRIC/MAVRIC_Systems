@@ -45,7 +45,6 @@ class DriveControlNode(Node):
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
-        self.use_batch = self.get_parameter("use_batch_commands").value
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
