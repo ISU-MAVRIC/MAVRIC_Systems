@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'drive_system'
+package_name = 'managers'
 
 setup(
     name=package_name,
@@ -14,17 +14,14 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='mavric',
-    maintainer_email='ronsecondmail@gmail.com',
-    description='TODO: Package description',
+    maintainer_email='',
+    description='Singleton manager nodes for CAN and servo control in MAVRIC',
     license='Apache-2.0',
     tests_require=['pytest'],
-    #Define what the package does/calls upon start up
-    #<command-name> = <module-path>:<function-name>
     entry_points={
         'console_scripts': [
-            'drive_control = drive_system.drive_control:main',
-            'steer_control = drive_system.steer_control:main',
-            'arm_control = drive_system.arm_control:main',
+            'can_manager = managers.can_manager:main',
+            'servo_manager = managers.servo_manager:main',
         ],
     },
 )

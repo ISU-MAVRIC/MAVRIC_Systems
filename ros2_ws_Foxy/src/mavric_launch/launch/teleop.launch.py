@@ -15,7 +15,7 @@ def generate_launch_description():
             name='rosapi'
         ),
         Node(
-            package='drive_system',
+            package='managers',
             executable='can_manager',
             name='can_manager',
             parameters=[{
@@ -24,7 +24,7 @@ def generate_launch_description():
             }]
         ),
         Node(
-            package='drive_system',
+            package='managers',
             executable='servo_manager',
             name='servo_manager'
         ),
