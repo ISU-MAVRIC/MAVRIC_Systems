@@ -13,6 +13,7 @@ import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import SteerTrain, CANCommand, CANCommandBatch
 from utils.command_filter import CommandDeduplicator
+from utils.can_publisher import CANCommandPublisher
 
 
 # CAN IDs for Steer Controllers
@@ -51,11 +52,19 @@ class SteerControlNode(Node):
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
-        self.deduplicator = CommandDeduplicator(deadband=command_deadband)
+        deduplicator = CommandDeduplicator(deadband=command_deadband)
 
-        # Create publishers based on batch mode
-        self.pub_can_batch = self.create_publisher(
+        # Create publisher for CAN commands
+        pub_can_batch = self.create_publisher(
             CANCommandBatch, "can_commands_batch", 10
+        )
+
+        # Initialize CAN command publisher helper
+        self.can_publisher = CANCommandPublisher(
+            publisher=pub_can_batch,
+            invert_motors=[],  # No motor inversions for steer
+            deduplicator=deduplicator,
+            command_type=CANCommand.POSITION_OUTPUT,
         )
 
         # Create subscriber for steer train commands
@@ -74,30 +83,16 @@ class SteerControlNode(Node):
         Args:
             msg (SteerTrain): High-level steer command with 4 motor values
         """
-        # Define motor-to-value mapping
+        # Define motor-to-value mapping with directional scaling
         motor_commands = [
-            (self.motor_ids[0], msg.steer_front_left * c_str_lfDir),    # FLS
-            (self.motor_ids[1], msg.steer_front_right * c_str_rfDir),   # FRS
-            (self.motor_ids[2], msg.steer_back_left * c_str_lbDir),     # BLS
-            (self.motor_ids[3], msg.steer_back_right * c_str_rbDir),    # BRS
+            (self.motor_ids[0], msg.steer_front_left * c_str_lfDir * c_str_Scale),    # FLS
+            (self.motor_ids[1], msg.steer_front_right * c_str_rfDir * c_str_Scale),   # FRS
+            (self.motor_ids[2], msg.steer_back_left * c_str_lbDir * c_str_Scale),     # BLS
+            (self.motor_ids[3], msg.steer_back_right * c_str_rbDir * c_str_Scale),    # BRS
         ]
 
-        # Create batch message with all commands
-        batch = CANCommandBatch()
-        for motor_id, value in motor_commands:
-
-            final_value = value * c_str_Scale
-
-            if self.deduplicator.should_send(motor_id, final_value):    
-                cmd = CANCommand(
-                    command_type=CANCommand.POSITION_OUTPUT,
-                    controller_id=motor_id,
-                    value=final_value
-                )
-                batch.commands.append(cmd)
-        
-        # Publish single batch message
-        self.pub_can_batch.publish(batch)
+        # Publish batch of commands via helper
+        self.can_publisher.publish_batch(motor_commands)
 
 
 def main(args=None):

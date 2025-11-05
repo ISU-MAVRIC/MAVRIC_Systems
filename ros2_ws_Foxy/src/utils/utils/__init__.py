@@ -6,5 +6,6 @@ and command filtering.
 """
 
 from .command_filter import CommandDeduplicator
+from .can_publisher import CANCommandPublisher
 
-__all__ = ['CommandDeduplicator']
+__all__ = ['CommandDeduplicator', 'CANCommandPublisher']

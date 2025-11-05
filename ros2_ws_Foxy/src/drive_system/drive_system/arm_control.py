@@ -14,6 +14,7 @@ import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import Arm, CANCommand, CANCommandBatch
 from utils.command_filter import CommandDeduplicator
+from utils.can_publisher import CANCommandPublisher
 
 # CAN IDs for Arm Controllers
 SHOULDER_PITCH = 11
@@ -33,14 +34,6 @@ c_WristPitch = 1
 c_WristRot = 1
 
 class ArmControlNode(Node):
-    """
-    ROS2 node for arm subsystem control.
-
-    Subscribes to high-level Arm messages and publishes low-level CANCommand
-    messages to the CAN manager for CAN motors. Directly controls PWM servo
-    for claw.
-    """
-
     def __init__(self) -> None:
         super().__init__("arm_control")
 
@@ -57,7 +50,20 @@ class ArmControlNode(Node):
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
-        self.deduplicator = CommandDeduplicator(deadband=command_deadband)
+        deduplicator = CommandDeduplicator(deadband=command_deadband)
+
+        # Create publisher for CAN commands
+        pub_can_batch = self.create_publisher(
+            CANCommandBatch, "can_commands_batch", 10
+        )
+
+        # Initialize CAN command publisher helper
+        self.can_publisher = CANCommandPublisher(
+            publisher=pub_can_batch,
+            invert_motors=self.invert_motors,
+            deduplicator=deduplicator,
+            command_type=CANCommand.PERCENT_OUTPUT,
+        )
 
         # Initialize ServoKit for PWM claw control
         try:
@@ -69,11 +75,6 @@ class ArmControlNode(Node):
             self.get_logger().warn(f"Failed to initialize ServoKit: {e}. Claw will not work.")
             self.kit = None
 
-        # Create publisher for CAN commands
-        self.pub_can_batch = self.create_publisher(
-            CANCommandBatch, "can_commands_batch", 10
-        )
-
         # Create subscriber for arm commands
         self.sub_arm = self.create_subscription(
             Arm, "arm_control", self.arm_callback, 10
@@ -84,43 +85,16 @@ class ArmControlNode(Node):
         )
 
     def arm_callback(self, msg: Arm) -> None:
-        """
-        Process high-level arm commands and publish CANCommand messages.
-
-        Args:
-            msg (Arm): High-level arm command with 5 CAN motors + 1 PWM servo
-        """
-        # Define CAN motor-to-value mapping
         can_motor_commands = [
-            (self.can_motor_ids[0], msg.shoulder_pitch * c_ShoulderPitch),   # SHOULDER_PITCH
-            (self.can_motor_ids[1], msg.shoulder_rot * c_ShoulderRot),         # SHOULDER_ROT
-            (self.can_motor_ids[2], msg.elbow_pitch * c_ElbowPitch),            # ELBOW_PITCH
-            (self.can_motor_ids[3], msg.wrist_pitch * c_WristPitch),            # WRIST_PITCH
-            (self.can_motor_ids[4], msg.wrist_rot * c_WristRot),                  # WRIST_ROT
+            (self.can_motor_ids[0], msg.shoulder_pitch * c_ShoulderPitch / 100.0),   # SHOULDER_PITCH
+            (self.can_motor_ids[1], msg.shoulder_rot * c_ShoulderRot / 100.0),         # SHOULDER_ROT
+            (self.can_motor_ids[2], msg.elbow_pitch * c_ElbowPitch / 100.0),            # ELBOW_PITCH
+            (self.can_motor_ids[3], msg.wrist_pitch * c_WristPitch / 100.0),            # WRIST_PITCH
+            (self.can_motor_ids[4], msg.wrist_rot * c_WristRot / 100.0),                  # WRIST_ROT
         ]
 
-        # Create and publish CANCommand for each CAN motor
-        batch = CANCommandBatch()
-        for motor_id, value in can_motor_commands:
-            # Apply inversion if configured
-            if motor_id in self.invert_motors:
-                value = value * INVERTED
-
-            final_value = value / 100.0
-
-            # Only add to batch if value changed significantly
-            if self.deduplicator.should_send(motor_id, final_value):
-                cmd = CANCommand(
-                    command_type=CANCommand.PERCENT_OUTPUT,
-                    controller_id=motor_id,
-                    value=final_value
-                )
-                batch.commands.append(cmd)
-
-        # Only publish if batch has commands
-        if batch.commands:
-            self.pub_can_batch.publish(batch)
-        
+        # Publish batch of commands via helper
+        self.can_publisher.publish_batch(can_motor_commands)
 
         # Handle PWM servo for claw
         if self.kit is not None:
