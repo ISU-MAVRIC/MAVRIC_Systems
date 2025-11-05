@@ -126,6 +126,7 @@ class ArmControlNode(Node):
         if self.kit is not None:
             try:
                 self.kit.continuous_servo[self.servo_channel].throttle = msg.claw
+                self.get_logger().info(f"Claw servo set to throttle: {msg.claw}")
             except Exception as e:
                 self.get_logger().warn(f"Failed to control claw servo: {e}")
 
