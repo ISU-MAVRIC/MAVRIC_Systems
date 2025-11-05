@@ -12,7 +12,7 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import Arm, CANCommand, CANCommandBatch
+from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand
 from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
 from utils.servos_lib import ServoProvider
@@ -51,7 +51,8 @@ class ArmControlNode(Node):
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
-        deduplicator = CommandDeduplicator(deadband=command_deadband)
+        can_deduplicator = CommandDeduplicator(deadband=command_deadband)
+        servo_deduplicator = CommandDeduplicator(deadband=command_deadband)
 
         # Create publisher for CAN commands
         pub_can_batch = self.create_publisher(
@@ -62,22 +63,14 @@ class ArmControlNode(Node):
         self.can_publisher = CANCommandPublisher(
             publisher=pub_can_batch,
             invert_motors=self.invert_motors,
-            deduplicator=deduplicator,
+            deduplicator=can_deduplicator,
             command_type=CANCommand.PERCENT_OUTPUT,
         )
 
-        # Initialize ServoKit for PWM claw control
-        # try:
-        #     from adafruit_servokit import ServoKit
-        #     self.kit = ServoKit(channels=16)
-        #     self.servo_channel = servo_channel
-        #     self.get_logger().info(f"ServoKit initialized for claw on channel {servo_channel}")
-        # except Exception as e:
-        #     self.get_logger().warn(f"Failed to initialize ServoKit: {e}. Claw will not work.")
-        #     self.kit = None
-
-        self.servo_channel = servo_channel
-        self.kit = ServoProvider.get_servo_kit()
+        # Create Publisher for Servo commands
+        self.pub_servo_command = self.create_publisher(
+            ServoCommand, "servo_commands", 10
+        )
 
         # Create subscriber for arm commands
         self.sub_arm = self.create_subscription(
@@ -100,12 +93,14 @@ class ArmControlNode(Node):
         # Publish batch of commands via helper
         self.can_publisher.publish_batch(can_motor_commands)
 
-        # Handle PWM servo for claw
-        if self.kit is not None:
-            try:
-                self.kit.continuous_servo[self.servo_channel].throttle = msg.claw
-            except Exception as e:
-                self.get_logger().warn(f"Failed to control claw servo: {e}")
+        if self.servo_deduplicator.should_send(self.servo_channel, msg.claw):
+            servoMsg = ServoCommand(
+                servo_type=ServoCommand.CONTINUOUS_SERVO,
+                channel=self.servo_channel,
+                value=msg.claw
+            )
+            self.pub_servo_command.publish(servoMsg)
+        
 
 
 def main(args=None):
