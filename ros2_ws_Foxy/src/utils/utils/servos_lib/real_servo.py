@@ -50,21 +50,23 @@ class RealServoKit(AbstractServoKit):
             frequency=frequency,
             address=address,
         )
-        self._servo = [RealServo(self._kit.servo[i]) for i in range(channels)]
-        # Store kit and channels for lazy initialization of continuous servos
-        self._kit_ref = self._kit
         self._channels = channels
-        self._continuous = None  # Lazy load on first access
+        # Lazy initialization to avoid "channel already in use" errors
+        self._servo = [None] * channels
+        self._continuous = [None] * channels
 
     @property
     def servo(self) -> List[AbstractServo]:
+        # Lazily initialize servo wrappers when accessed
+        for i in range(self._channels):
+            if self._servo[i] is None:
+                self._servo[i] = RealServo(self._kit.servo[i])
         return self._servo
 
     @property
     def continuous_servo(self) -> List[AbstractContinuousServo]:
-        # Lazy initialize continuous servos only when accessed
-        if self._continuous is None:
-            self._continuous = [
-                RealContinuousServo(self._kit_ref.continuous_servo[i]) for i in range(self._channels)
-            ]
+        # Lazily initialize continuous servo wrappers when accessed
+        for i in range(self._channels):
+            if self._continuous[i] is None:
+                self._continuous[i] = RealContinuousServo(self._kit.continuous_servo[i])
         return self._continuous
