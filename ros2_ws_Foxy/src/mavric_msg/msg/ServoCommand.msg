@@ -6,4 +6,4 @@ uint8 CONTINUOUS_SERVO = 2
 
 uint8 servo_type          # Type of servo being commanded
 uint8 channel             # Target servo channel (0-15)
-uint8 value               # Command value (0 to actuation range for standard, -1 to 1 for continuous)
+float32 value               # Command value (0 to actuation range for standard, -1 to 1 for continuous)

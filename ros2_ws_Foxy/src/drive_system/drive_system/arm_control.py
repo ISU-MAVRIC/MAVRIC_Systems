@@ -15,7 +15,6 @@ from rclpy.node import Node
 from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand
 from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
-from utils.servos_lib import ServoProvider
 
 # CAN IDs for Arm Controllers
 SHOULDER_PITCH = 11
@@ -47,12 +46,12 @@ class ArmControlNode(Node):
         # Get parameters
         self.can_motor_ids = self.get_parameter("can_motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
-        servo_channel = self.get_parameter("servo_channel").value
+        self.servo_channel = self.get_parameter("servo_channel").value
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
         can_deduplicator = CommandDeduplicator(deadband=command_deadband)
-        servo_deduplicator = CommandDeduplicator(deadband=command_deadband)
+        self.servo_deduplicator = CommandDeduplicator(deadband=command_deadband)
 
         # Create publisher for CAN commands
         pub_can_batch = self.create_publisher(
