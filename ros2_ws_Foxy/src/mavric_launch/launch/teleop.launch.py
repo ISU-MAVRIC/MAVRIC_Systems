@@ -23,11 +23,11 @@ def generate_launch_description():
                 # 'status_publish_rate': 20  # Only used if mode is 'publish' or 'both'
             }]
         ),
-        Node(
-            package='drive_system',
-            executable='drive_control',
-            name='drive_control'
-        ),
+        # Node(
+        #     package='drive_system',
+        #     executable='drive_control',
+        #     name='drive_control'
+        # ),
         Node(
             package='drive_system',
             executable='steer_control',
