@@ -17,6 +17,7 @@ from utils.SparkCANLib import SparkController, SparkCAN
 from drive_system.drive_control import DriveControl
 from drive_system.steer_control import SteerControl
 from drive_system.arm_control import ArmControl
+from rclpy.qos import QoSProfile, Reliability, HistoryPolicy, DurabilityPolicy
 
 
 
@@ -49,12 +50,19 @@ class CanControl(Node):
             Arm, "arm_control", self.arm_listener, 10
         )
 
+
+        qos_profile = QoSProfile(
+            reliability=Reliability.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
         self.drive_scale_sub = self.create_subscription(
-            Float64, "drive_scale", self.drive_scale_listener, 10
+            Float64, "drive_scale", self.drive_scale_listener, qos_profile=qos_profile
         )
 
         self.arm_scale_sub = self.create_subscription(
-            ArmScales, "arm_scales", self.arm_scale_listener, 10
+            ArmScales, "arm_scales", self.arm_scale_listener, qos_profile=qos_profile
         )
 
     def drive_scale_listener(self, msg) -> None:
