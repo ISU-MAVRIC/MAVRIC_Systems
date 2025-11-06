@@ -11,7 +11,8 @@ Date: 10/21/23
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import DriveTrain, SteerTrain, Arm
+from mavric_msg.msg import DriveTrain, SteerTrain, Arm, ArmScales
+from std_msgs.msg import Float64
 from utils.SparkCANLib import SparkController, SparkCAN
 from drive_system.drive_control import DriveControl
 from drive_system.steer_control import SteerControl
@@ -47,6 +48,20 @@ class CanControl(Node):
         self.arm_subscription = self.create_subscription(
             Arm, "arm_control", self.arm_listener, 10
         )
+
+        self.drive_scale_sub = self.create_subscription(
+            Float64, "drive_scale", self.drive_scale_listener, 10
+        )
+
+        self.arm_scale_sub = self.create_subscription(
+            ArmScales, "arm_scales", self.arm_scale_listener, 10
+        )
+
+    def drive_scale_listener(self, msg) -> None:
+        self.drive_control.set_scale(msg.data)
+    
+    def arm_scale_listener(self, msg) -> None:
+        self.arm_control.set_scale(msg)
 
     def drive_listener(self, msg: DriveTrain) -> None:
         """

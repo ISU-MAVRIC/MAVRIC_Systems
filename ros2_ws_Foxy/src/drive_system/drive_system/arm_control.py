@@ -1,4 +1,4 @@
-from mavric_msg.msg import Arm
+from mavric_msg.msg import Arm, ArmScales
 from utils.SparkCANLib.SparkCAN import SparkBus
 #from adafruit_servokit import ServoKit
 from typing import Optional
@@ -61,4 +61,12 @@ class ArmControl:
         self.WPMotor.percent_output(msg.wrist_pitch * c_WristPitch * c_WristPitchDir/100)
         self.WRMotor.percent_output(msg.wrist_rot * c_WristRot * c_WristRotDir/100)
         #self.kit.continuous_servo[1].throttle = msg.claw
+    
+    def set_scale(self, msg: ArmScales) -> None:
+        global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
+        c_ShoulderPitch = msg.shoulder_pitch
+        c_ShoulderRot = msg.shoulder_rot
+        c_ElbowPitch = msg.elbow_pitch
+        c_WristPitch = msg.wrist_pitch
+        c_WristRot = msg.wrist_rot  
         

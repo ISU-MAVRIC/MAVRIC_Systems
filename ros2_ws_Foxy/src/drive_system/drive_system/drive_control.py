@@ -48,3 +48,8 @@ class DriveControl:
         self.FRMotor.velocity_output(INVERTED * msg.front_right * c_Scale)
         self.BLMotor.velocity_output(msg.back_left * c_Scale)
         self.BRMotor.velocity_output(INVERTED * msg.back_right * c_Scale)
+
+    def set_scale(self, new_scale) -> float:
+        global c_Scale, c_Scale
+        new_scale = max(0.0, min(1.0, new_scale))
+        c_Scale = c_Scale_Max * new_scale
