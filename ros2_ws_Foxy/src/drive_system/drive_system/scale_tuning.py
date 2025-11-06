@@ -49,6 +49,9 @@ class ScaleTuning(Node):
         # Feedback timer
         self.timer = self.create_timer(5.0, self.publish_feedback)
 
+        self.driveScale_publisher.publish(drive_scale)
+        self.armScale_publisher.publish(arm_scales)
+
 
     def driveScale_listener(self, msg: Float64) -> None:
         """Called whenever new drive scaling is received from basestation."""
