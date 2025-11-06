@@ -1,0 +1,4 @@
+---
+mavric_msg/ScaleFeedback feedback
+bool success
+string message

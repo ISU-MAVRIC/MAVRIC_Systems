@@ -3,6 +3,8 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64
+from std_srvs.srv import Trigger
+from mavric_msg.srv import GetScales
 from mavric_msg.msg import ArmScales, ScaleFeedback
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
@@ -61,14 +63,16 @@ class ScaleTuning(Node):
         self.driveScale_publisher = self.create_publisher(Float64, "drive_scale", qos_profile=qos_profile)
         self.armScale_publisher = self.create_publisher(ArmScales, "arm_scales", qos_profile=qos_profile)
         self.scaleFeedback_publisher = self.create_publisher(ScaleFeedback, "scale_feedback", qos_profile=qos_profile)
+        # Optional: on-demand service to get current scales (synchronous)
+        # Use structured GetScales service so clients don't have to parse strings
+        self.get_scales_srv = self.create_service(GetScales, "get_scales", self._handle_get_scales)
 
         # Publish defaults
         self.driveScale_publisher.publish(self.drive_scale)
         self.armScale_publisher.publish(self.arm_scales)
         self.publish_feedback()
 
-        # Feedback timer
-        # self.timer = self.create_timer(5.0, self.publish_feedback)
+    
 
     def _on_drive_scale(self, msg: Float64) -> None:
         """Callback for incoming drive_scale messages — update and publish immediate feedback."""
@@ -90,6 +94,25 @@ class ScaleTuning(Node):
         feedback.wrist_pitch = self.arm_scales.wrist_pitch
         feedback.wrist_rot = self.arm_scales.wrist_rot
         self.scaleFeedback_publisher.publish(feedback)
+
+    def _handle_get_scales(self, request, response):
+        """GetScales service: return current scale values as structured feedback."""
+        # Ensure latest feedback is published for any transient_local subscribers
+        # self.publish_feedback()
+
+        # Build structured feedback message
+        fb = ScaleFeedback()
+        fb.drive = self.drive_scale.data if isinstance(self.drive_scale, Float64) else self.drive_scale
+        fb.shoulder_rot = self.arm_scales.shoulder_rot
+        fb.shoulder_pitch = self.arm_scales.shoulder_pitch
+        fb.elbow_pitch = self.arm_scales.elbow_pitch
+        fb.wrist_pitch = self.arm_scales.wrist_pitch
+        fb.wrist_rot = self.arm_scales.wrist_rot
+
+        response.feedback = fb
+        response.success = True
+        response.message = "ok"
+        return response
 
 
 def main(args=None):
