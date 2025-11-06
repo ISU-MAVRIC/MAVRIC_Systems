@@ -4,6 +4,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64
 from mavric_msg.msg import ArmScales, ScaleFeedback
+from rclpy.qos import QoSProfile, Reliability, HistoryPolicy, DurabilityPolicy
 
 arm_scales = ArmScales()
 drive_scale = Float64()
@@ -37,9 +38,16 @@ class ScaleTuning(Node):
             ArmScales, "arm_scales", self.armScale_listener, 10
         )
 
+        qos_profile = QoSProfile(
+            reliability=Reliability.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+
         # Publishers
-        self.driveScale_publisher = self.create_publisher(Float64, "drive_scale", 10)
-        self.armScale_publisher = self.create_publisher(ArmScales, "arm_scales", 10)
+        self.driveScale_publisher = self.create_publisher(Float64, "drive_scale", qos_profile=qos_profile)
+        self.armScale_publisher = self.create_publisher(ArmScales, "arm_scales", qos_profile=qos_profile)
         self.scaleFeedback_publisher = self.create_publisher(ScaleFeedback, "scale_feedback", 10)
 
         # Publish defaults
@@ -48,9 +56,6 @@ class ScaleTuning(Node):
 
         # Feedback timer
         self.timer = self.create_timer(5.0, self.publish_feedback)
-
-        self.driveScale_publisher.publish(drive_scale)
-        self.armScale_publisher.publish(arm_scales)
 
 
     def driveScale_listener(self, msg: Float64) -> None:
