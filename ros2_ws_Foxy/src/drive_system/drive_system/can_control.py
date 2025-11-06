@@ -17,7 +17,7 @@ from utils.SparkCANLib import SparkController, SparkCAN
 from drive_system.drive_control import DriveControl
 from drive_system.steer_control import SteerControl
 from drive_system.arm_control import ArmControl
-from rclpy.qos import QoSProfile, Reliability, HistoryPolicy, DurabilityPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
 
 
@@ -52,7 +52,7 @@ class CanControl(Node):
 
 
         qos_profile = QoSProfile(
-            reliability=Reliability.RELIABLE,
+            reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
             history=HistoryPolicy.KEEP_LAST,
             depth=1

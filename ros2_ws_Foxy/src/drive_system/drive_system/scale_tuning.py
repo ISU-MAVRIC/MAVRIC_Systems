@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64
 from mavric_msg.msg import ArmScales, ScaleFeedback
-from rclpy.qos import QoSProfile, Reliability, HistoryPolicy, DurabilityPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
 arm_scales = ArmScales()
 drive_scale = Float64()
@@ -39,7 +39,7 @@ class ScaleTuning(Node):
         )
 
         qos_profile = QoSProfile(
-            reliability=Reliability.RELIABLE,
+            reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
             history=HistoryPolicy.KEEP_LAST,
             depth=1
