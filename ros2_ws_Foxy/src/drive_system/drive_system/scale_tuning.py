@@ -18,8 +18,9 @@ class ScaleTuning(Node):
     def __init__(self) -> None:
         super().__init__("scale_tuning")
         
-        #Startup values
-        drive_scale = 1.0
+        # Startup values
+        global arm_scales, drive_scale
+        drive_scale = Float64(data=1.0)
         arm_scales.shoulder_rot = 0.25
         arm_scales.shoulder_pitch = 0.75
         arm_scales.elbow_pitch = 0.5
