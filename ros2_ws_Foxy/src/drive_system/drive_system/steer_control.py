@@ -34,7 +34,7 @@ class SteerControl:
         self.BLMotor = self.bus.init_controller(BLS)
         self.BRMotor = self.bus.init_controller(BRS)
 
-    def set_velocity(self, msg: SteerTrain):
+    def set_position(self, msg: SteerTrain):
         """
         Sets the velocity of the motors based on the ROS values.
 

@@ -47,7 +47,7 @@ class ArmControl:
         self.WPMotor = self.bus.init_controller(wrist_pitch)
         self.WRMotor = self.bus.init_controller(wrist_rot)
 
-    def set_velocity(self, msg: Arm):
+    def set_movement(self, msg: Arm):
         """
         Sets the velocity of the motors based on the ROS values.
 
