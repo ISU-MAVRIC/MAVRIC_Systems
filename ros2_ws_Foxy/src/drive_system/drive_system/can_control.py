@@ -56,7 +56,6 @@ class CanControl(Node):
             10
         )
 
-
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -65,13 +64,13 @@ class CanControl(Node):
         )
         self.drive_scale_sub = self.create_subscription(
             Float64, "drive_scale",
-            lambda msg: self.drive_scale_listener(msg),
+            lambda msg: self.drive_control.set_scale(msg),
             qos_profile
         )
 
         self.arm_scale_sub = self.create_subscription(
             ArmScales, "arm_scales",
-            lambda msg: self.arm_scale_listener(msg),
+            lambda msg: self.arm_control.set_scale(msg),
             qos_profile
         )
 

@@ -9,6 +9,7 @@ Date: 10/21/23
 """
 
 from mavric_msg.msg import DriveTrain
+from std_msgs.msg import Float64
 from utils.SparkCANLib.SparkCAN import SparkBus
 
 # CAN IDs for Drive Controllers
@@ -49,7 +50,7 @@ class DriveControl:
         self.BLMotor.velocity_output(msg.back_left * c_Scale)
         self.BRMotor.velocity_output(INVERTED * msg.back_right * c_Scale)
 
-    def set_scale(self, new_scale) -> float:
+    def set_scale(self, new_scale: Float64) -> None:
         global c_Scale, c_Scale
-        new_scale = max(0.0, min(1.0, new_scale))
+        new_scale = max(0.0, min(1.0, new_scale.data))
         c_Scale = c_Scale_Max * new_scale

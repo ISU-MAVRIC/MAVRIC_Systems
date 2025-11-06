@@ -1,7 +1,6 @@
 from mavric_msg.msg import Arm, ArmScales
 from utils.SparkCANLib.SparkCAN import SparkBus
-from adafruit_servokit import ServoKit
-from typing import Optional
+from rclpy.logging import get_logger
 
 # CAN IDs for Drive Controllers
 shoulder_pitch = 11
@@ -38,7 +37,13 @@ class ArmControl:
 
     def __init__(self, bus: SparkBus):
         self.bus = bus
-        self.kit = ServoKit(channels=16)
+        try:
+            from adafruit_servokit import ServoKit
+            self.kit = ServoKit(channels=16)
+        except AttributeError:
+            get_logger("ArmControl").warning("Adafruit ServoKit library not found. Claw control will be disabled.")
+            self.kit = None
+
         # Initialize logger before any log calls and keep attribute name consistent
 
         self.SPMotor = self.bus.init_controller(shoulder_pitch)

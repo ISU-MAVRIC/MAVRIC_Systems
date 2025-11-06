@@ -34,19 +34,19 @@ class ScaleTuning(Node):
         self.arm_scales.wrist_pitch = self.get_parameter('arm_scales.wrist_pitch').value
         self.arm_scales.wrist_rot = self.get_parameter('arm_scales.wrist_rot').value
 
-        # Drive subscription stores the incoming message on this node
+        # Drive subscription — update node state and immediately publish feedback
         self.driveScale_subscription = self.create_subscription(
             Float64,
             "drive_scale",
-            lambda msg: setattr(self, 'drive_scale', msg), # self.drive_scale = msg
+            self._on_drive_scale,
             10,
         )
 
-        # Arm scales subscription stores the incoming message on this node
+        # Arm scales subscription — update node state and immediately publish feedback
         self.armScales_subscription = self.create_subscription(
             ArmScales,
             "arm_scales",
-            lambda msg: setattr(self, 'arm_scales', msg), # self.arm_scales = msg
+            self._on_arm_scales,
             10,
         )
 
@@ -60,15 +60,25 @@ class ScaleTuning(Node):
         # Publishers
         self.driveScale_publisher = self.create_publisher(Float64, "drive_scale", qos_profile=qos_profile)
         self.armScale_publisher = self.create_publisher(ArmScales, "arm_scales", qos_profile=qos_profile)
-        self.scaleFeedback_publisher = self.create_publisher(ScaleFeedback, "scale_feedback", 10)
+        self.scaleFeedback_publisher = self.create_publisher(ScaleFeedback, "scale_feedback", qos_profile=qos_profile)
 
         # Publish defaults
         self.driveScale_publisher.publish(self.drive_scale)
         self.armScale_publisher.publish(self.arm_scales)
+        self.publish_feedback()
 
         # Feedback timer
-        self.timer = self.create_timer(5.0, self.publish_feedback)
+        # self.timer = self.create_timer(5.0, self.publish_feedback)
 
+    def _on_drive_scale(self, msg: Float64) -> None:
+        """Callback for incoming drive_scale messages — update and publish immediate feedback."""
+        self.drive_scale = msg
+        self.publish_feedback()
+
+    def _on_arm_scales(self, msg: ArmScales) -> None:
+        """Callback for incoming arm_scales messages — update and publish immediate feedback."""
+        self.arm_scales = msg
+        self.publish_feedback()
 
     def publish_feedback(self) -> None:
         """Publishes the current scaling values as feedback."""
