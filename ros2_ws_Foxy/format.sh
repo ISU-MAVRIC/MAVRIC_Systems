@@ -6,10 +6,10 @@ black .
 isort .
 
 echo "🔧 Formatting C++ files..."
-find src -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
+find src -name '*.cpp' -o -name '*.hpp' | xargs -r clang-format -i
 
 echo "🔧 Formatting YAML files..."
-find . -name '*.yaml' -o -name '*.yml' | xargs yamllint -f parsable || true
+find . -name '*.yaml' -o -name '*.yml' | xargs -r yamllint -f parsable || true
 
 echo "🔧 Formatting XML files..."
 for f in $(find . -name '*.xml'); do
