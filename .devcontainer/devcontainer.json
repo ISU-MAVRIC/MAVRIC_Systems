@@ -4,7 +4,7 @@
         "dockerfile": "Dockerfile",
         "context": "."
     },
-    "postCreateCommand": "sudo apt-get install -y --no-install-recommends git && sudo pip3 install --no-cache-dir pre-commit && pre-commit install",
+    "postCreateCommand": "sudo pip3 install --no-cache-dir black isort yamllint cmake-format cmakelint && sudo apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true && sudo apt-get install -y --no-install-recommends clang-format libxml2-utils && sudo rm -rf /var/lib/apt/lists/*",
     "runArgs": [
         "--network=host"
     ],
