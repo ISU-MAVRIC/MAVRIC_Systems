@@ -15,3 +15,19 @@ repos:
     rev: v1.32.0
     hooks:
       - id: yamllint
+  - repo: https://github.com/cheshirekow/cmake_format
+    rev: v0.6.13
+    hooks:
+      - id: cmake-format
+        args: [--check]
+  - repo: https://github.com/cmake-lint/cmake-lint
+    rev: v1.4.2
+    hooks:
+      - id: cmakelint
+  - repo: local
+    hooks:
+      - id: xmllint
+        name: XML formatting
+        entry: xmllint --format
+        language: system
+        files: \.xml$
