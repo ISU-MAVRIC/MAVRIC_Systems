@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import ArmScales, ScaleFeedback
-from std_msgs import Float64
+from std_msgs.msg import Float64
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
 
@@ -66,13 +66,17 @@ class ScaleTuning(Node):
 
     def _on_drive_scale(self, msg: Float64) -> None:
         """Callback for incoming drive_scale messages — update and publish immediate feedback."""
-        self.drive_scale = msg
-        self.publish_feedback()
+        self.msg_scale.drive = msg.data
+        self._publish_feedback(self.msg_scale)
 
     def _on_arm_scales(self, msg: ArmScales) -> None:
         """Callback for incoming arm_scales messages — update and publish immediate feedback."""
-        self.arm_scales = msg
-        self.publish_feedback()
+        self.msg_scale.shoulder_rot = msg.shoulder_rot
+        self.msg_scale.shoulder_pitch = msg.shoulder_pitch
+        self.msg_scale.elbow_pitch = msg.elbow_pitch
+        self.msg_scale.wrist_pitch = msg.wrist_pitch
+        self.msg_scale.wrist_rot = msg.wrist_rot
+        self._publish_feedback(self.msg_scale)
 
     def _publish_feedback(self, msg: ScaleFeedback) -> None:
         """Publishes the current scaling values as feedback."""
