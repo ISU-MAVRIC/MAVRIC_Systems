@@ -68,7 +68,7 @@ class DriveControlNode(Node):
         # Subscriber for updating drive scales
         self.sub_drive_scale = self.create_subscription(
             ScaleFeedback,
-            "scale_command",
+            "scale_feedback",
             self._set_scale,
             10,
         )
