@@ -33,6 +33,20 @@ c_ElbowPitch = 1
 c_WristPitch = 1
 c_WristRot = 1
 
+# Arm Directions
+c_ShoulderRotDir = 1        
+c_ShoulderPitchDir = 1     # If axis is moving wrong way, invert these 
+c_ElbowPitchDir = 1
+c_WristPitchDir = 1
+c_WristRotDir = -1
+
+# Arm Scales
+c_ShoulderPitch = 1         # Define individual arm rates
+c_ShoulderRot = 1           # If one axis is faster/slower than the others, change these values
+c_ElbowPitch = 1
+c_WristPitch = 1
+c_WristRot = 1
+
 class ArmControlNode(Node):
     def __init__(self) -> None:
         super().__init__("arm_control")
@@ -99,7 +113,14 @@ class ArmControlNode(Node):
                 value=msg.claw
             )
             self.pub_servo_command.publish(servoMsg)
-        
+    
+    def set_scale(self, msg: ArmScales) -> None:
+        global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
+        c_ShoulderPitch = msg.shoulder_pitch
+        c_ShoulderRot = msg.shoulder_rot
+        c_ElbowPitch = msg.elbow_pitch
+        c_WristPitch = msg.wrist_pitch
+        c_WristRot = msg.wrist_rot  
 
 
 def main(args=None):

@@ -25,6 +25,7 @@ setup(
             'drive_control = drive_system.drive_control:main',
             'steer_control = drive_system.steer_control:main',
             'arm_control = drive_system.arm_control:main',
+            'scale_tuning.py = drive_system.scale_tuning:main'
         ],
     },
 )

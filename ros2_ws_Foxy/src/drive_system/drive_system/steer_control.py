@@ -30,7 +30,6 @@ c_str_lbDir = 1
 c_str_rfDir = 1
 c_str_rbDir = 0.9
 
-
 class SteerControlNode(Node):
     """
     ROS2 node for steer subsystem control.

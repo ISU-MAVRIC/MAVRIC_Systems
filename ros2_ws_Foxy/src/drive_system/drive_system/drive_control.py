@@ -12,6 +12,7 @@ Date: 2025-11-02
 import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import DriveTrain, CANCommand, CANCommandBatch
+from std_msgs.msg import Float64
 from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
 
@@ -76,6 +77,10 @@ class DriveControlNode(Node):
         # Publish batch of commands via helper
         self.can_publisher.publish_batch(motor_commands)
 
+    def set_scale(self, new_scale: Float64) -> None:
+        global c_Scale, c_Scale
+        new_scale = max(0.0, min(1.0, new_scale.data))
+        c_Scale = c_Scale_Max * new_scale
 
 
 def main(args=None):

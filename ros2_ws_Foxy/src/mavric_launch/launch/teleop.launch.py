@@ -42,5 +42,11 @@ def generate_launch_description():
             package='drive_system',
             executable='arm_control',
             name='arm_control'
+        ),
+        Node(
+            package='drive_system',
+            executable='scale_tuning.py',
+            name='scale_tuning'
         )
+    ])
     ])
