@@ -12,7 +12,7 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand, ArmScales
+from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand, ArmScales, ScaleFeedback
 from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
 
@@ -94,8 +94,8 @@ class ArmControlNode(Node):
         )
 
         self.sub_arm_scales = self.create_subscription(
-            ArmScales,
-            "arm_scales",
+            ScaleFeedback,
+            "scale_feedback",
             self._set_scale,
             10,
         )
@@ -120,7 +120,7 @@ class ArmControlNode(Node):
             )
             self.pub_servo_command.publish(servoMsg)
     
-    def _set_scale(self, msg: ArmScales) -> None:
+    def _set_scale(self, msg: ScaleFeedback) -> None:
         global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
         c_ShoulderPitch = msg.shoulder_pitch
         c_ShoulderRot = msg.shoulder_rot

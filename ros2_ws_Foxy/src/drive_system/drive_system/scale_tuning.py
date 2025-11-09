@@ -2,8 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import ArmScales, ScaleFeedback
-from std_msgs.msg import Float64
+from mavric_msg.msg import ScaleFeedback
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
 
@@ -24,7 +23,6 @@ class ScaleTuning(Node):
         self.declare_parameter('wrist_pitch', 0.3)
         self.declare_parameter('wrist_rot', 0.75)
 
-        # Create scale msg
         self.msg_scale = ScaleFeedback(
             drive = self.get_parameter('drive').value,
             shoulder_rot = self.get_parameter('shoulder_rot').value,
@@ -45,38 +43,29 @@ class ScaleTuning(Node):
         # Publishers
         self.scaleFeedback_publisher = self.create_publisher(ScaleFeedback, "scale_feedback", qos_profile=qos_profile)
 
-        # Drive subscription — update node state and immediately publish feedback
-        self.driveScale_subscription = self.create_subscription(
-            Float64,
-            "drive_scale",
-            self._on_drive_scale,
-            10,
-        )
-
-        # Arm scales subscription — update node state and immediately publish feedback
-        self.armScales_subscription = self.create_subscription(
-            ArmScales,
-            "arm_scales",
-            self._on_arm_scales,
-            10,
+        # Subscriber to Update values
+        self.scaleFeedback_sub = self.create_subscription(
+            ScaleFeedback,
+            "scale_feedback",
+            self._update_scales,
+            10
         )
 
         # Publish defaults
         self._publish_feedback(self.msg_scale)
 
-    def _on_drive_scale(self, msg: Float64) -> None:
-        """Callback for incoming drive_scale messages — update and publish immediate feedback."""
-        self.msg_scale.drive = msg.data
-        self._publish_feedback(self.msg_scale)
-
-    def _on_arm_scales(self, msg: ArmScales) -> None:
-        """Callback for incoming arm_scales messages — update and publish immediate feedback."""
-        self.msg_scale.shoulder_rot = msg.shoulder_rot
-        self.msg_scale.shoulder_pitch = msg.shoulder_pitch
-        self.msg_scale.elbow_pitch = msg.elbow_pitch
-        self.msg_scale.wrist_pitch = msg.wrist_pitch
-        self.msg_scale.wrist_rot = msg.wrist_rot
-        self._publish_feedback(self.msg_scale)
+    def _update_scales(self, msg: ScaleFeedback) -> None:
+        """Updates scale values only if any value differs by more than 0.01."""
+        if (abs(msg.drive - self.msg_scale.drive) < 0.01 and
+            abs(msg.shoulder_rot - self.msg_scale.shoulder_rot) < 0.01 and
+            abs(msg.shoulder_pitch - self.msg_scale.shoulder_pitch) < 0.01 and
+            abs(msg.elbow_pitch - self.msg_scale.elbow_pitch) < 0.01 and
+            abs(msg.wrist_pitch - self.msg_scale.wrist_pitch) < 0.01 and
+            abs(msg.wrist_rot - self.msg_scale.wrist_rot) < 0.01):
+            return
+        
+        self.msg_scale = msg
+        self._publish_feedback(msg)
 
     def _publish_feedback(self, msg: ScaleFeedback) -> None:
         """Publishes the current scaling values as feedback."""

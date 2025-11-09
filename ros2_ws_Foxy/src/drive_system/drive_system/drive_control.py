@@ -11,7 +11,7 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import DriveTrain, CANCommand, CANCommandBatch
+from mavric_msg.msg import DriveTrain, CANCommand, CANCommandBatch, ScaleFeedback
 from std_msgs.msg import Float64
 from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
@@ -67,8 +67,8 @@ class DriveControlNode(Node):
 
         # Subscriber for updating drive scales
         self.sub_drive_scale = self.create_subscription(
-            Float64,
-            "drive_scale",
+            ScaleFeedback,
+            "scale_feedback",
             self._set_scale,
             10,
         )
@@ -84,9 +84,9 @@ class DriveControlNode(Node):
         # Publish batch of commands via helper
         self.can_publisher.publish_batch(motor_commands)
 
-    def _set_scale(self, new_scale: Float64) -> None:
+    def _set_scale(self, msg: ScaleFeedback) -> None:
         global c_Scale, c_Scale
-        new_scale = max(0.0, min(1.0, new_scale.data))
+        new_scale = max(0.0, min(1.0, msg.drive))
         c_Scale = c_Scale_Max * new_scale
 
 
