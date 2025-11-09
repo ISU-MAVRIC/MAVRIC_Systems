@@ -95,7 +95,7 @@ class ArmControlNode(Node):
 
         self.sub_arm_scales = self.create_subscription(
             ScaleFeedback,
-            "scale_feedback",
+            "scale_command",
             self._set_scale,
             10,
         )

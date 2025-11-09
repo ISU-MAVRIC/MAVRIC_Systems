@@ -46,7 +46,7 @@ class ScaleTuning(Node):
         # Subscriber to Update values
         self.scaleFeedback_sub = self.create_subscription(
             ScaleFeedback,
-            "scale_feedback",
+            "scale_command",
             self._update_scales,
             10
         )
