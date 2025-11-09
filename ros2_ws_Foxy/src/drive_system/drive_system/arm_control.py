@@ -12,7 +12,7 @@ Date: 2025-11-02
 
 import rclpy
 from rclpy.node import Node
-from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand
+from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand, ArmScales
 from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
 
@@ -87,14 +87,20 @@ class ArmControlNode(Node):
 
         # Create subscriber for arm commands
         self.sub_arm = self.create_subscription(
-            Arm, "arm_control", self.arm_callback, 10
+            Arm, "arm_control", self._arm_callback, 10
         )
-
         self.get_logger().info(
             f"ArmControl node initialized with CAN motor IDs: {self.can_motor_ids}"
         )
 
-    def arm_callback(self, msg: Arm) -> None:
+        self.sub_arm_scales = self.create_subscription(
+            ArmScales,
+            "arm_scales",
+            self._set_scale,
+            10,
+        )
+
+    def _arm_callback(self, msg: Arm) -> None:
         can_motor_commands = [
             (self.can_motor_ids[0], msg.shoulder_pitch * c_ShoulderPitch / 100.0),   # SHOULDER_PITCH
             (self.can_motor_ids[1], msg.shoulder_rot * c_ShoulderRot / 100.0),         # SHOULDER_ROT
@@ -114,7 +120,7 @@ class ArmControlNode(Node):
             )
             self.pub_servo_command.publish(servoMsg)
     
-    def set_scale(self, msg: ArmScales) -> None:
+    def _set_scale(self, msg: ArmScales) -> None:
         global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
         c_ShoulderPitch = msg.shoulder_pitch
         c_ShoulderRot = msg.shoulder_rot

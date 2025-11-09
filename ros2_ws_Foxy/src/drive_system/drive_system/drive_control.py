@@ -59,14 +59,21 @@ class DriveControlNode(Node):
 
         # Create subscriber for drive train commands
         self.sub_drive_train = self.create_subscription(
-            DriveTrain, "drive_train", self.drive_train_callback, 10
+            DriveTrain, "drive_train", self._drive_train_callback, 10
         )
-
         self.get_logger().info(
             f"DriveControl node initialized with motor IDs: {self.motor_ids}"
         )
 
-    def drive_train_callback(self, msg: DriveTrain) -> None:
+        # Subscriber for updating drive scales
+        self.sub_drive_scale = self.create_subscription(
+            Float64,
+            "drive_scale",
+            self._set_scale,
+            10,
+        )
+
+    def _drive_train_callback(self, msg: DriveTrain) -> None:
         motor_commands = [
             (self.motor_ids[0], msg.front_left * c_Scale),    # FLD
             (self.motor_ids[1], msg.front_right * c_Scale),   # FRD
@@ -77,7 +84,7 @@ class DriveControlNode(Node):
         # Publish batch of commands via helper
         self.can_publisher.publish_batch(motor_commands)
 
-    def set_scale(self, new_scale: Float64) -> None:
+    def _set_scale(self, new_scale: Float64) -> None:
         global c_Scale, c_Scale
         new_scale = max(0.0, min(1.0, new_scale.data))
         c_Scale = c_Scale_Max * new_scale

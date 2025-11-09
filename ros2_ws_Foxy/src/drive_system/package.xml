@@ -10,7 +10,7 @@
   <buildtool_depend>ament_python</buildtool_depend>
 
   <!-- Other MAVRIC Packages -->
-  <exec_depend>msg</exec_depend>
+  <exec_depend>mavric_msg</exec_depend>
   <exec_depend>utils</exec_depend>
   <exec_depend>managers</exec_depend>
 

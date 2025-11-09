@@ -49,4 +49,3 @@ def generate_launch_description():
             name='scale_tuning'
         )
     ])
-    ])
