@@ -88,7 +88,7 @@ class CANCommandPublisher:
                 )
                 batch.commands.append(cmd)
 
-        # Publish if batch has commands
+        # Publish if batch has commands or if explicitly requested
         if batch.commands:
             self.publisher.publish(batch)
 
