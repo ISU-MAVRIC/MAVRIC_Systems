@@ -40,13 +40,6 @@ c_ElbowPitchDir = 1
 c_WristPitchDir = 1
 c_WristRotDir = -1
 
-# Arm Scales
-c_ShoulderPitch = 1         # Define individual arm rates
-c_ShoulderRot = 1           # If one axis is faster/slower than the others, change these values
-c_ElbowPitch = 1
-c_WristPitch = 1
-c_WristRot = 1
-
 class ArmControlNode(Node):
     def __init__(self) -> None:
         super().__init__("arm_control")
