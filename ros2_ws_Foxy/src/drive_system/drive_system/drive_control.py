@@ -10,10 +10,9 @@ Date: 2025-11-02
 """
 
 import rclpy
+from mavric_msg.msg import (CANCommand, CANCommandBatch, DriveTrain,
+                            ScaleFeedback)
 from rclpy.node import Node
-from mavric_msg.msg import DriveTrain, CANCommand, CANCommandBatch, ScaleFeedback
-from std_msgs.msg import Float64
-from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
 
 # CAN IDs for Drive Controllers

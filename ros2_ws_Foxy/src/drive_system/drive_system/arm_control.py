@@ -11,10 +11,11 @@ Date: 2025-11-02
 """
 
 import rclpy
+from mavric_msg.msg import (Arm, CANCommand, CANCommandBatch,
+                            ScaleFeedback, ServoCommand)
 from rclpy.node import Node
-from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand, ArmScales, ScaleFeedback
-from utils.servo_publisher import ServoCommandPublisher
 from utils.can_publisher import CANCommandPublisher
+from utils.servo_publisher import ServoCommandPublisher
 
 # CAN IDs for Arm Controllers
 SHOULDER_PITCH = 11

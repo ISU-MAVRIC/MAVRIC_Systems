@@ -10,11 +10,9 @@ Date: 2025-11-02
 """
 
 import rclpy
+from mavric_msg.msg import CANCommand, CANCommandBatch, SteerTrain
 from rclpy.node import Node
-from mavric_msg.msg import SteerTrain, CANCommand, CANCommandBatch
-from utils.command_filter import CommandDeduplicator
 from utils.can_publisher import CANCommandPublisher
-
 
 # CAN IDs for Steer Controllers
 FLS = 7   # Front Left Steer
