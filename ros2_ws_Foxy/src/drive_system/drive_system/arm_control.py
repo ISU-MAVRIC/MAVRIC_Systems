@@ -13,7 +13,7 @@ Date: 2025-11-02
 import rclpy
 from rclpy.node import Node
 from mavric_msg.msg import Arm, CANCommand, CANCommandBatch, ServoCommand, ArmScales, ScaleFeedback
-from utils.command_filter import CommandDeduplicator
+from utils.servo_publisher import ServoCommandPublisher
 from utils.can_publisher import CANCommandPublisher
 
 # CAN IDs for Arm Controllers
@@ -56,14 +56,10 @@ class ArmControlNode(Node):
         self.servo_channel = self.get_parameter("servo_channel").value
         command_deadband = self.get_parameter("command_deadband").value
 
-        # Initialize command deduplicator
-        self.servo_deduplicator = CommandDeduplicator(deadband=command_deadband)
-
         # Create publisher for CAN commands
         pub_can_batch = self.create_publisher(
             CANCommandBatch, "can_commands_batch", 10
         )
-
         # Initialize CAN command publisher helper
         self.can_publisher = CANCommandPublisher(
             publisher=pub_can_batch,
@@ -75,6 +71,12 @@ class ArmControlNode(Node):
         # Create Publisher for Servo commands
         self.pub_servo_command = self.create_publisher(
             ServoCommand, "servo_commands", 10
+        )
+        # Initialize Servo command publisher helper
+        self.servo_publisher = ServoCommandPublisher(
+            publisher=self.pub_servo_command,
+            deadband=command_deadband,
+            default_servo_type=ServoCommand.CONTINUOUS_SERVO,
         )
 
         # Create subscriber for arm commands
@@ -103,14 +105,13 @@ class ArmControlNode(Node):
 
         # Publish batch of commands via helper
         self.can_publisher.publish_batch(can_motor_commands, CANCommand.PERCENT_OUTPUT)
-
-        if self.servo_deduplicator.should_send(self.servo_channel, msg.claw):
-            servoMsg = ServoCommand(
-                servo_type=ServoCommand.CONTINUOUS_SERVO,
-                channel=self.servo_channel,
-                value=msg.claw
-            )
-            self.pub_servo_command.publish(servoMsg)
+        
+        # Publish claw servo command via helper
+        self.servo_publisher.publish_single(
+            channel=self.servo_channel,
+            value=msg.claw,
+            servo_type=ServoCommand.CONTINUOUS_SERVO,
+        )
     
     def _set_scale(self, msg: ScaleFeedback) -> None:
         global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
