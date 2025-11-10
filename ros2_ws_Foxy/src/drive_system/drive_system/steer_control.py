@@ -50,9 +50,6 @@ class SteerControlNode(Node):
         self.motor_ids = self.get_parameter("motor_ids").value
         command_deadband = self.get_parameter("command_deadband").value
 
-        # Initialize command deduplicator
-        deduplicator = CommandDeduplicator(deadband=command_deadband)
-
         # Create publisher for CAN commands
         pub_can_batch = self.create_publisher(
             CANCommandBatch, "can_commands_batch", 10
@@ -62,7 +59,7 @@ class SteerControlNode(Node):
         self.can_publisher = CANCommandPublisher(
             publisher=pub_can_batch,
             invert_motors=[],  # No motor inversions for steer
-            deduplicator=deduplicator,
+            deadband=command_deadband,
             command_type=CANCommand.POSITION_OUTPUT,
         )
 

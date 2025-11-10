@@ -29,7 +29,7 @@ class CANCommandPublisher:
         self,
         publisher: Any,
         invert_motors: List[int],
-        deduplicator: CommandDeduplicator,
+        deadband: float,
         command_type: int = CANCommand.VELOCITY_OUTPUT,
     ):
         """
@@ -38,12 +38,12 @@ class CANCommandPublisher:
         Args:
             publisher: ROS2 publisher for CANCommandBatch messages
             invert_motors: List of motor IDs that should be inverted
-            deduplicator: CommandDeduplicator instance for filtering duplicate commands
+            deadband: value threshold for command deduplication
             command_type: Default CAN command type (e.g., VELOCITY_OUTPUT, PERCENT_OUTPUT)
         """
         self.publisher = publisher
         self.invert_motors = invert_motors
-        self.deduplicator = deduplicator
+        self.deduplicator = CommandDeduplicator(deadband=deadband)
         self.command_type = command_type
 
     def publish_batch(

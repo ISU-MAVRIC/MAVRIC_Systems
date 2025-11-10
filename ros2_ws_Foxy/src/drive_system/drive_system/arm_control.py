@@ -57,7 +57,6 @@ class ArmControlNode(Node):
         command_deadband = self.get_parameter("command_deadband").value
 
         # Initialize command deduplicator
-        can_deduplicator = CommandDeduplicator(deadband=command_deadband)
         self.servo_deduplicator = CommandDeduplicator(deadband=command_deadband)
 
         # Create publisher for CAN commands
@@ -69,7 +68,7 @@ class ArmControlNode(Node):
         self.can_publisher = CANCommandPublisher(
             publisher=pub_can_batch,
             invert_motors=self.invert_motors,
-            deduplicator=can_deduplicator,
+            deadband=command_deadband,
             command_type=CANCommand.PERCENT_OUTPUT,
         )
 
