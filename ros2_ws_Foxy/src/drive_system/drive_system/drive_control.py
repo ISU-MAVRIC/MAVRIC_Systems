@@ -79,7 +79,7 @@ class DriveControlNode(Node):
         ]
 
         # Publish batch of commands via helper
-        self.can_publisher.publish_batch(motor_commands)
+        self.can_publisher.publish_batch(motor_commands, CANCommand.VELOCITY_OUTPUT)
 
     def _set_scale(self, msg: ScaleFeedback) -> None:
         global c_Scale, c_Scale

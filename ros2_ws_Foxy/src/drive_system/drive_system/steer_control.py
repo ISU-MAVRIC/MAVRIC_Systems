@@ -88,7 +88,7 @@ class SteerControlNode(Node):
         ]
 
         # Publish batch of commands via helper
-        self.can_publisher.publish_batch(motor_commands)
+        self.can_publisher.publish_batch(motor_commands, CANCommand.POSITION_OUTPUT)
 
 
 def main(args=None):

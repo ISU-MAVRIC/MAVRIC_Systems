@@ -9,7 +9,7 @@ Author: MAVRIC Team
 Date: 2025-11-04
 """
 
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Union
 from mavric_msg.msg import CANCommand, CANCommandBatch
 from .command_filter import CommandDeduplicator
 
@@ -48,9 +48,8 @@ class CANCommandPublisher:
 
     def publish_batch(
         self,
-        motor_commands: List[Tuple[int, float]],
+        motor_commands: Union[List[Tuple[int, float]], List[Tuple[int, float, int]]],
         command_type: Optional[int] = None,
-        publish_if_empty: bool = False,
     ) -> None:
         """
         Publish a batch of motor commands.
@@ -63,22 +62,34 @@ class CANCommandPublisher:
         batch = CANCommandBatch()
         cmd_type = command_type if command_type is not None else self.command_type
 
-        for motor_id, value in motor_commands:
+        # motor_commands entries can be either:
+        #  - (motor_id, value)
+        #  - (motor_id, value, per_command_type)
+        for item in motor_commands:
+            # Normalize tuple lengths and guard against invalid entries
+            if len(item) == 3:
+                motor_id, value, per_cmd_type = item
+            elif len(item) == 2:
+                motor_id, value = item
+                per_cmd_type = None
+        
+
             # Apply motor inversion if configured
             if motor_id in self.invert_motors:
                 value = value * -1
 
             # Only add to batch if value changed significantly
             if self.deduplicator.should_send(motor_id, value):
+                effective_cmd_type = per_cmd_type if per_cmd_type is not None else cmd_type
                 cmd = CANCommand(
-                    command_type=cmd_type,
+                    command_type=effective_cmd_type,
                     controller_id=motor_id,
                     value=value,
                 )
                 batch.commands.append(cmd)
 
-        # Publish if batch has commands or if explicitly requested
-        if batch.commands or publish_if_empty:
+        # Publish if batch has commands
+        if batch.commands:
             self.publisher.publish(batch)
 
     def publish_single(

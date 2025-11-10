@@ -102,7 +102,7 @@ class ArmControlNode(Node):
         ]
 
         # Publish batch of commands via helper
-        self.can_publisher.publish_batch(can_motor_commands)
+        self.can_publisher.publish_batch(can_motor_commands, CANCommand.PERCENT_OUTPUT)
 
         if self.servo_deduplicator.should_send(self.servo_channel, msg.claw):
             servoMsg = ServoCommand(
