@@ -34,13 +34,6 @@ c_ElbowPitch = 1
 c_WristPitch = 1
 c_WristRot = 1
 
-# Arm Directions
-c_ShoulderRotDir = 1        
-c_ShoulderPitchDir = 1     # If axis is moving wrong way, invert these 
-c_ElbowPitchDir = 1
-c_WristPitchDir = 1
-c_WristRotDir = -1
-
 class ArmControlNode(Node):
     def __init__(self) -> None:
         super().__init__("arm_control")
@@ -49,7 +42,7 @@ class ArmControlNode(Node):
         self.declare_parameter("can_motor_ids", [SHOULDER_PITCH, SHOULDER_ROT, ELBOW_PITCH, WRIST_PITCH, WRIST_ROT])
         self.declare_parameter("invert_motors", [WRIST_ROT])
         self.declare_parameter("servo_channel", CLAW_SERVO_CHANNEL)
-        self.declare_parameter("command_deadband", 0.001)  # Threshold for duplicate detection
+        self.declare_parameter("command_deadband", 0.01)  # Threshold for duplicate detection
 
         # Get parameters
         self.can_motor_ids = self.get_parameter("can_motor_ids").value

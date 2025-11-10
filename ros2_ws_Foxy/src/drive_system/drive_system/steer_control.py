@@ -20,8 +20,6 @@ FRS = 10  # Front Right Steer
 BLS = 9   # Back Left Steer
 BRS = 2   # Back Right Steer
 
-INVERTED = -1
-
 c_str_Scale = 0.15
 c_str_lfDir = 1
 c_str_lbDir = 1

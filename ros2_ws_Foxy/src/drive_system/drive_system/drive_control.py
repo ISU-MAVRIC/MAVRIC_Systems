@@ -21,8 +21,6 @@ FRD = 6  # Front Right Drive
 BLD = 5  # Back Left Drive
 BRD = 3  # Back Right Drive
 
-INVERTED = -1
-
 c_Scale_Max = 1.2*20
 c_Scale = c_Scale_Max
 
@@ -33,7 +31,7 @@ class DriveControlNode(Node):
         # Declare parameters
         self.declare_parameter("motor_ids", [FLD, FRD, BLD, BRD])
         self.declare_parameter("invert_motors", [FRD, BRD])
-        self.declare_parameter("command_deadband", 0.01)  # Slightly larger for velocity commands
+        self.declare_parameter("command_deadband", 0.01)
 
         # Get parameters
         self.motor_ids = self.get_parameter("motor_ids").value
