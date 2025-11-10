@@ -57,7 +57,6 @@ class CANCommandPublisher:
         Args:
             motor_commands: List of (motor_id, value) tuples
             command_type: Override default command type for this batch (optional)
-            publish_if_empty: If True, publish even if batch is empty (default: False)
         """
         batch = CANCommandBatch()
         cmd_type = command_type if command_type is not None else self.command_type

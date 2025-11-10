@@ -79,7 +79,7 @@ class DriveControlNode(Node):
         self.can_publisher.publish_batch(motor_commands, CANCommand.VELOCITY_OUTPUT)
 
     def _set_scale(self, msg: ScaleFeedback) -> None:
-        global c_Scale, c_Scale
+        global c_Scale, c_Scale_Max
         new_scale = max(0.0, min(1.0, msg.drive))
         c_Scale = c_Scale_Max * new_scale
 

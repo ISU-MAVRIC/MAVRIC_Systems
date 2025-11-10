@@ -53,7 +53,6 @@ class ServoCommandPublisher:
         Args:
             servo_commands: List of (channel, value) or (channel, value, servo_type)
             servo_type: Default servo_type for the batch if per-command override not provided
-            publish_if_empty: (unused for servo) kept for API parity with CAN helper
         """
         effective_batch_type = servo_type if servo_type is not None else self.default_servo_type
 
