@@ -1,8 +1,9 @@
-import board
+import adafruit_platformdetect.board as ap_board
+import adafruit_blinka.microcontroller.nvidia.jetsonnano.pin as pin
 import busio
 from adafruit_ms8607 import MS8607
 
-i2c = busio.I2C(board.SCL_1, board.SDA_1)
+i2c = busio.I2C(pin.SCL, pin.SDA)
 sensor = MS8607(i2c)
 
 print("Pressure: %.2f hPa" % sensor.pressure)
