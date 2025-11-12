@@ -40,7 +40,7 @@ class ArmControlNode(Node):
 
         # Declare parameters
         self.declare_parameter("can_motor_ids", [SHOULDER_PITCH, SHOULDER_ROT, ELBOW_PITCH, WRIST_PITCH, WRIST_ROT])
-        self.declare_parameter("invert_motors", [WRIST_ROT])
+        self.declare_parameter("invert_motors", [WRIST_PITCH])
         self.declare_parameter("servo_channel", CLAW_SERVO_CHANNEL)
         self.declare_parameter("command_deadband", 0.01)  # Threshold for duplicate detection
 
