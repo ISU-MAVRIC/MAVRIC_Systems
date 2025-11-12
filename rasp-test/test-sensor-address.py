@@ -1,10 +1,10 @@
-from smbus2 import SMBus
+from smbus2 import SMBus, i2c_msg
 
-bus = SMBus(7)  # use /dev/i2c-7
+bus = SMBus(7)
 addr = 0x40
 
-try:
-    data = bus.read_byte(addr)
-    print(f"Read byte {data} from 0x{addr:02X}")
-except OSError as e:
-    print("I2C communication failed:", e)
+# 0xE7 = read user register (per HTU21D datasheet, which MS8607 humidity chip uses)
+bus.write_byte(addr, 0xE7)
+data = bus.read_byte(addr)
+print(f"User register: 0x{data:02X}")
+bus.close()
