@@ -1,11 +1,13 @@
-import adafruit_platformdetect.board as ap_board
-import adafruit_blinka.microcontroller.nvidia.jetsonnano.pin as pin
-import busio
+import adafruit_bus_device.i2c_device as i2c_device
+import board, busio
 from adafruit_ms8607 import MS8607
 
-i2c = busio.I2C(pin.SCL, pin.SDA)
+# --- patch to disable probing ---
+i2c_device.I2CDevice.__probe_for_device = lambda self: None
+
+i2c = busio.I2C(board.SCL, board.SDA)  # use i2c-1
 sensor = MS8607(i2c)
 
-print("Pressure: %.2f hPa" % sensor.pressure)
-print("Temperature: %.2f C" % sensor.temperature)
-print("Humidity: %.2f %% rH" % sensor.relative_humidity)
+print("Pressure:", sensor.pressure, "hPa")
+print("Temperature:", sensor.temperature, "°C")
+print("Humidity:", sensor.relative_humidity, "% rH")
