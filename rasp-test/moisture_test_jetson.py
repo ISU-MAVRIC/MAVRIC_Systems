@@ -2,7 +2,7 @@ import board
 import busio
 from adafruit_ms8607 import MS8607
 
-i2c = busio.I2C(board.SCL, board.SDA)
+i2c = busio.I2C(board.SCL_1, board.SDA_1)
 sensor = MS8607(i2c)
 
 print("Pressure: %.2f hPa" % sensor.pressure)
