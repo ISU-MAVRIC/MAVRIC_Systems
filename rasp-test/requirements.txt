@@ -10,4 +10,4 @@ adafruit-blinka
 smbus2
 adafruit-circuitpython-ms8607
 RPi.GPIO
-sparkfun-qwiic-ublox-gps
+sparkfun-ublox-gps
