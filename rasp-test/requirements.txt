@@ -11,3 +11,4 @@ smbus2
 adafruit-circuitpython-ms8607
 RPi.GPIO
 sparkfun-ublox-gps
+spidev
