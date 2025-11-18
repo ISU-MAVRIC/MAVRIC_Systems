@@ -26,7 +26,23 @@ def generate_launch_description():
         Node(
             package='managers',
             executable='servo_manager',
-            name='servo_manager'
+            name='servo_manager',
+            parameters=[{
+                # I2C Address for the PCA9685 Board
+                'address': 0x40, 
+                
+                # List which channels we are configuring custom specs for
+                'configured_channels': [1], 
+                
+                # --- CLAW CONFIGURATION (Channel 1) ---
+                # Datasheet Specs for HiTec HS-755HB
+                # Pulse Width: 900us to 2100us 
+                'servo_config.channel_1.min_pulse': 900,
+                'servo_config.channel_1.max_pulse': 2100,
+                
+                # Operating Travel: 60 degrees (implied +/- 60, so 120 total) 
+                'servo_config.channel_1.actuation_range': 120,
+            }]
         ),
         Node(
             package='drive_system',

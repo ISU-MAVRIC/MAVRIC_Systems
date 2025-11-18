@@ -13,7 +13,6 @@ Date: 2025-11-02
 import rclpy
 from mavric_msg.msg import (Arm, CANCommand, CANCommandBatch,
                             ScaleFeedback, ServoCommand)
-from rclpy.logging import get_logger
 from rclpy.node import Node
 from utils.can_publisher import CANCommandPublisher
 from utils.servo_publisher import ServoCommandPublisher
@@ -128,7 +127,7 @@ class ArmControlNode(Node):
             servo_type=ServoCommand.STANDARD_SERVO,
         )
 
-        get_logger("claw angle").info(f"Claw at angle: {self.current_claw_angle} degrees")
+        self.get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
         self.sub_arm_scales = self.create_subscription(
             ScaleFeedback,
             "scale_feedback",

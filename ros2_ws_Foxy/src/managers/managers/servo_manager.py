@@ -9,8 +9,12 @@ class ServoManager(Node):
 
         # Declare parameters
         self.declare_parameter("address", 0x40)
-
         self.address = self.get_parameter("address").value
+
+        # Configure Servos based on provided parameters
+        self.declare_parameter("configured_channels", [])
+        channels_to_config = self.get_parameter("configured_channels").value
+        self.configure_servos(channels_to_config)
 
         # Initialize ServoKit
         self.kit = ServoProvider.get_servo_kit(address=self.address)
@@ -33,6 +37,42 @@ class ServoManager(Node):
             servo.throttle = msg.value
         else:
             self.get_logger().warn(f"Unknown servo type {msg.servo_type} for channel {msg.channel}")
+
+    def configure_servos(self, channels):
+            """
+            Iterates through the requested channels, declares parameters for them,
+            and applies the values to the ServoKit instance.
+            """
+            for channel in channels:
+                # Declare parameters dynamically for this specific channel
+                # Default values are set to generic standard servo specs
+                param_prefix = f"servo_config.channel_{channel}"
+                
+                self.declare_parameters(
+                    namespace='',
+                    parameters=[
+                        (f"{param_prefix}.min_pulse", 750),
+                        (f"{param_prefix}.max_pulse", 2250),
+                        (f"{param_prefix}.actuation_range", 180),
+                    ]
+                )
+
+                # Retrieve the values from the YAML/Launch file
+                min_pulse = self.get_parameter(f"{param_prefix}.min_pulse").value
+                max_pulse = self.get_parameter(f"{param_prefix}.max_pulse").value
+                act_range = self.get_parameter(f"{param_prefix}.actuation_range").value
+
+                # APPLY TO HARDWARE
+                try:
+                    servo = self.kit.servo[channel]
+                    servo.set_pulse_width_range(min_pulse, max_pulse)
+                    servo.actuation_range = act_range
+                    
+                    self.get_logger().info(
+                        f"Channel {channel} Configured: Pulse({min_pulse}, {max_pulse}), Range({act_range})"
+                    )
+                except Exception as e:
+                    self.get_logger().error(f"Failed to configure channel {channel}: {e}")
 
 
 def main(args=None):
