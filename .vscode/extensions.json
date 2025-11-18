@@ -3,7 +3,6 @@
         "ms-python.black-formatter",
         "ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
-        "visualstudioexptteam.vscodeintellicode",
         "ms-python.python",
         "ms-python.debugpy",
         "ranch-hand-robotics.rde-pack",
