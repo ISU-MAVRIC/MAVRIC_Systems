@@ -111,15 +111,15 @@ class ArmControlNode(Node):
         # Claw Control
         # Step 1: Update current angle based on command
         if msg.claw > 0.1:
-            self.current_claw_angle += self.CLAW_STEP_SIZE
+            self.current_claw_angle += self.claw_step_size
         elif msg.claw < -0.1:
-            self.current_claw_angle -= self.CLAW_STEP_SIZE
+            self.current_claw_angle -= self.claw_step_size
             
         # Step 2: Apply Safety Limits (Software Endstops)
-        if self.current_claw_angle > self.CLAW_MAX_ANGLE:
-            self.current_claw_angle = self.CLAW_MAX_ANGLE
-        elif self.current_claw_angle < self.CLAW_MIN_ANGLE:
-            self.current_claw_angle = self.CLAW_MIN_ANGLE
+        if self.current_claw_angle > self.claw_max_angle:
+            self.current_claw_angle = self.claw_max_angle
+        elif self.current_claw_angle < self.claw_min_angle:
+            self.current_claw_angle = self.claw_min_angle
 
         # Step 3: Publish the ANGLE, not the THROTTLE
         self.servo_publisher.publish_single(
@@ -128,7 +128,7 @@ class ArmControlNode(Node):
             servo_type=ServoCommand.STANDARD_SERVO,
         )
 
-        get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
+        get_logger("claw angle").info(f"Claw at angle: {self.current_claw_angle} degrees")
         self.sub_arm_scales = self.create_subscription(
             ScaleFeedback,
             "scale_feedback",
