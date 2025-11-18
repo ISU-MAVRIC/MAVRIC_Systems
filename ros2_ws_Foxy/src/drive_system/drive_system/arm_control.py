@@ -25,6 +25,11 @@ WRIST_PITCH = 14
 WRIST_ROT = 15
 CLAW_SERVO_CHANNEL = 1
 
+CLAW_START_ANGLE = 90.0
+CLAW_MIN_ANGLE = 35.0
+CLAW_MAX_ANGLE = 125.0
+CLAW_STEP_SIZE = 2.0
+
 INVERTED = -1
 
 # Arm Scales
@@ -42,12 +47,20 @@ class ArmControlNode(Node):
         self.declare_parameter("can_motor_ids", [SHOULDER_PITCH, SHOULDER_ROT, ELBOW_PITCH, WRIST_PITCH, WRIST_ROT])
         self.declare_parameter("invert_motors", [WRIST_PITCH])
         self.declare_parameter("servo_channel", CLAW_SERVO_CHANNEL)
+        self.declare_parameter("starting_claw_angle", CLAW_START_ANGLE)
+        self.declare_parameter("claw_min_angle", CLAW_MIN_ANGLE)
+        self.declare_parameter("claw_max_angle", CLAW_MAX_ANGLE)
+        self.declare_parameter("claw_step_size", CLAW_STEP_SIZE)
         self.declare_parameter("command_deadband", 0.01)  # Threshold for duplicate detection
 
         # Get parameters
         self.can_motor_ids = self.get_parameter("can_motor_ids").value
         self.invert_motors = self.get_parameter("invert_motors").value
         self.servo_channel = self.get_parameter("servo_channel").value
+        self.current_claw_angle = self.get_parameter("starting_claw_angle").value
+        self.claw_min_angle = self.get_parameter("claw_min_angle").value
+        self.claw_max_angle = self.get_parameter("claw_max_angle").value
+        self.claw_step_size = self.get_parameter("claw_step_size").value
         command_deadband = self.get_parameter("command_deadband").value
 
         # Create publisher for CAN commands
@@ -100,11 +113,24 @@ class ArmControlNode(Node):
         # Publish batch of commands via helper
         self.can_publisher.publish_batch(can_motor_commands, CANCommand.PERCENT_OUTPUT)
         
-        # Publish claw servo command via helper
+        # Claw Control
+        # Step 1: Update current angle based on command
+        if msg.claw > 0.1:
+            self.current_claw_angle += self.CLAW_STEP_SIZE
+        elif msg.claw < -0.1:
+            self.current_claw_angle -= self.CLAW_STEP_SIZE
+            
+        # Step 2: Apply Safety Limits (Software Endstops)
+        if self.current_claw_angle > self.CLAW_MAX_ANGLE:
+            self.current_claw_angle = self.CLAW_MAX_ANGLE
+        elif self.current_claw_angle < self.CLAW_MIN_ANGLE:
+            self.current_claw_angle = self.CLAW_MIN_ANGLE
+
+        # Step 3: Publish the ANGLE, not the THROTTLE
         self.servo_publisher.publish_single(
             channel=self.servo_channel,
-            value=msg.claw,
-            servo_type=ServoCommand.CONTINUOUS_SERVO,
+            value=self.current_claw_angle,
+            servo_type=ServoCommand.STANDARD_SERVO,
         )
     
     def _set_scale(self, msg: ScaleFeedback) -> None:
