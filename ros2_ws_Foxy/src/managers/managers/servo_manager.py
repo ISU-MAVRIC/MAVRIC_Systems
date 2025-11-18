@@ -11,13 +11,15 @@ class ServoManager(Node):
         self.declare_parameter("address", 0x40)
         self.address = self.get_parameter("address").value
 
+        # Initialize ServoKit
+        self.kit = ServoProvider.get_servo_kit(address=self.address)
+
         # Configure Servos based on provided parameters
         self.declare_parameter("configured_channels", [])
         channels_to_config = self.get_parameter("configured_channels").value
         self.configure_servos(channels_to_config)
 
         # Initialize ServoKit
-        self.kit = ServoProvider.get_servo_kit(address=self.address)
 
         # Create subscriber for servo commands
         self.sub_servo_command = self.create_subscription(
