@@ -29,7 +29,6 @@ CLAW_START_ANGLE = 60.0
 CLAW_MIN_ANGLE = 0.0
 CLAW_MAX_ANGLE = 120.0
 CLAW_STEP_SIZE = 0.5
-CLAW_RELAX_AMOUNT = 6.0  # Amount to back off when releasing grip
 
 INVERTED = -1
 
@@ -52,7 +51,6 @@ class ArmControlNode(Node):
         self.declare_parameter("claw_min_angle", CLAW_MIN_ANGLE)
         self.declare_parameter("claw_max_angle", CLAW_MAX_ANGLE)
         self.declare_parameter("claw_step_size", CLAW_STEP_SIZE)
-        self.declare_parameter("relax_amount", CLAW_RELAX_AMOUNT)
         self.declare_parameter("command_deadband", 0.01)  # Threshold for duplicate detection
 
         # Get parameters
@@ -63,13 +61,7 @@ class ArmControlNode(Node):
         self.claw_min_angle = self.get_parameter("claw_min_angle").value
         self.claw_max_angle = self.get_parameter("claw_max_angle").value
         self.claw_step_size = self.get_parameter("claw_step_size").value
-        self.relax_amount = self.get_parameter("relax_amount").value
         command_deadband = self.get_parameter("command_deadband").value
-
-        # Track claw state
-        self.was_closing = False  # Track if we were actively closing the claw
-        self.closing_time = None  # Track when we stopped closing
-        self.has_relaxed = False  # Track if we've already applied the relax amount
 
         # Create publisher for CAN commands
         pub_can_batch = self.create_publisher(
@@ -123,7 +115,17 @@ class ArmControlNode(Node):
         self.can_publisher.publish_batch(can_motor_commands, CANCommand.PERCENT_OUTPUT)
         
         # Claw Control
-        self.update_claw(msg.claw)
+        # Step 1: Update current angle based on command
+        if msg.claw > 0.1:
+            self.current_claw_angle += self.claw_step_size
+        elif msg.claw < -0.1:
+            self.current_claw_angle -= self.claw_step_size
+            
+        # Step 2: Apply Safety Limits (Software Endstops)
+        if self.current_claw_angle > self.claw_max_angle:
+            self.current_claw_angle = self.claw_max_angle
+        elif self.current_claw_angle < self.claw_min_angle:
+            self.current_claw_angle = self.claw_min_angle
 
         # Step 3: Publish the ANGLE, not the THROTTLE
         self.servo_publisher.publish_single(
@@ -133,48 +135,7 @@ class ArmControlNode(Node):
         )
         self.get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
 
-    def update_claw(self, claw_direction: float):
-        # 1. IF CLOSING (Gripping)
-        if claw_direction < 0:
-            self.was_closing = True  # Remember we are actively gripping
-            self.closing_time = None  # Reset the timer
-            self.has_relaxed = False  # Reset the relax flag
-            self.current_claw_angle -= self.claw_step_size
-            
-            # Clamp Limit
-            if self.current_claw_angle < self.claw_min_angle:
-                self.current_claw_angle = self.claw_min_angle
-
-        # 2. IF OPENING (Releasing)
-        elif claw_direction > 0:
-            self.was_closing = False # Reset the grip tracker
-            self.closing_time = None  # Reset the timer
-            self.has_relaxed = False  # Reset the relax flag
-            self.current_claw_angle += self.claw_step_size
-            
-            # Clamp Limit
-            if self.current_claw_angle > self.claw_max_angle:
-                self.current_claw_angle = self.claw_max_angle
-
-        # 3. BUTTON RELEASED (Holding)
-        else:
-            # This is the "Active Relief" Logic with 2-second delay
-            if self.was_closing:
-                # User just let go of the Close button.
-                # Start the timer if not already started
-                if self.closing_time is None:
-                    self.closing_time = self.get_clock().now()
-                
-                # Check if 2 seconds have passed
-                elapsed_time = (self.get_clock().now() - self.closing_time).nanoseconds / 1e9
-                if elapsed_time >= 2.0 and not self.has_relaxed:
-                    # Back off slightly to stop the stall buzzing after 2 seconds
-                    self.current_claw_angle += self.relax_amount
-                    self.has_relaxed = True  # Mark that we've relaxed
-                    self.was_closing = False  # Turn off the flag
-                
-            # If we weren't just closing, do nothing. 
-            # The servo holds the last position (self.current_claw_angle).
+    
     
     def _set_scale(self, msg: ScaleFeedback) -> None:
         global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
