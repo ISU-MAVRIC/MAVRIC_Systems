@@ -139,9 +139,6 @@ class ArmControlNode(Node):
             # Clamp Limit
             if self.current_claw_angle < self.claw_min_angle:
                 self.current_claw_angle = self.claw_min_angle
-                
-            # Send Command
-            self.kit.servo[0].angle = self.current_claw_angle
 
         # 2. IF OPENING (Releasing)
         elif claw_direction > 0:
@@ -151,9 +148,6 @@ class ArmControlNode(Node):
             # Clamp Limit
             if self.current_claw_angle > self.claw_max_angle:
                 self.current_claw_angle = self.claw_max_angle
-                
-            # Send Command
-            self.kit.servo[0].angle = self.current_claw_angle
 
         # 3. BUTTON RELEASED (Holding)
         else:
@@ -162,9 +156,6 @@ class ArmControlNode(Node):
                 # User just let go of the Close button.
                 # Back off slightly to stop the stall buzzing.
                 self.current_claw_angle += self.relax_amount
-                
-                # Send the new "relaxed" angle once
-                self.kit.servo[0].angle = self.current_claw_angle
                 
                 # Turn off the flag so we don't keep relaxing forever
                 self.was_closing = False
