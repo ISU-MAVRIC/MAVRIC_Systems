@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'spidev', 'python3-ublox-gps', 'pyserial'],
     zip_safe=True,
     maintainer='mavric',
     maintainer_email='ronsecondmail@gmail.com',
