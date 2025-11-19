@@ -66,7 +66,10 @@ class ArmControlNode(Node):
         self.relax_amount = self.get_parameter("relax_amount").value
         command_deadband = self.get_parameter("command_deadband").value
 
+        # Track claw state
         self.was_closing = False  # Track if we were actively closing the claw
+        self.closing_time = None  # Track when we stopped closing
+        self.has_relaxed = False  # Track if we've already applied the relax amount
 
         # Create publisher for CAN commands
         pub_can_batch = self.create_publisher(
@@ -134,6 +137,8 @@ class ArmControlNode(Node):
         # 1. IF CLOSING (Gripping)
         if claw_direction < 0:
             self.was_closing = True  # Remember we are actively gripping
+            self.closing_time = None  # Reset the timer
+            self.has_relaxed = False  # Reset the relax flag
             self.current_claw_angle -= self.claw_step_size
             
             # Clamp Limit
@@ -143,6 +148,8 @@ class ArmControlNode(Node):
         # 2. IF OPENING (Releasing)
         elif claw_direction > 0:
             self.was_closing = False # Reset the grip tracker
+            self.closing_time = None  # Reset the timer
+            self.has_relaxed = False  # Reset the relax flag
             self.current_claw_angle += self.claw_step_size
             
             # Clamp Limit
@@ -151,14 +158,20 @@ class ArmControlNode(Node):
 
         # 3. BUTTON RELEASED (Holding)
         else:
-            # This is the "Active Relief" Logic
+            # This is the "Active Relief" Logic with 2-second delay
             if self.was_closing:
                 # User just let go of the Close button.
-                # Back off slightly to stop the stall buzzing.
-                self.current_claw_angle += self.relax_amount
+                # Start the timer if not already started
+                if self.closing_time is None:
+                    self.closing_time = self.get_clock().now()
                 
-                # Turn off the flag so we don't keep relaxing forever
-                self.was_closing = False
+                # Check if 2 seconds have passed
+                elapsed_time = (self.get_clock().now() - self.closing_time).nanoseconds / 1e9
+                if elapsed_time >= 2.0 and not self.has_relaxed:
+                    # Back off slightly to stop the stall buzzing after 2 seconds
+                    self.current_claw_angle += self.relax_amount
+                    self.has_relaxed = True  # Mark that we've relaxed
+                    self.was_closing = False  # Turn off the flag
                 
             # If we weren't just closing, do nothing. 
             # The servo holds the last position (self.current_claw_angle).
