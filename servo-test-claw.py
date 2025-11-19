@@ -21,8 +21,8 @@ except Exception:
 def apply_angle(channel: int, angle: int) -> None:
 	if not (0 <= channel <= 15):
 		raise ValueError("channel must be between 0 and 15")
-	if not (0 <= angle <= 180):
-		raise ValueError("angle must be between 0 and 180")
+	# if not (0 <= angle <= 180):
+	# 	raise ValueError("angle must be between 0 and 180")
 	kit.servo[channel].angle = angle
 
 
