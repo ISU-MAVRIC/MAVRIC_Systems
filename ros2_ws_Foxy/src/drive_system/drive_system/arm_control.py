@@ -29,7 +29,7 @@ CLAW_START_ANGLE = 60.0
 CLAW_MIN_ANGLE = 0.0
 CLAW_MAX_ANGLE = 120.0
 CLAW_STEP_SIZE = 0.5
-CLAW_RELAX_AMOUNT = 6.0  # Amount to back off when releasing grip
+CLAW_RELAX_AMOUNT = 4.0  # Amount to back off when releasing grip
 
 INVERTED = -1
 
