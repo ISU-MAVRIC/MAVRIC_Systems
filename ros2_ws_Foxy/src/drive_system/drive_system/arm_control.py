@@ -86,6 +86,13 @@ class ArmControlNode(Node):
             default_servo_type=ServoCommand.CONTINUOUS_SERVO,
         )
 
+        self.sub_arm_scales = self.create_subscription(
+            ScaleFeedback,
+            "scale_feedback",
+            self._set_scale,
+            10,
+        )
+
         # Create subscriber for arm commands
         self.sub_arm = self.create_subscription(
             Arm, "arm_control", self._arm_callback, 10
@@ -126,13 +133,9 @@ class ArmControlNode(Node):
             value=self.current_claw_angle,
             servo_type=ServoCommand.STANDARD_SERVO,
         )
+        self.get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
 
-        self.sub_arm_scales = self.create_subscription(
-            ScaleFeedback,
-            "scale_feedback",
-            self._set_scale,
-            10,
-        )
+    
     
     def _set_scale(self, msg: ScaleFeedback) -> None:
         global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
