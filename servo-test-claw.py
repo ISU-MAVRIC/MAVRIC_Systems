@@ -30,8 +30,8 @@ def interactive_loop():
 	print("Servo interactive test (bus 1).")
 	print("Enter: <channel> <angle>  e.g. '0 90'  or 'q' to quit")
 	kit.servo[1].set_pulse_width_range(900, 2100)
-	# kit.servo[1].actuation_range = 120
-	kit.servo[1].actuation_range = 1890
+	kit.servo[1].actuation_range = 120
+	# kit.servo[1].actuation_range = 1890
 	while True:
 		try:
 			user = input("> ").strip()
