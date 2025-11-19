@@ -127,7 +127,6 @@ class ArmControlNode(Node):
             servo_type=ServoCommand.STANDARD_SERVO,
         )
 
-        self.get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
         self.sub_arm_scales = self.create_subscription(
             ScaleFeedback,
             "scale_feedback",
