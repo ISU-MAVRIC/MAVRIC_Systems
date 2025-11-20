@@ -131,7 +131,7 @@ class ArmControlNode(Node):
             value=self.current_claw_angle,
             servo_type=ServoCommand.STANDARD_SERVO,
         )
-        self.get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
+        # self.get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
 
     def update_claw(self, claw_direction: float):
         # 1. IF CLOSING (Gripping)
