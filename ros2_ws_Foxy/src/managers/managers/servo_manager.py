@@ -48,10 +48,12 @@ class ServoManager(Node):
             self.declare_parameter(f"{param_prefix}.min_pulse", -1)
             self.declare_parameter(f"{param_prefix}.max_pulse", -1)
             self.declare_parameter(f"{param_prefix}.actuation_range", -1)
+            self.declare_parameter(f"{param_prefix}.start_angle", -1)
             
             min_pulse = self.get_parameter(f"{param_prefix}.min_pulse").value
             max_pulse = self.get_parameter(f"{param_prefix}.max_pulse").value
             act_range = self.get_parameter(f"{param_prefix}.actuation_range").value
+            start_angle = self.get_parameter(f"{param_prefix}.start_angle").value
             
             if min_pulse == -1 or max_pulse == -1 or act_range == -1:
                 # Parameters not set for this channel, skip configuration
@@ -60,6 +62,7 @@ class ServoManager(Node):
             servo = self.kit.servo[channel]
             servo.set_pulse_width_range(min_pulse, max_pulse)
             servo.actuation_range = act_range
+            if start_angle != -1: servo.angle = start_angle
             
             self.get_logger().info(
                 f"Channel {channel} Configured: Pulse({min_pulse}, {max_pulse}), Range({act_range})"

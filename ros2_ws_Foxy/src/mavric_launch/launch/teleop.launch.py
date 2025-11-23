@@ -35,6 +35,7 @@ def generate_launch_description():
                 'channel_1.min_pulse': 900,
                 'channel_1.max_pulse': 2100,
                 'channel_1.actuation_range': 1890,
+                'channel_1.start_angle': 120
             }]
         ),
         Node(
