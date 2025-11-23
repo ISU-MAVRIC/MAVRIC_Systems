@@ -90,8 +90,7 @@ class ArmControlNode(Node):
         # Initialize Servo command publisher helper
         self.servo_publisher = ServoCommandPublisher(
             publisher=self.pub_servo_command,
-            deadband=command_deadband,
-            default_servo_type=ServoCommand.CONTINUOUS_SERVO,
+            deadband=command_deadband
         )
 
         self.sub_arm_scales = self.create_subscription(
@@ -125,11 +124,10 @@ class ArmControlNode(Node):
         # Claw Control
         self.update_claw(msg.claw)
 
-        # Step 3: Publish the ANGLE, not the THROTTLE
+        # Publish the servo angle
         self.servo_publisher.publish_single(
             channel=self.servo_channel,
-            value=self.current_claw_angle,
-            servo_type=ServoCommand.STANDARD_SERVO,
+            value=self.current_claw_angle
         )
         # self.get_logger().info(f"Claw at angle: {self.current_claw_angle} degrees")
 

@@ -16,7 +16,6 @@ class ServoManager(Node):
         self.kit = ServoProvider.get_servo_kit(address=self.address)
 
         # Declare parameters for each possible servo channel configuration
-        # We'll check which channels have been configured by looking for non-default values
         self.configure_servos()
 
         # Create subscriber for servo commands
@@ -46,7 +45,6 @@ class ServoManager(Node):
         for channel in range(16):
             param_prefix = f"channel_{channel}"
             
-            # Try to get parameters for this channel
             self.declare_parameter(f"{param_prefix}.min_pulse", -1)
             self.declare_parameter(f"{param_prefix}.max_pulse", -1)
             self.declare_parameter(f"{param_prefix}.actuation_range", -1)
