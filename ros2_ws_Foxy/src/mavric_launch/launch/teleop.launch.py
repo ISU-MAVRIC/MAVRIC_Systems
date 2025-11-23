@@ -1,6 +1,8 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
+CLAW_START_ANGLE = 120.0  # Default starting angle for the claw servo
+
 def generate_launch_description():
     return LaunchDescription([
         Node(
@@ -35,7 +37,7 @@ def generate_launch_description():
                 'channel_1.min_pulse': 900,
                 'channel_1.max_pulse': 2100,
                 'channel_1.actuation_range': 1890,
-                'channel_1.start_angle': 120
+                'channel_1.start_angle': CLAW_START_ANGLE
             }]
         ),
         Node(
@@ -51,7 +53,10 @@ def generate_launch_description():
         Node(
             package='drive_system',
             executable='arm_control',
-            name='arm_control'
+            name='arm_control',
+            parameters=[{
+                'starting_claw_angle': CLAW_START_ANGLE
+            }]
         ),
         Node(
             package='drive_system',
