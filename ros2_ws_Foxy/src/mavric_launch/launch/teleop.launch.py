@@ -29,16 +29,12 @@ def generate_launch_description():
             name='servo_manager',
             parameters=[{
                 # I2C Address for the PCA9685 Board
-                'address': 0x40, 
+                'address': 0x40,
                 
-                # List which channels we are configuring custom specs for
-                'configured_channels': [1], 
-                
-                # --- CLAW CONFIGURATION (Channel 1) ---
-                # Datasheet Specs for HiTec HS-785HB
-                'servo_config.channel_1.min_pulse': 900,
-                'servo_config.channel_1.max_pulse': 2100,
-                'servo_config.channel_1.actuation_range': 1890,
+                # Channel 1 - Claw (HiTec HS-785HB)
+                'channel_1.min_pulse': 900,
+                'channel_1.max_pulse': 2100,
+                'channel_1.actuation_range': 1890,
             }]
         ),
         Node(

@@ -3,6 +3,7 @@ from rclpy.node import Node
 from mavric_msg.msg import ServoCommand
 from utils.servos_lib import ServoProvider
 
+
 class ServoManager(Node):
     def __init__(self) -> None:
         super().__init__("servo_manager")
@@ -14,19 +15,13 @@ class ServoManager(Node):
         # Initialize ServoKit
         self.kit = ServoProvider.get_servo_kit(address=self.address)
 
-        # Configure Servos based on provided parameters
-        self.declare_parameter("configured_channels", [])
-        channels_to_config = self.get_parameter("configured_channels").value
-        self.configure_servos(channels_to_config)
-
-        # Initialize ServoKit
+        # Declare parameters for each possible servo channel configuration
+        # We'll check which channels have been configured by looking for non-default values
+        self.configure_servos()
 
         # Create subscriber for servo commands
         self.sub_servo_command = self.create_subscription(
-            ServoCommand,
-            "servo_commands",
-            self.servo_command_callback,
-            10
+            ServoCommand, "servo_commands", self.servo_command_callback, 10
         )
 
     def servo_command_callback(self, msg: ServoCommand) -> None:
@@ -38,37 +33,39 @@ class ServoManager(Node):
             servo = self.kit.continuous_servo[msg.channel]
             servo.throttle = msg.value
         else:
-            self.get_logger().warn(f"Unknown servo type {msg.servo_type} for channel {msg.channel}")
+            self.get_logger().warn(
+                f"Unknown servo type {msg.servo_type} for channel {msg.channel}"
+            )
 
-    def configure_servos(self, channels):
-            """
-            Iterates through the requested channels, declares parameters for them,
-            and applies the values to the ServoKit instance.
-            """
-            for channel in channels:
-                param_prefix = f"servo_config.channel_{channel}"
+    def configure_servos(self):
+        """
+        Configures servos by checking for channel-specific parameters.
+        For each channel 0-15, checks if configuration parameters exist.
+        """
+        # PCA9685 supports 16 channels (0-15)
+        for channel in range(16):
+            param_prefix = f"channel_{channel}"
+            
+            # Try to get parameters for this channel
+            self.declare_parameter(f"{param_prefix}.min_pulse", -1)
+            self.declare_parameter(f"{param_prefix}.max_pulse", -1)
+            self.declare_parameter(f"{param_prefix}.actuation_range", -1)
+            
+            min_pulse = self.get_parameter(f"{param_prefix}.min_pulse").value
+            max_pulse = self.get_parameter(f"{param_prefix}.max_pulse").value
+            act_range = self.get_parameter(f"{param_prefix}.actuation_range").value
+            
+            if min_pulse == -1 or max_pulse == -1 or act_range == -1:
+                # Parameters not set for this channel, skip configuration
+                continue
                 
-                self.declare_parameters(
-                    namespace='',
-                    parameters=[
-                        (f"{param_prefix}.min_pulse", 750),
-                        (f"{param_prefix}.max_pulse", 2250),
-                        (f"{param_prefix}.actuation_range", 180),
-                    ]
-                )
-
-                min_pulse = self.get_parameter(f"{param_prefix}.min_pulse").value
-                max_pulse = self.get_parameter(f"{param_prefix}.max_pulse").value
-                act_range = self.get_parameter(f"{param_prefix}.actuation_range").value
-
-                # APPLY TO HARDWARE
-                servo = self.kit.servo[channel]
-                servo.set_pulse_width_range(min_pulse, max_pulse)
-                servo.actuation_range = act_range
-                
-                self.get_logger().info(
-                    f"Channel {channel} Configured: Pulse({min_pulse}, {max_pulse}), Range({act_range})"
-                )
+            servo = self.kit.servo[channel]
+            servo.set_pulse_width_range(min_pulse, max_pulse)
+            servo.actuation_range = act_range
+            
+            self.get_logger().info(
+                f"Channel {channel} Configured: Pulse({min_pulse}, {max_pulse}), Range({act_range})"
+            )
 
 
 def main(args=None):
@@ -82,6 +79,7 @@ def main(args=None):
     finally:
         servo_manager.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()
