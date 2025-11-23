@@ -46,8 +46,6 @@ class ServoManager(Node):
             and applies the values to the ServoKit instance.
             """
             for channel in channels:
-                # Declare parameters dynamically for this specific channel
-                # Default values are set to generic standard servo specs
                 param_prefix = f"servo_config.channel_{channel}"
                 
                 self.declare_parameters(
@@ -59,22 +57,18 @@ class ServoManager(Node):
                     ]
                 )
 
-                # Retrieve the values from the YAML/Launch file
                 min_pulse = self.get_parameter(f"{param_prefix}.min_pulse").value
                 max_pulse = self.get_parameter(f"{param_prefix}.max_pulse").value
                 act_range = self.get_parameter(f"{param_prefix}.actuation_range").value
 
                 # APPLY TO HARDWARE
-                try:
-                    servo = self.kit.servo[channel]
-                    servo.set_pulse_width_range(min_pulse, max_pulse)
-                    servo.actuation_range = act_range
-                    
-                    self.get_logger().info(
-                        f"Channel {channel} Configured: Pulse({min_pulse}, {max_pulse}), Range({act_range})"
-                    )
-                except Exception as e:
-                    self.get_logger().error(f"Failed to configure channel {channel}: {e}")
+                servo = self.kit.servo[channel]
+                servo.set_pulse_width_range(min_pulse, max_pulse)
+                servo.actuation_range = act_range
+                
+                self.get_logger().info(
+                    f"Channel {channel} Configured: Pulse({min_pulse}, {max_pulse}), Range({act_range})"
+                )
 
 
 def main(args=None):

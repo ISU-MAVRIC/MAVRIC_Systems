@@ -35,12 +35,9 @@ def generate_launch_description():
                 'configured_channels': [1], 
                 
                 # --- CLAW CONFIGURATION (Channel 1) ---
-                # Datasheet Specs for HiTec HS-755HB
-                # Pulse Width: 900us to 2100us 
+                # Datasheet Specs for HiTec HS-785HB
                 'servo_config.channel_1.min_pulse': 900,
                 'servo_config.channel_1.max_pulse': 2100,
-                
-                # Operating Travel: 60 degrees (implied +/- 60, so 120 total) 
                 'servo_config.channel_1.actuation_range': 1890,
             }]
         ),

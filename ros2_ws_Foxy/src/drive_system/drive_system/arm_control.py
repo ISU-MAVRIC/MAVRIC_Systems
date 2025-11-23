@@ -167,14 +167,13 @@ class ArmControlNode(Node):
                 
                 # Check if 2 seconds have passed
                 elapsed_time = (self.get_clock().now() - self.closing_time).nanoseconds / 1e9
-                if elapsed_time >= 2.0 and not self.has_relaxed:
+                if elapsed_time >= 1.0 and not self.has_relaxed:
                     # Back off slightly to stop the stall buzzing after 2 seconds
                     self.current_claw_angle += self.relax_amount
                     self.has_relaxed = True  # Mark that we've relaxed
                     self.was_closing = False  # Turn off the flag
                 
             # If we weren't just closing, do nothing. 
-            # The servo holds the last position (self.current_claw_angle).
     
     def _set_scale(self, msg: ScaleFeedback) -> None:
         global c_ShoulderPitch, c_ShoulderRot, c_ElbowPitch, c_WristPitch, c_WristRot
