@@ -16,6 +16,17 @@ class AbstractServo(ABC):
     def angle(self, value: float) -> None:
         pass
 
+    @property
+    def actuation_range(self) -> float:
+        pass
+
+    @actuation_range.setter
+    def actuation_range(self, value: float) -> None:
+        pass
+
+    def set_pulse_width_range(self, min_pulse: int = 750, max_pulse: int = 2250) -> None:
+        pass
+
 
 class AbstractContinuousServo(ABC):
     """Abstract interface for a continuous rotation servo channel."""
@@ -28,6 +39,9 @@ class AbstractContinuousServo(ABC):
     @throttle.setter
     @abstractmethod
     def throttle(self, value: Optional[float]) -> None:
+        pass
+
+    def set_pulse_width_range(self, min_pulse: int = 750, max_pulse: int = 2250) -> None:
         pass
 
 

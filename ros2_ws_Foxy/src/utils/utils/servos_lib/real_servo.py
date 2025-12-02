@@ -16,6 +16,17 @@ class RealServo(AbstractServo):
     @angle.setter
     def angle(self, value: float) -> None:
         self._servo.angle = value
+    
+    @property
+    def actuation_range(self) -> float:
+        return self._servo.actuation_range
+
+    @actuation_range.setter
+    def actuation_range(self, value: float) -> None:
+        self._servo.actuation_range = value
+    
+    def set_pulse_width_range(self, min_pulse: int = 750, max_pulse: int = 2250) -> None:
+        self._servo.set_pulse_width_range(min_pulse, max_pulse)
 
 
 # --- Real Continuous Servo Channel ---
@@ -30,6 +41,9 @@ class RealContinuousServo(AbstractContinuousServo):
     @throttle.setter
     def throttle(self, value: float) -> None:
         self._continuous_servo.throttle = value
+    
+    def set_pulse_width_range(self, min_pulse: int = 750, max_pulse: int = 2250) -> None:
+        self._continuous_servo.set_pulse_width_range(min_pulse, max_pulse)
 
 
 # --- Real ServoKit (drop-in replacement) ---
