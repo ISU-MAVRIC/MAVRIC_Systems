@@ -16,7 +16,7 @@ from ublox_gps import UbloxGps
 #must have spidev installed for '/dev/ttyACM0' to work
 #though spidev is linux only...
 
-#Will use a timer to publish GPS coords at a frequency, can update later to 
+#Will use a timer to publish GPS coords at a frequency, may update later to 
 #use "serial-read-driven publishing" where a message is published everytime a full coordinate of data is
 #read from the GPS.
 class GPSControlNode(Node):
@@ -29,7 +29,7 @@ class GPSControlNode(Node):
         
         #Open serial port
         self.port = serial.Serial('/dev/ttyACM0', baudrate=38400, timeout=1)
-        gps = UbloxGps(self.port)
+        self.gps = UbloxGps(self.port)
 
         #Timer to publish at 1Hz
         self.timer = self.create_timer(1.0, self.timer_callback)
@@ -39,9 +39,16 @@ class GPSControlNode(Node):
 
 def timer_callback(self):
     try:
+            # Read GPS data
             geo = self.gps.geo_coords()
             time = self.gps.date_time()
 
+            # Publish fix OK or not
+            fix = Bool()
+            fix.data = (geo.flags.gnssFixOK != 0)
+            self.fix_pub.publish(fix)
+
+            # Create message with GPS data
             msg = GPS()
             msg.latitude = geo.lat
             msg.longitude = geo.lon
@@ -53,14 +60,10 @@ def timer_callback(self):
             msg.time_m = int(time.min)
             msg.time_s = float(time.sec)
 
-            # Publish fix OK or not
-            fix = Bool()
-            fix.data = (geo.flags.gnssFixOK != 0)
-            self.fix_pub.publish(fix)
-
             # Publish GPS message
             self.gps_pub.publish(msg)
 
+    # Catch exception if cannot read GPS data
     except Exception as err:
             self.get_logger().warn(f"GPS read error: {err}")
 
