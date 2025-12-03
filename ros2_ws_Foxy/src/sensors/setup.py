@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'GPS_control = sensors.GPS_control::main'
+            'GPS_control = sensors.GPS_control:main'
         ],
     },
 )
