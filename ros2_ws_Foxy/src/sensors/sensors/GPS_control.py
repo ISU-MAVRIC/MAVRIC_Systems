@@ -24,7 +24,7 @@ class GPSControlNode(Node):
         super().__init__("GPS_control")
 
         #Publishers
-        self.gps_publisher = self.create_publisher(GPS, "GPS_Data", 10)
+        self.gps_pub = self.create_publisher(GPS, "GPS_Data", 10)
         self.fix_pub = self.create_publisher(Bool, 'GPS_Fix', 10)
         
         #Open serial port
