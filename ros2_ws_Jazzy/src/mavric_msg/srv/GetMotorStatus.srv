@@ -1,0 +1,7 @@
+# Request - specify which motors to query (empty = all motors)
+uint8[] controller_ids
+
+---
+
+# Response - array of motor statuses
+CANStatus[] statuses
