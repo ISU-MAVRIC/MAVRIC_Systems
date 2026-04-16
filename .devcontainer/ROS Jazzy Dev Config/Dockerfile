@@ -18,6 +18,9 @@ RUN apt-get update && \
         ros-jazzy-rosbridge-suite && \
     rm -rf /var/lib/apt/lists/*
 
+ENV PATH="/home/ubuntu/.local/bin:${PATH}"
+ENV BASH_ENV="/ros_env.sh"
+
 # Project + hardware Python deps for ubuntu (user site); setuptools comes from distro for colcon.
 USER ubuntu
 RUN pip3 install --no-cache-dir --user --break-system-packages \
@@ -38,10 +41,14 @@ USER root
 RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu
 
+COPY ros_env.sh /ros_env.sh
+COPY ros_entrypoint.sh /ros_entrypoint.sh
+RUN chmod 0755 /ros_env.sh /ros_entrypoint.sh
+
 USER ubuntu
 WORKDIR /home/ubuntu
 
-# Default entrypoint: bash login shell (ROS env pre-sourced)
-ENTRYPOINT ["bash", "-lc"]
-RUN echo "source /opt/ros/jazzy/setup.bash" >> /home/ubuntu/.bashrc && \
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/ubuntu/.bashrc
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]
+
+RUN echo "source /ros_env.sh" >> /home/ubuntu/.bashrc
