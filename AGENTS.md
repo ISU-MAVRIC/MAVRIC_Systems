@@ -2,7 +2,7 @@
 
 ## Cursor Cloud specific instructions
 
-This is a ROS 2 Jazzy robotics control system that runs inside Docker. The host VM is Ubuntu 24.04, which matches ROS 2 Jazzy’s target platform, so **all ROS 2 commands must run inside the Docker container** (`mavric-ros-jazzy`). The image runs as the `ubuntu` user (UID 1000) so workspace bind mounts remain writable.
+This is a ROS 2 Jazzy robotics control system that runs inside Docker. The host VM is Ubuntu 24.04, which matches ROS 2 Jazzy’s target platform, so **all ROS 2 commands must run inside the Docker container** (`mavric-ros-jazzy`). The image runs as the `MAVRIC` user (UID 1000) so workspace bind mounts remain writable.
 
 ### Services overview
 
@@ -59,6 +59,6 @@ The system runs in simulation mode without CAN/I2C hardware (CAN bus uses simula
 
 - The Docker image must be rebuilt (`docker compose build`) whenever `.devcontainer/ROS Jazzy Dev Config/Dockerfile` changes (e.g., new pip dependencies).
 - After `colcon build`, you must `source install/setup.bash` before running any ROS 2 nodes or services.
-- The `ros:jazzy-ros-base` image uses Python 3.12. The dev image installs `python3-catkin-pkg`, `python3-empy`, and `python3-lark` from apt for `colcon`/`ament_cmake`, and installs project Python deps with `pip install --user --break-system-packages` (PEP 668). The image adds `/home/ubuntu/.local/bin` to `PATH` while keeping `#!/usr/bin/env python3` on the system interpreter.
+- The `ros:jazzy-ros-base` image uses Python 3.12. The dev image installs `python3-catkin-pkg`, `python3-empy`, and `python3-lark` from apt for `colcon`/`ament_cmake`, and installs project Python deps with `pip install --user --break-system-packages` (PEP 668). The image adds `/home/MAVRIC/.local/bin` to `PATH` while keeping `#!/usr/bin/env python3` on the system interpreter.
 - The container uses `--network=host` for ROS 2 DDS discovery; rosbridge WebSocket is exposed on port 9090.
 - Before starting a fresh teleop container, remove any existing one with `docker compose down`.

@@ -1,6 +1,6 @@
 FROM ros:jazzy-ros-base
 
-# The base image already defines `ubuntu` (uid 1000), which matches typical Dev Container
+# The base image already defines UID 1000, which matches typical Dev Container
 # bind mounts so `colcon` can write build/install/log under /workspace.
 
 # System packages: ROS, bridge stack, and ament/colcon Python helpers (avoid a venv on PATH:
@@ -18,11 +18,14 @@ RUN apt-get update && \
         ros-jazzy-rosbridge-suite && \
     rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/home/ubuntu/.local/bin:${PATH}"
+RUN groupmod --new-name MAVRIC ubuntu && \
+    usermod --login MAVRIC --home /home/MAVRIC --move-home ubuntu
+
+ENV PATH="/home/MAVRIC/.local/bin:${PATH}"
 ENV BASH_ENV="/ros_env.sh"
 
-# Project + hardware Python deps for ubuntu (user site); setuptools comes from distro for colcon.
-USER ubuntu
+# Project + hardware Python deps for MAVRIC (user site); setuptools comes from distro for colcon.
+USER MAVRIC
 RUN pip3 install --no-cache-dir --user --break-system-packages \
         setuptools \
         python-can \
@@ -38,17 +41,17 @@ RUN pip3 install --no-cache-dir --user --break-system-packages \
         smbus2
 
 USER root
-RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
-    chmod 0440 /etc/sudoers.d/ubuntu
+RUN echo "MAVRIC ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/MAVRIC && \
+    chmod 0440 /etc/sudoers.d/MAVRIC
 
 COPY ros_env.sh /ros_env.sh
 COPY ros_entrypoint.sh /ros_entrypoint.sh
 RUN chmod 0755 /ros_env.sh /ros_entrypoint.sh
 
-USER ubuntu
-WORKDIR /home/ubuntu
+USER MAVRIC
+WORKDIR /home/MAVRIC
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]
 
-RUN echo "source /ros_env.sh" >> /home/ubuntu/.bashrc
+RUN echo "source /ros_env.sh" >> /home/MAVRIC/.bashrc
