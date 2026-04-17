@@ -16,8 +16,14 @@ All build/test/lint/run commands must be executed inside the Docker container. T
 # Build and launch the full teleop system
 docker compose up -d --build
 
+# Start a development container without launching ROS
+docker compose -f compose.yaml -f compose/dev.yaml up -d --build
+
 # Exec into the running container
 docker exec -it mavric-ros-jazzy bash
+
+# Exec into the development container
+docker exec -it mavric-dev bash
 
 # Run a command in the running container
 docker exec mavric-ros-jazzy bash -lc "<command>"
@@ -52,6 +58,17 @@ docker exec mavric-ros-jazzy bash -lc "pip3 install --user --break-system-packag
 ```bash
 docker compose up -d --build
 ```
+
+### Dev container (no ROS autostart)
+
+```bash
+docker compose -f compose.yaml -f compose/dev.yaml up -d --build
+docker exec -it mavric-dev bash
+```
+
+Both Compose modes mount the repository at `/workspace` and use
+`/workspace/ros2_ws_Jazzy` as the working directory, so `cd ..` enters the repo
+root.
 
 The system runs in simulation mode without CAN/I2C hardware (CAN bus uses simulation mode, servos use MockServoKit). All 8 nodes (rosbridge_websocket, rosapi, can_manager, servo_manager, drive_control, steer_control, arm_control, scale_tuning) start successfully.
 

@@ -16,6 +16,13 @@ Open an interactive shell in the running container:
 sudo docker exec -it mavric-ros-jazzy bash
 ```
 
+Start the same Jazzy container for development without launching ROS:
+
+```bash
+sudo docker compose -f compose.yaml -f compose/dev.yaml up -d --build
+sudo docker exec -it mavric-dev bash
+```
+
 View runtime logs:
 
 ```bash
@@ -38,3 +45,7 @@ The Compose service uses host networking for ROS 2 DDS discovery, rosbridge on p
 9090, and SocketCAN compatibility. The startup command builds
 `ros2_ws_Jazzy`, sources the install workspace, and launches
 `mavric_launch teleop.launch.py`.
+
+Both Compose modes bind-mount the repo root at `/workspace` and start in
+`/workspace/ros2_ws_Jazzy`, so `cd ..` inside the container moves to the repo
+root.
