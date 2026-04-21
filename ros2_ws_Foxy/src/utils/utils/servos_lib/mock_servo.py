@@ -2,8 +2,9 @@ from .abstract_servo import AbstractServoKit, AbstractServo, AbstractContinuousS
 from typing import List, Any
 
 class MockServo(AbstractServo):
-    def __init__(self):
+    def __init__(self, actuation_range: int = 180):
         self._angle = None
+        self._actuation_range = actuation_range
 
     @property
     def angle(self) -> float:
@@ -12,6 +13,17 @@ class MockServo(AbstractServo):
     @angle.setter
     def angle(self, value: float) -> None:
         self._angle = value
+
+    @property
+    def actuation_range(self) -> float:
+        return self._actuation_range
+
+    @actuation_range.setter
+    def actuation_range(self, value: float) -> None:
+        self._actuation_range = value
+
+    def set_pulse_width_range(self, min_pulse: int = 750, max_pulse: int = 2250) -> None:
+        pass
 
 
 # --- Mock Continuous Servo Channel ---
@@ -26,6 +38,9 @@ class MockContinuousServo(AbstractContinuousServo):
     @throttle.setter
     def throttle(self, value: float) -> None:
         self._throttle = value
+    
+    def set_pulse_width_range(self, min_pulse: int = 750, max_pulse: int = 2250) -> None:
+        pass
 
 
 # --- Mock ServoKit (drop-in replacement) ---
