@@ -1,26 +1,32 @@
 FROM ros:jazzy-ros-base
 
-# Build-time args for non-root user
-ARG USERNAME=mavric
-ARG USER_UID=1001
-ARG USER_GID=$USER_UID
+# The base image already defines UID 1000, which matches typical Dev Container
+# bind mounts so `colcon` can write build/install/log under /workspace.
 
-# Install necessary utilities
+# System packages: ROS, bridge stack, and ament/colcon Python helpers (avoid a venv on PATH:
+# `#!/usr/bin/env python3` must resolve to the system interpreter so rosbridge/rosapi find
+# apt packages like python3-tornado and python3-psutil).
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         sudo \
         iproute2 \
         python3-pip \
         python3-venv \
+        python3-catkin-pkg \
+        python3-empy \
+        python3-lark \
         ros-jazzy-rosbridge-suite && \
     rm -rf /var/lib/apt/lists/*
 
-# Create a virtual environment for Python packages
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+RUN groupmod --new-name MAVRIC ubuntu && \
+    usermod --login MAVRIC --home /home/MAVRIC --move-home ubuntu
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir \
+ENV PATH="/home/MAVRIC/.local/bin:${PATH}"
+ENV BASH_ENV="/ros_env.sh"
+
+# Project + hardware Python deps for MAVRIC (user site); setuptools comes from distro for colcon.
+USER MAVRIC
+RUN pip3 install --no-cache-dir --user --break-system-packages \
         setuptools \
         python-can \
         numpy \
@@ -34,17 +40,18 @@ RUN pip3 install --no-cache-dir \
         adafruit-blinka \
         smbus2
 
-# Create non-root user and enable passwordless sudo
-# Create non-root user and enable passwordless sudo
-RUN groupadd --gid $USER_GID $USERNAME && \
-    useradd --uid $USER_UID --gid $USER_GID -m -s /bin/bash -c "$USERNAME" $USERNAME && \
-    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
-    chmod 0440 /etc/sudoers.d/$USERNAME
+USER root
+RUN echo "MAVRIC ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/MAVRIC && \
+    chmod 0440 /etc/sudoers.d/MAVRIC
 
-# Switch to non-root user
-USER $USERNAME
-WORKDIR /home/$USERNAME
+COPY ros_env.sh /ros_env.sh
+COPY ros_entrypoint.sh /ros_entrypoint.sh
+RUN chmod 0755 /ros_env.sh /ros_entrypoint.sh
 
-# Default entrypoint: bash login shell (ROS env pre-sourced)
-ENTRYPOINT ["bash", "-lc"]
-RUN echo "source /opt/ros/jazzy/setup.bash" >> /home/$USERNAME/.bashrc
+USER MAVRIC
+WORKDIR /home/MAVRIC
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]
+
+RUN echo "source /ros_env.sh" >> /home/MAVRIC/.bashrc

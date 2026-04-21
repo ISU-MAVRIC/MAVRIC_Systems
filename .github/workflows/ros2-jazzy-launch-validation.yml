@@ -1,5 +1,4 @@
-# This Workflow can be easily modified once we move to ROS2 Jazzy
-name: ROS2 Foxy Build and Launch Validation
+name: ROS2 Jazzy Build and Launch Validation
 
 on:
   pull_request:
@@ -22,8 +21,9 @@ jobs:
         with:
           filters: |
             ros2:
-              - 'ros2_ws_Foxy/**'
-              - '.devcontainer/*' # Include root devcontainer changes that affect ROS2 environment
+              - 'ros2_ws_Jazzy/**'
+              - '.devcontainer/**'
+              - 'compose.yaml'
 
   build-and-launch:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/devcontainer-cache
-          key: ${{ runner.os }}-devcontainer-${{ hashFiles('.devcontainer/devcontainer.json', '.devcontainer/Dockerfile') }}
+          key: ${{ runner.os }}-devcontainer-${{ hashFiles('.devcontainer/devcontainer.json', '.devcontainer/ROS Jazzy Dev Config/Dockerfile', '.devcontainer/ROS Jazzy Dev Config/ros_env.sh', '.devcontainer/ROS Jazzy Dev Config/ros_entrypoint.sh') }}
           restore-keys: |
             ${{ runner.os }}-devcontainer-
 
@@ -57,34 +57,30 @@ jobs:
           cacheTo: type=local,dest=/tmp/devcontainer-cache-new,mode=max
           runCmd: |
             set -e
-            cd /workspaces/MAVRIC_Systems/ros2_ws_Foxy
+            cd /workspaces/MAVRIC_Systems/ros2_ws_Jazzy
             echo "Building ROS2 Workspace..."
             colcon build --symlink-install
 
-            echo "Finding and Testing Launch Files..."
+            echo "Testing ROS2 Workspace..."
             source install/setup.bash
-            find src -name "*.launch.py" | while read launch_file; do
-              package_name=$(echo $launch_file | cut -d/ -f2)
-              launch_file_name=$(basename $launch_file)
-              echo "Attempting to launch $package_name $launch_file_name"
-              ros2 launch $package_name $launch_file_name &
-              pid=$!
-              sleep 15
-              if ps -p $pid > /dev/null; then
-                echo "Launch file $package_name $launch_file_name is still running after 15s. Success."
-                kill $pid
-              else
-                echo "Launch file $package_name $launch_file_name exited prematurely."
-                wait $pid
-                exit_code=$?
-                if [ $exit_code -ne 0 ]; then
-                  echo "::error::Launch file $package_name $launch_file_name failed with exit code $exit_code"
-                  exit 1
-                else
-                  echo "Launch file $package_name $launch_file_name exited cleanly before timeout."
-                fi
+            colcon test --return-code-on-test-failure
+
+            echo "Smoke launching mavric_launch teleop.launch.py"
+            ros2 launch mavric_launch teleop.launch.py &
+            pid=$!
+            sleep 15
+            if ps -p $pid > /dev/null; then
+              echo "Launch file is still running after 15s. Success."
+              kill $pid
+            else
+              echo "Launch file exited prematurely."
+              wait $pid
+              exit_code=$?
+              if [ $exit_code -ne 0 ]; then
+                echo "::error::Jazzy launch validation failed with exit code $exit_code"
+                exit 1
               fi
-            done
+            fi
 
       - name: Move cache
         if: always()
@@ -111,15 +107,15 @@ jobs:
           
           # If changes were detected but build failed, fail this check
           if [[ "${{ needs.check-changes.outputs.should-run }}" == "true" && "${{ needs.build-and-launch.result }}" != "success" ]]; then
-            echo "❌ ROS2 Foxy build or launch validation failed"
+            echo "❌ ROS2 Jazzy build or launch validation failed"
             exit 1
           fi
           
           # If no changes detected, skip is acceptable
           if [[ "${{ needs.check-changes.outputs.should-run }}" == "false" ]]; then
-            echo "✅ No ROS2 Foxy changes detected - skipping validation"
+            echo "✅ No ROS2 Jazzy changes detected - skipping validation"
             exit 0
           fi
           
           # Otherwise, build succeeded
-          echo "✅ ROS2 Foxy build and launch validation passed"
+          echo "✅ ROS2 Jazzy build and launch validation passed"

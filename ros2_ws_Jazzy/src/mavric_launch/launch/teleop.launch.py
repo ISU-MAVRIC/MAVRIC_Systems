@@ -45,7 +45,7 @@ def generate_launch_description():
         ),
         Node(
             package='drive_system',
-            executable='scale_tuning.py',
+            executable='scale_tuning',
             name='scale_tuning'
         )
     ])

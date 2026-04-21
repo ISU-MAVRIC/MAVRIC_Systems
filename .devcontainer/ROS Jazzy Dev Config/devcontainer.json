@@ -11,7 +11,7 @@
         "vscode": {
             "settings": {
                 "terminal.integrated.defaultProfile.linux": "bash",
-                "python.defaultInterpreterPath": "/opt/venv/bin/python"
+                "python.defaultInterpreterPath": "/usr/bin/python3"
             },
             "extensions": [
                 "ms-python.black-formatter",
@@ -25,5 +25,5 @@
             ]
         }
     },
-    "remoteUser": "mavric"
+    "remoteUser": "MAVRIC"
 }

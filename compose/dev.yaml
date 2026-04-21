@@ -1,0 +1,4 @@
+services:
+  mavric-ros-jazzy:
+    container_name: mavric-dev
+    command: sleep infinity

@@ -1,8 +1,8 @@
 {
-    "name": "ROS 2 Foxy Development",
+    "name": "ROS 2 Jazzy Development",
     "build": {
-        "dockerfile": "Dockerfile",
-        "context": "."
+        "dockerfile": "ROS Jazzy Dev Config/Dockerfile",
+        "context": "ROS Jazzy Dev Config"
     },
     "runArgs": [
         "--network=host"
@@ -25,6 +25,5 @@
             ]
         }
     },
-    "remoteUser": "mavric"
-    
+    "remoteUser": "MAVRIC"
 }
