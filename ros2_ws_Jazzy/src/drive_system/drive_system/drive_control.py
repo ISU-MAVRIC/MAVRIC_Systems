@@ -16,7 +16,7 @@ from rclpy.node import Node
 from utils.can_publisher import CANCommandPublisher
 
 # CAN IDs for Drive Controllers
-FLD = 32  # Front Left Drive
+FLD = 1  # Front Left Drive
 FRD = 6  # Front Right Drive
 BLD = 5  # Back Left Drive
 BRD = 3  # Back Right Drive
