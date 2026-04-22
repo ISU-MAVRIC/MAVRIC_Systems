@@ -1,8 +1,8 @@
 from can.interface import Bus
 from can import Message
-from utils.SparkCANLib import Statuses
+from SparkCANLib import Statuses
 from struct import pack
-from rclpy.logging import get_logger
+import logging
 
 """
 Description: Objects for storing data from motor controllers and sending data to motor controllers
@@ -17,7 +17,7 @@ def packer_float(value):
 
 class Controller:
     def __init__(self, bus, id):
-        self.logger = get_logger("cysar.SparkController")
+        self.logger = logging.getLogger("SparkCANLib.SparkController")
         self.bus = bus
         self.id = id
         self.statuses = {

@@ -6,7 +6,7 @@ import queue
 import traceback
 import logging
 
-from utils.SparkCANLib import SparkController
+from SparkCANLib import SparkController
 
 
 """
@@ -53,40 +53,21 @@ class SparkBus:
                 except queue.Empty:
                     return None
 
+        _log = logging.getLogger("SparkCANLib.SparkBus")
+
         # optionally suppress python-can logger noise if interface missing
         if suppress_errors:
             logging.getLogger("can").setLevel(logging.CRITICAL)
 
-        # helper for ROS logging if rclpy available
-        def _ros_log(level: str, msg: str):
-            try:
-                from rclpy.logging import get_logger
-
-                logger = get_logger("SparkCAN")
-                if level == "info":
-                    logger.info(msg)
-                elif level == "warn":
-                    logger.warn(msg)
-                elif level == "error":
-                    logger.error(msg)
-                else:
-                    logger.info(msg)
-            except Exception:
-                # fallback to print
-                print(msg)
-
         try:
             self.bus = Bus(channel=channel, bustype=bustype, bitrate=bitrate)
-            _ros_log(
-                "info",
-                f"[SparkCAN] Using real CAN bus: channel='{channel}', bustype='{bustype}', bitrate={bitrate} (simulation=False)",
+            _log.info(
+                f"[SparkCAN] Using real CAN bus: channel='{channel}', bustype='{bustype}', bitrate={bitrate} (simulation=False)"
             )
         except Exception as e:
-            # Fall back to dummy bus so higher-level code keeps working.
-            warn_msg = f"[SparkCAN] CAN bus init failed for channel '{channel}' ({e}). Running in simulation mode (no hardware)."
-            _ros_log("warn", warn_msg)
-            # Optional verbose traceback (comment out if too noisy)
-            # traceback.print_exc()
+            _log.warning(
+                f"[SparkCAN] CAN bus init failed for channel '{channel}' ({e}). Running in simulation mode (no hardware)."
+            )
             self.bus = _DummyBus()
             self.simulated = True
 

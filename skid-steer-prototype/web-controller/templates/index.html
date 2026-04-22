@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAVRIC Skid-Steer Controller</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 16px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #90caf9;
+      margin-bottom: 4px;
+    }
+
+    .panel {
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 12px 16px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2px 0;
+    }
+
+    .val {
+      color: #fff;
+      font-weight: bold;
+    }
+
+    /* Status dot */
+    #status-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f44336;
+      flex-shrink: 0;
+    }
+
+    /* Config inputs */
+    .cfg-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+    }
+
+    input[type="number"] {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      padding: 2px 6px;
+      width: 90px;
+      border-radius: 2px;
+    }
+
+    button {
+      background: #1565c0;
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 6px 16px;
+      border-radius: 2px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    button:hover { background: #1976d2; }
+
+    #cfg-status {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 4px;
+      min-height: 16px;
+    }
+
+    /* Key bindings legend */
+    .legend {
+      font-size: 11px;
+      color: #666;
+      line-height: 1.8;
+    }
+
+    .legend span {
+      color: #90caf9;
+    }
+  </style>
+</head>
+<body>
+  <h1>Skid-Steer Controller</h1>
+
+  <!-- Status -->
+  <div class="panel">
+    <div class="panel-title">Connection</div>
+    <div id="status-line">
+      <div id="status-dot"></div>
+      <span id="status-txt">Connecting…</span>
+    </div>
+  </div>
+
+  <!-- Input state -->
+  <div class="panel">
+    <div class="panel-title">Input</div>
+    <div class="row"><span>Speed</span>   <span class="val"><span id="speed-val">100</span>%</span></div>
+    <div class="row"><span>Throttle</span><span class="val"><span id="throttle-val">0.00</span></span></div>
+    <div class="row"><span>Turn</span>    <span class="val"><span id="turn-val">0.00</span></span></div>
+  </div>
+
+  <!-- Telemetry -->
+  <div class="panel">
+    <div class="panel-title">Telemetry</div>
+    <div class="row"><span>Left RPM</span> <span class="val"><span id="left-rpm">—</span></span></div>
+    <div class="row"><span>Right RPM</span><span class="val"><span id="right-rpm">—</span></span></div>
+  </div>
+
+  <!-- Config -->
+  <div class="panel">
+    <div class="panel-title">Parameters</div>
+    <div class="cfg-row">
+      <label for="max-vel">Max Velocity (m/s)</label>
+      <input id="max-vel" type="number" value="1.0" min="0.1" max="10" step="0.1">
+    </div>
+    <div class="cfg-row">
+      <label for="max-rpm">Max RPM</label>
+      <input id="max-rpm" type="number" value="5000" min="100" max="11000" step="100">
+    </div>
+    <button id="apply-btn">Apply</button>
+    <div id="cfg-status"></div>
+  </div>
+
+  <!-- Key bindings -->
+  <div class="panel legend">
+    <div class="panel-title">Bindings</div>
+    <span>W/S</span> forward / back &nbsp;|&nbsp;
+    <span>A/D</span> turn left / right<br>
+    <span>Q</span> pivot left &nbsp;|&nbsp;
+    <span>E</span> pivot right &nbsp;(while moving)<br>
+    <span>1–9</span> set speed 10%–90% &nbsp;|&nbsp;
+    <span>0</span> full speed
+  </div>
+
+  <script src="/static/controller.js"></script>
+</body>
+</html>
