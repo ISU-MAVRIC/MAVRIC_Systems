@@ -25,3 +25,5 @@ colcon/
 # Ignore supervisord runtime files at repo root
 /supervisord.log
 /supervisord.pid
+
+.venv/

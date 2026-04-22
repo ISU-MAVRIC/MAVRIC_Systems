@@ -4,12 +4,8 @@ import threading
 import time
 import logging
 
-_ROOT = os.path.join(os.path.dirname(__file__), "..")
-sys.path.insert(0, _ROOT)
-sys.path.insert(0, os.path.join(_ROOT, "joystick-drive"))
-
 from SparkCANLib.SparkCAN import SparkBus
-from skid_steer_drive import DriveConfig, SkidSteerDrive
+from joystick_drive.skid_steer_drive import DriveConfig, SkidSteerDrive
 
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
@@ -149,4 +145,4 @@ def handle_update_config(data):
 
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=False)
+    socketio.run(app, host="0.0.0.0", port=6060, debug=False)
