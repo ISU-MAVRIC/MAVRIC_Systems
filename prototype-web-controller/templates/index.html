@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>MAVRIC Skid-Steer Controller</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
+    /* ── Reset ──────────────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -13,11 +14,19 @@
       color: #e0e0e0;
       font-family: 'Courier New', Courier, monospace;
       font-size: 14px;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* ── Desktop layout ─────────────────────────────────────────────────────── */
+    #desktop-ui {
       padding: 20px;
       display: flex;
       flex-direction: column;
       gap: 12px;
       max-width: 480px;
+      height: 100%;
+      overflow-y: auto;
     }
 
     h1 {
@@ -25,7 +34,6 @@
       letter-spacing: 2px;
       text-transform: uppercase;
       color: #90caf9;
-      margin-bottom: 4px;
     }
 
     .panel {
@@ -42,50 +50,8 @@
       margin-bottom: 8px;
     }
 
-    .row {
-      display: flex;
-      justify-content: space-between;
-      padding: 2px 0;
-    }
-
-    .val {
-      color: #fff;
-      font-weight: bold;
-    }
-
-    /* Status dot */
-    #status-line {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #f44336;
-      flex-shrink: 0;
-    }
-
-    /* Config inputs */
-    .cfg-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 4px 0;
-    }
-
-    input[type="number"] {
-      background: #2a2a2a;
-      border: 1px solid #444;
-      color: #fff;
-      font-family: inherit;
-      font-size: 14px;
-      padding: 2px 6px;
-      width: 90px;
-      border-radius: 2px;
-    }
+    .row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .val { color: #fff; font-weight: bold; }
 
     button {
       background: #1565c0;
@@ -96,81 +62,329 @@
       padding: 6px 16px;
       border-radius: 2px;
       cursor: pointer;
-      margin-top: 8px;
+    }
+    button:hover  { background: #1976d2; }
+    button:active { background: #0d47a1; }
+
+    .legend { font-size: 11px; color: #666; line-height: 1.8; }
+    .legend span { color: #90caf9; }
+
+    /* ── Shared status dot ──────────────────────────────────────────────────── */
+    .status-wrap { display: flex; align-items: center; gap: 8px; }
+
+    .js-status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f44336;
+      flex-shrink: 0;
     }
 
-    button:hover { background: #1976d2; }
+    /* ── Mobile layout ──────────────────────────────────────────────────────── */
+    #mobile-ui {
+      display: none;
+      flex-direction: column;
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    @media (pointer: coarse) {
+      #desktop-ui { display: none; }
+      #mobile-ui  { display: flex; }
+    }
+
+    /* Top bar */
+    #m-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      background: #111;
+      border-bottom: 1px solid #2a2a2a;
+      flex-shrink: 0;
+      font-size: 13px;
+      flex-wrap: nowrap;
+    }
+
+    #m-telem {
+      flex: 1;
+      text-align: center;
+      color: #90caf9;
+      white-space: nowrap;
+    }
+
+    #m-speed-display { color: #aaa; white-space: nowrap; }
+
+    #m-cfg-btn {
+      padding: 4px 10px;
+      font-size: 16px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+
+    /* Main area */
+    #m-main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 16px;
+      gap: 16px;
+    }
+
+    @media (orientation: portrait) {
+      #m-main { flex-direction: column; }
+    }
+
+    @media (orientation: landscape) {
+      #m-main { flex-direction: row; }
+    }
+
+    /* Virtual joystick */
+    #joy-zone {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      border: 2px solid #444;
+      border-radius: 50%;
+      background: #222;
+      flex-shrink: 0;
+      touch-action: none;
+    }
+
+    /* Crosshair guides */
+    #joy-zone::before, #joy-zone::after {
+      content: '';
+      position: absolute;
+      background: #2e2e2e;
+      pointer-events: none;
+    }
+    #joy-zone::before { width: 1px; height: 100%; left: calc(50% - 0.5px); }
+    #joy-zone::after  { width: 100%; height: 1px; top: calc(50% - 0.5px); }
+
+    #joy-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #1565c0;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 12px rgba(21, 101, 192, 0.4);
+    }
+
+    #joy-knob.active {
+      background: #42a5f5;
+      box-shadow: 0 0 20px rgba(66, 165, 245, 0.6);
+    }
+
+    /* Right controls */
+    #m-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      min-width: 150px;
+      max-width: 240px;
+    }
+
+    #m-pivot-btns { display: flex; gap: 8px; }
+
+    .m-btn {
+      padding: 14px 8px;
+      font-size: 14px;
+      font-family: inherit;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      background: #37474f;
+      cursor: pointer;
+      flex: 1;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      touch-action: none;
+    }
+    .m-btn:active { filter: brightness(1.35); }
+
+    #stop-btn {
+      background: #b71c1c;
+      font-size: 15px;
+      font-weight: bold;
+      padding: 18px 8px;
+      letter-spacing: 1px;
+    }
+    #stop-btn.pressed { background: #e53935; }
+
+    /* Speed slider */
+    #m-speed-ctrl { display: flex; flex-direction: column; gap: 6px; }
+    #m-speed-ctrl label { font-size: 12px; color: #888; }
+
+    #speed-slider {
+      width: 100%;
+      accent-color: #1976d2;
+      cursor: pointer;
+      height: 4px;
+    }
+
+    /* ── Settings modal ─────────────────────────────────────────────────────── */
+    #settings-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #settings-modal.hidden { display: none; }
+
+    #settings-content {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 24px;
+      min-width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #settings-content h2 {
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #90caf9;
+    }
+
+    .cfg-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="number"] {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      padding: 4px 8px;
+      width: 90px;
+      border-radius: 2px;
+    }
 
     #cfg-status {
       font-size: 12px;
       color: #aaa;
-      margin-top: 4px;
       min-height: 16px;
     }
 
-    /* Key bindings legend */
-    .legend {
-      font-size: 11px;
-      color: #666;
-      line-height: 1.8;
-    }
-
-    .legend span {
-      color: #90caf9;
-    }
+    #settings-close-btn { background: #37474f; }
   </style>
 </head>
 <body>
-  <h1>Skid-Steer Controller</h1>
 
-  <!-- Status -->
-  <div class="panel">
-    <div class="panel-title">Connection</div>
-    <div id="status-line">
-      <div id="status-dot"></div>
-      <span id="status-txt">Connecting…</span>
+  <!-- ── Mobile UI ─────────────────────────────────────────────────────────── -->
+  <div id="mobile-ui">
+
+    <div id="m-topbar">
+      <div class="status-wrap">
+        <div class="js-status-dot"></div>
+        <span class="js-status-txt">Connecting…</span>
+      </div>
+      <div id="m-telem">
+        L: <span class="js-left-rpm">—</span> &nbsp; R: <span class="js-right-rpm">—</span>
+      </div>
+      <div id="m-speed-display"><span class="js-speed-val">100</span>%</div>
+      <button id="m-cfg-btn">⚙</button>
+    </div>
+
+    <div id="m-main">
+
+      <div id="joy-zone">
+        <div id="joy-knob"></div>
+      </div>
+
+      <div id="m-controls">
+        <div id="m-pivot-btns">
+          <button id="pivot-l" class="m-btn">◄ Pivot L</button>
+          <button id="pivot-r" class="m-btn">Pivot R ►</button>
+        </div>
+        <button id="stop-btn" class="m-btn">■ STOP</button>
+        <div id="m-speed-ctrl">
+          <label>Speed: <span class="js-speed-val">100</span>%</label>
+          <input id="speed-slider" type="range" min="10" max="100" step="10" value="100">
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- Input state -->
-  <div class="panel">
-    <div class="panel-title">Input</div>
-    <div class="row"><span>Speed</span>   <span class="val"><span id="speed-val">100</span>%</span></div>
-    <div class="row"><span>Throttle</span><span class="val"><span id="throttle-val">0.00</span></span></div>
-    <div class="row"><span>Turn</span>    <span class="val"><span id="turn-val">0.00</span></span></div>
-  </div>
+  <!-- ── Desktop UI ────────────────────────────────────────────────────────── -->
+  <div id="desktop-ui">
+    <h1>Skid-Steer Controller</h1>
 
-  <!-- Telemetry -->
-  <div class="panel">
-    <div class="panel-title">Telemetry</div>
-    <div class="row"><span>Left RPM</span> <span class="val"><span id="left-rpm">—</span></span></div>
-    <div class="row"><span>Right RPM</span><span class="val"><span id="right-rpm">—</span></span></div>
-  </div>
-
-  <!-- Config -->
-  <div class="panel">
-    <div class="panel-title">Parameters</div>
-    <div class="cfg-row">
-      <label for="max-vel">Max Velocity (m/s)</label>
-      <input id="max-vel" type="number" value="1.0" min="0.1" max="10" step="0.1">
+    <div class="panel">
+      <div class="panel-title">Connection</div>
+      <div class="status-wrap">
+        <div class="js-status-dot"></div>
+        <span class="js-status-txt">Connecting…</span>
+      </div>
     </div>
-    <div class="cfg-row">
-      <label for="max-rpm">Max RPM</label>
-      <input id="max-rpm" type="number" value="5000" min="100" max="11000" step="100">
+
+    <div class="panel">
+      <div class="panel-title">Input</div>
+      <div class="row"><span>Speed</span>    <span class="val"><span class="js-speed-val">100</span>%</span></div>
+      <div class="row"><span>Throttle</span> <span class="val"><span class="js-throttle-val">0.00</span></span></div>
+      <div class="row"><span>Turn</span>     <span class="val"><span class="js-turn-val">0.00</span></span></div>
     </div>
-    <button id="apply-btn">Apply</button>
-    <div id="cfg-status"></div>
+
+    <div class="panel">
+      <div class="panel-title">Telemetry</div>
+      <div class="row"><span>Left RPM</span>  <span class="val"><span class="js-left-rpm">—</span></span></div>
+      <div class="row"><span>Right RPM</span> <span class="val"><span class="js-right-rpm">—</span></span></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Parameters</div>
+      <button id="desktop-settings-btn">⚙ Open Settings</button>
+      <div id="cfg-status-desktop" style="font-size:12px;color:#aaa;margin-top:6px;min-height:16px"></div>
+    </div>
+
+    <div class="panel legend">
+      <div class="panel-title">Bindings</div>
+      <span>W/S</span> forward / back &nbsp;|&nbsp;
+      <span>A/D</span> turn left / right<br>
+      <span>Q</span> pivot left &nbsp;|&nbsp;
+      <span>E</span> pivot right &nbsp;(while moving)<br>
+      <span>1–9</span> set speed 10%–90% &nbsp;|&nbsp;
+      <span>0</span> full speed
+    </div>
   </div>
 
-  <!-- Key bindings -->
-  <div class="panel legend">
-    <div class="panel-title">Bindings</div>
-    <span>W/S</span> forward / back &nbsp;|&nbsp;
-    <span>A/D</span> turn left / right<br>
-    <span>Q</span> pivot left &nbsp;|&nbsp;
-    <span>E</span> pivot right &nbsp;(while moving)<br>
-    <span>1–9</span> set speed 10%–90% &nbsp;|&nbsp;
-    <span>0</span> full speed
+  <!-- ── Settings modal (shared) ───────────────────────────────────────────── -->
+  <div id="settings-modal" class="hidden">
+    <div id="settings-content">
+      <h2>Parameters</h2>
+      <div class="cfg-row">
+        <label for="max-vel">Max Velocity (m/s)</label>
+        <input id="max-vel" type="number" value="1.0" min="0.1" max="10" step="0.1">
+      </div>
+      <div class="cfg-row">
+        <label for="max-rpm">Max RPM</label>
+        <input id="max-rpm" type="number" value="5000" min="100" max="11000" step="100">
+      </div>
+      <button id="apply-btn">Apply</button>
+      <div id="cfg-status"></div>
+      <button id="settings-close-btn">Close</button>
+    </div>
   </div>
 
   <script src="/static/controller.js"></script>
