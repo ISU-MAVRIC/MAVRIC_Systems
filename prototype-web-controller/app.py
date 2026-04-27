@@ -5,9 +5,11 @@ import time
 import logging
 
 from SparkCANLib.SparkCAN import SparkBus
+from camera_service import RealSenseCameraService
 from joystick_drive.skid_steer_drive import DriveConfig, SkidSteerDrive
+from obstacle_avoidance import DumbObstacleAvoider
 
-from flask import Flask, render_template
+from flask import Flask, Response, render_template
 from flask_socketio import SocketIO, emit
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -25,6 +27,8 @@ DEFAULT_MAX_RPM = 5000
 _bus = None
 _drive = None
 _drive_lock = threading.Lock()
+_camera = RealSenseCameraService()
+_avoider = DumbObstacleAvoider()
 
 
 def _init_drive(max_velocity: float, max_rpm: float) -> None:
@@ -44,6 +48,7 @@ def _init_drive(max_velocity: float, max_rpm: float) -> None:
 
 
 _init_drive(DEFAULT_MAX_VELOCITY, DEFAULT_MAX_RPM)
+_camera.start()
 
 # ── Safety watchdog ───────────────────────────────────────────────────────────
 
@@ -56,6 +61,7 @@ def _watchdog() -> None:
         time.sleep(0.1)
         with _drive_lock:
             if _drive is not None and (time.time() - _last_heartbeat) > WATCHDOG_TIMEOUT:
+                _avoider.stop()
                 _drive.stop()
 
 
@@ -75,9 +81,37 @@ def _telemetry() -> None:
                 socketio.emit("rpm_update", {"left": round(left, 1), "right": round(right, 1)})
             except Exception:
                 pass
+        socketio.emit("camera_status", _camera.status().as_dict())
+        socketio.emit("distance_update", _camera.distance().as_dict())
+        socketio.emit("avoidance_status", _avoider.status())
 
 
 threading.Thread(target=_telemetry, daemon=True).start()
+
+# ── Obstacle avoidance thread ────────────────────────────────────────────────
+
+
+def _obstacle_avoidance_loop() -> None:
+    while True:
+        time.sleep(0.05)
+        if not _avoider.enabled:
+            continue
+
+        distance = _camera.distance()
+        age = time.time() - distance.timestamp
+        center_m = distance.center_m if age <= _avoider.config.stale_seconds else None
+        command = _avoider.command(center_m)
+
+        with _drive_lock:
+            if _drive is None:
+                continue
+            if command.throttle == 0.0 and command.turn == 0.0:
+                _drive.stop()
+            else:
+                _drive.arcade(command.throttle, command.turn)
+
+
+threading.Thread(target=_obstacle_avoidance_loop, daemon=True).start()
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +119,14 @@ threading.Thread(target=_telemetry, daemon=True).start()
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/camera/stream")
+def camera_stream():
+    return Response(
+        _camera.mjpeg_frames(),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
 
 
 # ── SocketIO handlers ─────────────────────────────────────────────────────────
@@ -103,6 +145,9 @@ def handle_heartbeat(_data):
 @socketio.on("drive")
 def handle_drive(data):
     _refresh_heartbeat()
+    if _avoider.enabled:
+        emit("avoidance_status", _avoider.status())
+        return
     with _drive_lock:
         if _drive is None:
             return
@@ -112,6 +157,9 @@ def handle_drive(data):
 @socketio.on("pivot")
 def handle_pivot(data):
     _refresh_heartbeat()
+    if _avoider.enabled:
+        emit("avoidance_status", _avoider.status())
+        return
     with _drive_lock:
         if _drive is None:
             return
@@ -120,14 +168,17 @@ def handle_pivot(data):
 
 @socketio.on("stop")
 def handle_stop(_data):
+    _avoider.stop()
     with _drive_lock:
         if _drive is not None:
             _drive.stop()
+    emit("avoidance_status", _avoider.status(), broadcast=True)
 
 
 @socketio.on("disconnect")
 def handle_disconnect():
     _log.info("Client disconnected — stopping motors")
+    _avoider.stop()
     with _drive_lock:
         if _drive is not None:
             _drive.stop()
@@ -142,6 +193,26 @@ def handle_update_config(data):
         emit("config_applied", {"max_velocity": mv, "max_rpm": mr})
     except (ValueError, KeyError) as exc:
         emit("config_error", {"error": str(exc)})
+
+
+@socketio.on("set_avoidance")
+def handle_set_avoidance(data):
+    enabled = bool(data.get("enabled"))
+    if enabled and not _camera.status().available:
+        _avoider.stop()
+        emit(
+            "avoidance_status",
+            {"enabled": False, "state": "stopped", "reason": "camera unavailable"},
+            broadcast=True,
+        )
+        return
+
+    command = _avoider.set_enabled(enabled)
+    if not enabled or (command.throttle == 0.0 and command.turn == 0.0):
+        with _drive_lock:
+            if _drive is not None:
+                _drive.stop()
+    emit("avoidance_status", _avoider.status(), broadcast=True)
 
 
 if __name__ == "__main__":

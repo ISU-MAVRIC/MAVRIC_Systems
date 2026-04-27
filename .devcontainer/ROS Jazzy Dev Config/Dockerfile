@@ -15,6 +15,9 @@ RUN apt-get update && \
         python3-catkin-pkg \
         python3-empy \
         python3-lark \
+        libusb-1.0-0 \
+        udev \
+        v4l-utils \
         ros-jazzy-rosbridge-suite && \
     rm -rf /var/lib/apt/lists/*
 
@@ -39,6 +42,14 @@ RUN pip3 install --no-cache-dir --user --break-system-packages \
         adafruit-circuitpython-motor \
         adafruit-blinka \
         smbus2
+
+RUN pip3 install --no-cache-dir --user --break-system-packages \
+        flask \
+        flask-socketio \
+        python-socketio \
+        python-engineio \
+        opencv-python-headless \
+        pyrealsense2
 
 USER root
 RUN echo "MAVRIC ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/MAVRIC && \

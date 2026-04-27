@@ -12,6 +12,7 @@ let lastType = null;
 let lastThrottle = null;
 let lastTurn = null;
 let lastPivotSide = null;
+let avoidanceEnabled = false;
 
 // Mobile touch state
 let joyActive = false;
@@ -36,6 +37,32 @@ function setSpeedDisplay(pct) {
     document.querySelectorAll('.js-speed-val').forEach(el => el.textContent = pct);
 }
 
+function setCenterDistance(centerM) {
+    const text = (centerM === null || centerM === undefined) ? '--' : Number(centerM).toFixed(2);
+    document.querySelectorAll('.js-center-distance').forEach(el => el.textContent = text);
+}
+
+function setCameraStatus(data) {
+    const label = data.simulated ? `Simulated: ${data.message}` : data.message;
+    document.querySelectorAll('.js-camera-status').forEach(el => {
+        el.textContent = label;
+        el.classList.toggle('warn', data.simulated || !data.available);
+    });
+    document.querySelectorAll('.js-avoidance-toggle').forEach(el => {
+        el.disabled = !data.available;
+    });
+}
+
+function setAvoidanceStatus(data) {
+    avoidanceEnabled = data.enabled;
+    document.querySelectorAll('.js-avoidance-toggle').forEach(el => {
+        el.checked = data.enabled;
+    });
+    document.querySelectorAll('.js-avoidance-state').forEach(el => {
+        el.textContent = `${data.state}: ${data.reason}`;
+    });
+}
+
 function updateDisplay(throttle, turn) {
     document.querySelectorAll('.js-throttle-val').forEach(el => el.textContent = throttle.toFixed(2));
     document.querySelectorAll('.js-turn-val').forEach(el     => el.textContent = turn.toFixed(2));
@@ -53,6 +80,9 @@ socket.on('disconnect', () => {
 });
 
 socket.on('rpm_update', (data) => setRpm(data.left, data.right));
+socket.on('camera_status', setCameraStatus);
+socket.on('distance_update', (data) => setCenterDistance(data.center_m));
+socket.on('avoidance_status', setAvoidanceStatus);
 
 socket.on('config_applied', (data) => {
     const msg = `Applied: ${data.max_velocity} m/s, ${data.max_rpm} RPM`;
@@ -99,6 +129,7 @@ function safeStop() {
     touchPivotSide = null;
     resetJoy();
     socket.emit('stop', {});
+    avoidanceEnabled = false;
     lastType = 'stop';
     updateDisplay(0, 0);
 }
@@ -177,6 +208,7 @@ if (isMobile) {
         touchPivotSide = null;
         resetJoy();
         socket.emit('stop', {});
+        avoidanceEnabled = false;
         lastType = 'stop';
         updateDisplay(0, 0);
     }, { passive: false });
@@ -205,6 +237,20 @@ document.getElementById('settings-close-btn').addEventListener('click', () => {
     document.getElementById('settings-modal').classList.add('hidden');
 });
 
+document.querySelectorAll('.js-avoidance-toggle').forEach((el) => {
+    el.addEventListener('change', (e) => {
+        avoidanceEnabled = e.target.checked;
+        socket.emit('set_avoidance', { enabled: avoidanceEnabled });
+        if (avoidanceEnabled) {
+            keys.clear();
+            touchPivotSide = null;
+            resetJoy();
+            lastType = 'avoidance';
+            updateDisplay(0, 0);
+        }
+    });
+});
+
 // ── Config apply ──────────────────────────────────────────────────────────────
 
 document.getElementById('apply-btn').addEventListener('click', () => {
@@ -220,6 +266,11 @@ document.getElementById('apply-btn').addEventListener('click', () => {
 // ── Main game loop ────────────────────────────────────────────────────────────
 
 setInterval(() => {
+    if (avoidanceEnabled) {
+        updateDisplay(0, 0);
+        return;
+    }
+
     let throttle = 0;
     let turn = 0;
 

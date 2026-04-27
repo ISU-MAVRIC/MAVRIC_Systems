@@ -4,3 +4,6 @@ python-socketio>=5.10
 python-engineio>=4.9
 python-can>=4.3
 bitstring>=4.0
+numpy>=1.26
+opencv-python-headless>=4.9
+pyrealsense2>=2.56

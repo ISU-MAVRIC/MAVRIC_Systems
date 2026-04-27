@@ -52,6 +52,31 @@
 
     .row { display: flex; justify-content: space-between; padding: 2px 0; }
     .val { color: #fff; font-weight: bold; }
+    .warn { color: #ffb74d; }
+
+    .camera-view {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background: #111;
+      display: block;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .switch-row input {
+      width: 48px;
+      height: 24px;
+      accent-color: #4caf50;
+      flex-shrink: 0;
+    }
 
     button {
       background: #1565c0;
@@ -135,8 +160,23 @@
       gap: 16px;
     }
 
+    #m-camera-panel {
+      width: min(36vw, 260px);
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    #m-camera-panel .camera-view {
+      max-height: 34dvh;
+    }
+
     @media (orientation: portrait) {
       #m-main { flex-direction: column; }
+      #m-camera-panel { width: min(86vw, 360px); }
     }
 
     @media (orientation: landscape) {
@@ -224,6 +264,17 @@
     #m-speed-ctrl { display: flex; flex-direction: column; gap: 6px; }
     #m-speed-ctrl label { font-size: 12px; color: #888; }
 
+    #m-avoidance {
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #202020;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+    }
+
     #speed-slider {
       width: 100%;
       accent-color: #1976d2;
@@ -308,11 +359,24 @@
 
     <div id="m-main">
 
+      <div id="m-camera-panel">
+        <img class="camera-view" src="/camera/stream" alt="RealSense camera stream">
+        <div>Range: <span class="js-center-distance">--</span> m</div>
+        <div class="js-camera-status warn">Camera initializing</div>
+      </div>
+
       <div id="joy-zone">
         <div id="joy-knob"></div>
       </div>
 
       <div id="m-controls">
+        <div id="m-avoidance">
+          <label class="switch-row" for="m-avoidance-toggle">
+            <span>Obstacle Avoidance</span>
+            <input id="m-avoidance-toggle" class="js-avoidance-toggle" type="checkbox">
+          </label>
+          <div>Mode: <span class="js-avoidance-state">manual</span></div>
+        </div>
         <div id="m-pivot-btns">
           <button id="pivot-l" class="m-btn">◄ Pivot L</button>
           <button id="pivot-r" class="m-btn">Pivot R ►</button>
@@ -350,6 +414,22 @@
       <div class="panel-title">Telemetry</div>
       <div class="row"><span>Left RPM</span>  <span class="val"><span class="js-left-rpm">—</span></span></div>
       <div class="row"><span>Right RPM</span> <span class="val"><span class="js-right-rpm">—</span></span></div>
+      <div class="row"><span>Center Distance</span> <span class="val"><span class="js-center-distance">--</span> m</span></div>
+      <div class="row"><span>Camera</span> <span class="val js-camera-status warn">Initializing</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">RealSense</div>
+      <img class="camera-view" src="/camera/stream" alt="RealSense camera stream">
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Obstacle Avoidance</div>
+      <label class="switch-row" for="desktop-avoidance-toggle">
+        <span>Enable dumb avoidance</span>
+        <input id="desktop-avoidance-toggle" class="js-avoidance-toggle" type="checkbox">
+      </label>
+      <div class="row"><span>Mode</span> <span class="val js-avoidance-state">manual</span></div>
     </div>
 
     <div class="panel">
