@@ -1,4 +1,77 @@
-const socket = io();
+function createControllerSocket() {
+    const handlers = new Map();
+    let ws = null;
+    let reconnectTimer = null;
+    let reconnectDelay = 250;
+    let manuallyClosed = false;
+
+    function fire(type, data) {
+        (handlers.get(type) || []).forEach((handler) => handler(data));
+    }
+
+    function websocketUrl() {
+        const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${scheme}//${window.location.host}/ws`;
+    }
+
+    function scheduleReconnect() {
+        if (manuallyClosed || reconnectTimer) return;
+        reconnectTimer = window.setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+        }, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 1.6, 3000);
+    }
+
+    function connect() {
+        ws = new WebSocket(websocketUrl());
+
+        ws.addEventListener('open', () => {
+            reconnectDelay = 250;
+            fire('connect', {});
+        });
+
+        ws.addEventListener('message', (event) => {
+            let message;
+            try {
+                message = JSON.parse(event.data);
+            } catch {
+                return;
+            }
+            if (!message.type) return;
+            fire(message.type, message);
+        });
+
+        ws.addEventListener('close', () => {
+            fire('disconnect', {});
+            scheduleReconnect();
+        });
+
+        ws.addEventListener('error', () => {
+            if (ws) ws.close();
+        });
+    }
+
+    connect();
+
+    return {
+        on(type, handler) {
+            if (!handlers.has(type)) handlers.set(type, []);
+            handlers.get(type).push(handler);
+        },
+        emit(type, payload = {}) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ type, ...payload }));
+        },
+        close() {
+            manuallyClosed = true;
+            if (reconnectTimer) window.clearTimeout(reconnectTimer);
+            if (ws) ws.close();
+        },
+    };
+}
+
+const socket = createControllerSocket();
 
 // ── Mobile detection ──────────────────────────────────────────────────────────
 const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
