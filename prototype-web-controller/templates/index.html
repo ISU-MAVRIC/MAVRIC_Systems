@@ -159,23 +159,8 @@
       gap: 16px;
     }
 
-    #m-camera-panel {
-      width: min(36vw, 260px);
-      min-width: 180px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      color: #aaa;
-      font-size: 12px;
-    }
-
-    #m-camera-panel .camera-view {
-      max-height: 34dvh;
-    }
-
     @media (orientation: portrait) {
       #m-main { flex-direction: column; }
-      #m-camera-panel { width: min(86vw, 360px); }
     }
 
     @media (orientation: landscape) {
@@ -276,9 +261,45 @@
 
     #speed-slider {
       width: 100%;
-      accent-color: #1976d2;
       cursor: pointer;
-      height: 4px;
+      height: 28px;
+      accent-color: #1976d2;
+      background: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    #speed-slider::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #333;
+    }
+
+    #speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #42a5f5;
+      border: 2px solid #90caf9;
+      margin-top: -11px;
+      box-shadow: 0 0 12px rgba(66, 165, 245, 0.45);
+    }
+
+    #speed-slider::-moz-range-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #333;
+    }
+
+    #speed-slider::-moz-range-thumb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #42a5f5;
+      border: 2px solid #90caf9;
+      box-shadow: 0 0 12px rgba(66, 165, 245, 0.45);
     }
 
     /* ── Settings modal ─────────────────────────────────────────────────────── */
@@ -299,14 +320,16 @@
       border: 1px solid #333;
       border-radius: 8px;
       padding: 24px;
-      min-width: 280px;
+      width: min(92vw, 520px);
+      max-height: 88dvh;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
+      overflow-y: auto;
     }
 
     #settings-content h2 {
-      font-size: 14px;
+      font-size: 16px;
       letter-spacing: 1px;
       text-transform: uppercase;
       color: #90caf9;
@@ -314,9 +337,30 @@
 
     .cfg-row {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .cfg-row label {
+      color: #bbb;
+      font-size: 13px;
+    }
+
+    .stepper {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr) 54px;
+      gap: 8px;
       align-items: center;
-      gap: 12px;
+    }
+
+    .stepper-btn {
+      min-height: 48px;
+      padding: 0;
+      font-size: 24px;
+      line-height: 1;
+      border-radius: 6px;
+      background: #2f4f5f;
+      touch-action: manipulation;
     }
 
     input[type="number"] {
@@ -324,10 +368,12 @@
       border: 1px solid #444;
       color: #fff;
       font-family: inherit;
-      font-size: 14px;
-      padding: 4px 8px;
-      width: 90px;
-      border-radius: 2px;
+      font-size: 20px;
+      padding: 10px 12px;
+      width: 100%;
+      min-height: 48px;
+      border-radius: 6px;
+      text-align: center;
     }
 
     #cfg-status {
@@ -336,7 +382,52 @@
       min-height: 16px;
     }
 
+    #apply-btn,
+    #settings-close-btn {
+      min-height: 48px;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+
     #settings-close-btn { background: #37474f; }
+
+    @media (pointer: coarse) {
+      #settings-modal {
+        align-items: stretch;
+        padding: 14px;
+      }
+
+      #settings-content {
+        width: 100%;
+        max-height: none;
+        padding: 22px;
+        justify-content: center;
+      }
+
+      #settings-content h2 { font-size: 18px; }
+      .cfg-row label { font-size: 15px; }
+
+      .stepper {
+        grid-template-columns: 64px minmax(0, 1fr) 64px;
+        gap: 10px;
+      }
+
+      .stepper-btn {
+        min-height: 58px;
+        font-size: 30px;
+      }
+
+      input[type="number"] {
+        min-height: 58px;
+        font-size: 24px;
+      }
+
+      #apply-btn,
+      #settings-close-btn {
+        min-height: 56px;
+        font-size: 17px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -358,12 +449,6 @@
 
     <div id="m-main">
 
-      <div id="m-camera-panel">
-        <img class="camera-view" src="/camera/stream" alt="RealSense camera stream">
-        <div>Range: <span class="js-center-distance">--</span> m</div>
-        <div class="js-camera-status warn">Camera initializing</div>
-      </div>
-
       <div id="joy-zone">
         <div id="joy-knob"></div>
       </div>
@@ -383,7 +468,7 @@
         <button id="stop-btn" class="m-btn">■ STOP</button>
         <div id="m-speed-ctrl">
           <label>Speed: <span class="js-speed-val">100</span>%</label>
-          <input id="speed-slider" type="range" min="10" max="100" step="10" value="100">
+          <input id="speed-slider" type="range" min="10" max="100" step="1" value="100">
         </div>
       </div>
 
@@ -454,11 +539,19 @@
       <h2>Parameters</h2>
       <div class="cfg-row">
         <label for="max-vel">Max Velocity (m/s)</label>
-        <input id="max-vel" type="number" value="1.0" min="0.1" max="10" step="0.1">
+        <div class="stepper">
+          <button class="stepper-btn" type="button" data-step-target="max-vel" data-step-dir="-1">−</button>
+          <input id="max-vel" type="number" value="1.0" min="0.1" max="10" step="0.1" inputmode="decimal">
+          <button class="stepper-btn" type="button" data-step-target="max-vel" data-step-dir="1">+</button>
+        </div>
       </div>
       <div class="cfg-row">
         <label for="max-rpm">Max RPM</label>
-        <input id="max-rpm" type="number" value="5000" min="100" max="11000" step="100">
+        <div class="stepper">
+          <button class="stepper-btn" type="button" data-step-target="max-rpm" data-step-dir="-1">−</button>
+          <input id="max-rpm" type="number" value="5000" min="100" max="11000" step="100" inputmode="numeric">
+          <button class="stepper-btn" type="button" data-step-target="max-rpm" data-step-dir="1">+</button>
+        </div>
       </div>
       <button id="apply-btn">Apply</button>
       <div id="cfg-status"></div>

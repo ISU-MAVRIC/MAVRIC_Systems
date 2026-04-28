@@ -177,7 +177,16 @@ socket.on('config_error', (data) => {
 const SPEED_MAP = { '1':0.1,'2':0.2,'3':0.3,'4':0.4,'5':0.5,
                     '6':0.6,'7':0.7,'8':0.8,'9':0.9,'0':1.0 };
 
+function isEditableTarget(target) {
+    return target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || target.isContentEditable;
+}
+
 document.addEventListener('keydown', (e) => {
+    if (isEditableTarget(e.target)) return;
+
     keys.add(e.key.toLowerCase());
     if (SPEED_MAP[e.key] !== undefined) {
         speedMult = SPEED_MAP[e.key];
@@ -188,7 +197,10 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
 });
 
-document.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+document.addEventListener('keyup', (e) => {
+    if (isEditableTarget(e.target)) return;
+    keys.delete(e.key.toLowerCase());
+});
 
 // ── Gamepad ───────────────────────────────────────────────────────────────────
 
@@ -308,6 +320,33 @@ if (desktopSettingsBtn) {
 
 document.getElementById('settings-close-btn').addEventListener('click', () => {
     document.getElementById('settings-modal').classList.add('hidden');
+});
+
+function adjustStepper(el) {
+    const input = document.getElementById(el.dataset.stepTarget);
+    if (!input) return;
+    const direction = Number(el.dataset.stepDir);
+    const stepText = input.getAttribute('step') || '1';
+    const step = Number(stepText);
+    const min = Number(input.getAttribute('min') || Number.NEGATIVE_INFINITY);
+    const max = Number(input.getAttribute('max') || Number.POSITIVE_INFINITY);
+    const current = Number(input.value || input.defaultValue || 0);
+    const decimals = stepText.includes('.') ? stepText.split('.')[1].length : 0;
+    const next = Math.min(max, Math.max(min, current + direction * step));
+    input.value = decimals > 0 ? next.toFixed(decimals) : String(Math.round(next));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+document.querySelectorAll('.stepper-btn').forEach((el) => {
+    el.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        adjustStepper(el);
+    });
+
+    el.addEventListener('click', (e) => {
+        e.preventDefault();
+    });
 });
 
 document.querySelectorAll('.js-avoidance-toggle').forEach((el) => {
