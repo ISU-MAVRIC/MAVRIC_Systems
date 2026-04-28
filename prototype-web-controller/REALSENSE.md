@@ -1,13 +1,13 @@
 # RealSense D435 Prototype Notes
 
-This controller uses `pyrealsense2` directly inside the Flask
+This controller uses `pyrealsense2` directly inside the FastAPI
 `prototype-web-controller` app. That is intentionally different from the more
 typical ROS 2 integration, where a `realsense2_camera` node publishes color and
 depth topics and the web app subscribes through ROS/rosbridge.
 
 For this prototype, direct `pyrealsense2` keeps the live view, center-distance
-readout, and dumb obstacle-avoidance toggle close to the existing standalone
-Socket.IO controller. A production rover integration should consider moving the
+readout, and dumb obstacle-avoidance toggle close to the standalone FastAPI/raw
+WebSocket controller. A production rover integration should consider moving the
 camera into ROS topics so other nodes can consume the same depth data.
 
 ## Hardware Setup
@@ -52,9 +52,9 @@ The standard ROS 2 approach is to install the RealSense SDK and launch the
 `realsense2_camera` wrapper, then consume topics such as color image, aligned
 depth image, and camera info. This prototype does not do that yet. It captures
 frames in the web-controller process to minimize integration work with the
-existing Flask/Socket.IO control loop.
+existing FastAPI/raw WebSocket control loop.
 
 The tradeoff is that other ROS nodes cannot reuse this depth stream. When the
 prototype behavior is validated on hardware, the next step should be a ROS node
 or `realsense2_camera` launch integration with obstacle avoidance consuming ROS
-topics instead of direct Flask-owned camera frames.
+topics instead of direct web-app-owned camera frames.

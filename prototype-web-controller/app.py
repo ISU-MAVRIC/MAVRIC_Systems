@@ -1,32 +1,37 @@
-import sys
-import os
+import asyncio
+import contextlib
+import logging
 import threading
 import time
-import logging
+from pathlib import Path
+from typing import Any
 
 from SparkCANLib.SparkCAN import SparkBus
 from camera_service import RealSenseCameraService
 from joystick_drive.skid_steer_drive import DriveConfig, SkidSteerDrive
 from obstacle_avoidance import DumbObstacleAvoider
 
-from flask import Flask, Response, render_template
-from flask_socketio import SocketIO, emit
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 _log = logging.getLogger("web-controller")
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "mavric-skid-steer"
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+BASE_DIR = Path(__file__).resolve().parent
 
-# ── Drive state ───────────────────────────────────────────────────────────────
+
+# -- Drive, camera, and avoidance state ---------------------------------------
 
 DEFAULT_MAX_VELOCITY = 1.0
 DEFAULT_MAX_RPM = 5000
+WATCHDOG_TIMEOUT = 0.5  # seconds; stop motors if no client message arrives.
 
 _bus = None
 _drive = None
 _drive_lock = threading.Lock()
+_last_heartbeat = time.time()
 _camera = RealSenseCameraService()
 _avoider = DumbObstacleAvoider()
 
@@ -44,56 +49,154 @@ def _init_drive(max_velocity: float, max_rpm: float) -> None:
             max_motor_rpm=max_rpm,
         )
         _drive = SkidSteerDrive(_bus, config)
-        _log.info(f"Drive init: max_velocity={max_velocity} max_rpm={max_rpm} simulated={_bus.simulated}")
+        _log.info(
+            "Drive init: max_velocity=%s max_rpm=%s simulated=%s",
+            max_velocity,
+            max_rpm,
+            getattr(_bus, "simulated", False),
+        )
 
 
-_init_drive(DEFAULT_MAX_VELOCITY, DEFAULT_MAX_RPM)
-_camera.start()
-
-# ── Safety watchdog ───────────────────────────────────────────────────────────
-
-_last_heartbeat = time.time()
-WATCHDOG_TIMEOUT = 0.5  # seconds — stop motors if no client message for this long
+def _refresh_heartbeat() -> None:
+    global _last_heartbeat
+    _last_heartbeat = time.time()
 
 
-def _watchdog() -> None:
-    while True:
-        time.sleep(0.1)
+def _stop_drive_and_avoidance(reason: str = "stopped") -> None:
+    _avoider.stop()
+    _avoider.reason = reason
+    with _drive_lock:
+        if _drive is not None:
+            _drive.stop()
+
+
+def handle_client_message(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Handle one JSON message from the browser and return an optional response."""
+    message_type = data.get("type")
+
+    if message_type == "heartbeat":
+        _refresh_heartbeat()
+        return None
+
+    if message_type == "drive":
+        _refresh_heartbeat()
+        if _avoider.enabled:
+            return {"type": "avoidance_status", **_avoider.status()}
         with _drive_lock:
-            if _drive is not None and (time.time() - _last_heartbeat) > WATCHDOG_TIMEOUT:
-                _avoider.stop()
-                _drive.stop()
+            if _drive is not None:
+                _drive.arcade(float(data["throttle"]), float(data["turn"]))
+        return None
 
-
-threading.Thread(target=_watchdog, daemon=True).start()
-
-# ── Telemetry thread ──────────────────────────────────────────────────────────
-
-
-def _telemetry() -> None:
-    while True:
-        time.sleep(0.1)
+    if message_type == "pivot":
+        _refresh_heartbeat()
+        if _avoider.enabled:
+            return {"type": "avoidance_status", **_avoider.status()}
         with _drive_lock:
-            if _drive is None:
-                continue
+            if _drive is not None:
+                _drive.pivot_turn(data["side"], float(data["rate"]))
+        return None
+
+    if message_type == "stop":
+        _stop_drive_and_avoidance()
+        return {"type": "avoidance_status", **_avoider.status()}
+
+    if message_type == "update_config":
+        try:
+            max_velocity = float(data["max_velocity"])
+            max_rpm = float(data["max_rpm"])
+            _init_drive(max_velocity, max_rpm)
+            return {
+                "type": "config_applied",
+                "max_velocity": max_velocity,
+                "max_rpm": max_rpm,
+            }
+        except (ValueError, KeyError) as exc:
+            return {"type": "config_error", "error": str(exc)}
+
+    if message_type == "set_avoidance":
+        enabled = bool(data.get("enabled"))
+        if enabled and not _camera.status().available:
+            _stop_drive_and_avoidance("camera unavailable")
+            return {"type": "avoidance_status", "enabled": False, "state": "stopped", "reason": "camera unavailable"}
+
+        command = _avoider.set_enabled(enabled)
+        if not enabled or (command.throttle == 0.0 and command.turn == 0.0):
+            with _drive_lock:
+                if _drive is not None:
+                    _drive.stop()
+        return {"type": "avoidance_status", **_avoider.status()}
+
+    return {"type": "config_error", "error": f"Unknown message type: {message_type}"}
+
+
+async def _watchdog() -> None:
+    while True:
+        await asyncio.sleep(0.1)
+        with _drive_lock:
+            should_stop = _drive is not None and (time.time() - _last_heartbeat) > WATCHDOG_TIMEOUT
+        if should_stop:
+            _stop_drive_and_avoidance("watchdog timeout")
+            await manager.broadcast({"type": "avoidance_status", **_avoider.status()})
+
+
+class ConnectionManager:
+    def __init__(self) -> None:
+        self._clients: set[WebSocket] = set()
+        self._lock = asyncio.Lock()
+
+    async def connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        async with self._lock:
+            self._clients.add(websocket)
+
+    async def disconnect(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            self._clients.discard(websocket)
+        _log.info("Client disconnected; stopping motors")
+        _stop_drive_and_avoidance("client disconnected")
+
+    async def broadcast(self, message: dict[str, Any]) -> None:
+        async with self._lock:
+            clients = list(self._clients)
+
+        stale_clients: list[WebSocket] = []
+        for websocket in clients:
             try:
-                left, right = _drive.get_average_side_rpm()
-                socketio.emit("rpm_update", {"left": round(left, 1), "right": round(right, 1)})
+                await websocket.send_json(message)
+            except Exception:
+                stale_clients.append(websocket)
+
+        if stale_clients:
+            async with self._lock:
+                for websocket in stale_clients:
+                    self._clients.discard(websocket)
+
+
+manager = ConnectionManager()
+
+
+async def _telemetry() -> None:
+    while True:
+        await asyncio.sleep(0.1)
+        with _drive_lock:
+            drive = _drive
+        if drive is not None:
+            try:
+                left, right = drive.get_average_side_rpm()
+                await manager.broadcast(
+                    {"type": "rpm_update", "left": round(left, 1), "right": round(right, 1)}
+                )
             except Exception:
                 pass
-        socketio.emit("camera_status", _camera.status().as_dict())
-        socketio.emit("distance_update", _camera.distance().as_dict())
-        socketio.emit("avoidance_status", _avoider.status())
+
+        await manager.broadcast({"type": "camera_status", **_camera.status().as_dict()})
+        await manager.broadcast({"type": "distance_update", **_camera.distance().as_dict()})
+        await manager.broadcast({"type": "avoidance_status", **_avoider.status()})
 
 
-threading.Thread(target=_telemetry, daemon=True).start()
-
-# ── Obstacle avoidance thread ────────────────────────────────────────────────
-
-
-def _obstacle_avoidance_loop() -> None:
+async def _obstacle_avoidance_loop() -> None:
     while True:
-        time.sleep(0.05)
+        await asyncio.sleep(0.05)
         if not _avoider.enabled:
             continue
 
@@ -111,109 +214,59 @@ def _obstacle_avoidance_loop() -> None:
                 _drive.arcade(command.throttle, command.turn)
 
 
-threading.Thread(target=_obstacle_avoidance_loop, daemon=True).start()
+@contextlib.asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _init_drive(DEFAULT_MAX_VELOCITY, DEFAULT_MAX_RPM)
+    _camera.start()
+    tasks = [
+        asyncio.create_task(_watchdog()),
+        asyncio.create_task(_telemetry()),
+        asyncio.create_task(_obstacle_avoidance_loop()),
+    ]
+    try:
+        yield
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        _camera.stop()
+        _stop_drive_and_avoidance("shutdown")
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+
+app = FastAPI(lifespan=lifespan)
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse(request, "index.html")
 
 
-@app.route("/camera/stream")
-def camera_stream():
-    return Response(
+@app.get("/camera/stream")
+async def camera_stream():
+    return StreamingResponse(
         _camera.mjpeg_frames(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
+        media_type="multipart/x-mixed-replace; boundary=frame",
     )
 
 
-# ── SocketIO handlers ─────────────────────────────────────────────────────────
-
-
-def _refresh_heartbeat() -> None:
-    global _last_heartbeat
-    _last_heartbeat = time.time()
-
-
-@socketio.on("heartbeat")
-def handle_heartbeat(_data):
-    _refresh_heartbeat()
-
-
-@socketio.on("drive")
-def handle_drive(data):
-    _refresh_heartbeat()
-    if _avoider.enabled:
-        emit("avoidance_status", _avoider.status())
-        return
-    with _drive_lock:
-        if _drive is None:
-            return
-        _drive.arcade(float(data["throttle"]), float(data["turn"]))
-
-
-@socketio.on("pivot")
-def handle_pivot(data):
-    _refresh_heartbeat()
-    if _avoider.enabled:
-        emit("avoidance_status", _avoider.status())
-        return
-    with _drive_lock:
-        if _drive is None:
-            return
-        _drive.pivot_turn(data["side"], float(data["rate"]))
-
-
-@socketio.on("stop")
-def handle_stop(_data):
-    _avoider.stop()
-    with _drive_lock:
-        if _drive is not None:
-            _drive.stop()
-    emit("avoidance_status", _avoider.status(), broadcast=True)
-
-
-@socketio.on("disconnect")
-def handle_disconnect():
-    _log.info("Client disconnected — stopping motors")
-    _avoider.stop()
-    with _drive_lock:
-        if _drive is not None:
-            _drive.stop()
-
-
-@socketio.on("update_config")
-def handle_update_config(data):
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
     try:
-        mv = float(data["max_velocity"])
-        mr = float(data["max_rpm"])
-        _init_drive(mv, mr)
-        emit("config_applied", {"max_velocity": mv, "max_rpm": mr})
-    except (ValueError, KeyError) as exc:
-        emit("config_error", {"error": str(exc)})
-
-
-@socketio.on("set_avoidance")
-def handle_set_avoidance(data):
-    enabled = bool(data.get("enabled"))
-    if enabled and not _camera.status().available:
-        _avoider.stop()
-        emit(
-            "avoidance_status",
-            {"enabled": False, "state": "stopped", "reason": "camera unavailable"},
-            broadcast=True,
-        )
-        return
-
-    command = _avoider.set_enabled(enabled)
-    if not enabled or (command.throttle == 0.0 and command.turn == 0.0):
-        with _drive_lock:
-            if _drive is not None:
-                _drive.stop()
-    emit("avoidance_status", _avoider.status(), broadcast=True)
+        while True:
+            data = await websocket.receive_json()
+            response = handle_client_message(data)
+            if response is not None:
+                await websocket.send_json(response)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await manager.disconnect(websocket)
 
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=6060, debug=False)
+    import uvicorn
+
+    uvicorn.run("app:app", host="0.0.0.0", port=6060, reload=False)

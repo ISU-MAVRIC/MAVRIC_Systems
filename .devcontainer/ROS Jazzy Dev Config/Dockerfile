@@ -44,10 +44,10 @@ RUN pip3 install --no-cache-dir --user --break-system-packages \
         smbus2
 
 RUN pip3 install --no-cache-dir --user --break-system-packages \
-        flask \
-        flask-socketio \
-        python-socketio \
-        python-engineio \
+        fastapi \
+        "uvicorn[standard]" \
+        jinja2 \
+        httpx \
         opencv-python-headless \
         pyrealsense2
 

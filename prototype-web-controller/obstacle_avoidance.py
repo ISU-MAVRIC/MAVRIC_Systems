@@ -45,7 +45,7 @@ class DumbObstacleAvoider:
             self.state = "manual"
             self.reason = "manual control"
             self._state_until = now
-        return self.command(None, now)
+        return AvoidanceCommand(self.state, self.reason)
 
     def stop(self) -> AvoidanceCommand:
         self.enabled = False
