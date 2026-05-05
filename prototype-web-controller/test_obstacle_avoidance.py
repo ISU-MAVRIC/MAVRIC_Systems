@@ -41,7 +41,7 @@ def make_avoider(**overrides):
         min_valid_ratio=0.35,
         min_valid_pixels=60,
         reverse_seconds=0.7,
-        pivot_step_s=0.6,
+        pivot_step_s=2.0,
         no_depth_grace_s=1.0,
         no_depth_search_s=3.0,
         max_pivot_attempts=4,
@@ -128,6 +128,19 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertEqual(command.attempts, 1)
         self.assertAlmostEqual(abs(command.turn), 0.35)
 
+    def test_no_depth_scanning_continues_past_old_attempt_limit(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        for step in range(6):
+            now = 14.0 + (step * 2.5)
+            command = avoider.command(make_blind_reading(ts=now), now=now)
+
+        self.assertEqual(command.state, "searching")
+        self.assertGreater(command.attempts, 4)
+        self.assertNotEqual(command.state, "stuck")
+        self.assertAlmostEqual(abs(command.turn), 0.35)
+
     def test_hysteresis_does_not_flap_between_cruising_and_slowing(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
@@ -156,6 +169,21 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertEqual(command.state, "slowing")
         self.assertEqual(command.throttle, 0.12)
 
+    def test_one_blind_side_with_clear_center_cruises_forward(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+        reading = CorridorReading(
+            left=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            center=make_band(2.5),
+            right=make_band(2.5),
+            timestamp=10.0,
+        )
+        command = avoider.command(reading, now=10.1)
+        self.assertEqual(command.state, "cruising")
+        self.assertEqual(command.throttle, 0.25)
+        self.assertEqual(command.turn, 0.0)
+        self.assertIn("left depth missing", command.reason)
+
     def test_low_validity_bands_are_blind_not_clear(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
@@ -169,7 +197,7 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertEqual(command.throttle, 0.0)
         self.assertEqual(command.turn, 0.0)
 
-    def test_pivot_ladder_escalates_to_stuck(self):
+    def test_pivot_ladder_continues_past_old_attempt_limit(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
 
@@ -177,22 +205,21 @@ class TestCorridorAvoider(unittest.TestCase):
         blocked = lambda ts: make_reading(0.7, 0.7, 0.7, ts=ts)
 
         now = 10.0
-        attempts_seen = []
-        for _ in range(8):  # plenty of time for 4 search/reverse cycles
+        states_seen = []
+        for _ in range(10):
             now += 0.05
             cmd = avoider.command(blocked(now), now=now)
-            attempts_seen.append((cmd.state, cmd.attempts))
-            if cmd.state == "stuck":
-                break
+            states_seen.append(cmd.state)
             # Advance through the in-progress search/reverse window.
-            now += 1.5
+            now += 2.5
             cmd = avoider.command(blocked(now), now=now)
-            attempts_seen.append((cmd.state, cmd.attempts))
-            if cmd.state == "stuck":
-                break
+            states_seen.append(cmd.state)
 
-        self.assertEqual(avoider.state, "stuck")
-        self.assertEqual(avoider.attempts, 4)
+        self.assertGreater(avoider.attempts, 4)
+        self.assertNotEqual(avoider.state, "stuck")
+        self.assertIn(avoider.state, ("reversing", "searching"))
+        self.assertIn("searching", states_seen)
+        self.assertIn("reversing", states_seen)
 
     def test_re_enable_resets_attempts(self):
         avoider = make_avoider()
@@ -202,7 +229,7 @@ class TestCorridorAvoider(unittest.TestCase):
         for _ in range(3):
             now += 0.05
             avoider.command(make_reading(0.7, 0.7, 0.7, ts=now), now=now)
-            now += 1.5
+            now += 2.5
             avoider.command(make_reading(0.7, 0.7, 0.7, ts=now), now=now)
         self.assertGreater(avoider.attempts, 0)
 

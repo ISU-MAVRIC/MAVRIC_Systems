@@ -141,12 +141,14 @@ instead of trusting fabricated depth.
 | `searching` | 0 | `±pivot_rate` | Center below the speed-aware stop threshold; pivots toward the side with more clearance. |
 | `reversing` | `reverse_throttle` | 0 | Any band below `reverse_distance_m`, or pivot completed without opening the path. |
 | `recovering` | 0 (or 0/`±recovery_pivot_rate`) | depends | All bands blind for less than `no_depth_search_s`; rotates slowly after the grace window. |
-| `stuck` | 0 | 0 | `max_pivot_attempts` failed. Operator must toggle avoidance off then on to retry. |
+| `stuck` | 0 | 0 | Compatibility state; normal retry exhaustion no longer enters it. |
 
 Key behaviors:
 
 - **Footprint-aware blocking.** Any band can veto forward motion. The rover no
   longer walks its corners into obstacles the center pixel happened to miss.
+  If exactly one side band is blind while the center and other side are trusted
+  and clear, the rover proceeds forward and reports the blind side in status.
 - **Speed-aware stop margin.** Effective stop distance is
   `stop_distance_m + reaction_factor * cruise_throttle * max_linear_velocity`,
   so faster top speeds give the rover more room to point-turn in the gap.
@@ -159,15 +161,16 @@ Key behaviors:
 - **Recoverable lost depth.** A short dropout (`no_depth_grace_s`, default
   1 s) just holds position. A longer dropout starts a slow rotation to
   reacquire view (`recovery_pivot_rate`). Only after `no_depth_search_s`
-  (default 3 s) does the rover escalate to a full pivot search, and only after
-  `max_pivot_attempts` of those does it give up. When depth recovers, the
+  (default 3 s) does the rover escalate to a full pivot search. Full pivot
+  searches last `pivot_step_s` (default 2 s) and continue without an attempt
+  limit while avoidance remains enabled. When depth recovers, the
   avoider does **not** snap from 0 throttle straight to cruise — it routes
   through `slowing` for at least `recovery_verify_s` (default 0.3 s) and only
   promotes to `cruising` once the slowing→clear hysteresis is satisfied.
 - **Escape escalation.** Each pivot that doesn't open the path is followed by
   a short reverse, and the chosen side is re-evaluated for the next attempt.
-  After `max_pivot_attempts` the avoider transitions to `stuck` and broadcasts
-  a clear reason rather than silently grinding.
+  Attempts remain in status for operator visibility, but they no longer stop
+  retry behavior.
 
 ## Tuning on Hardware
 

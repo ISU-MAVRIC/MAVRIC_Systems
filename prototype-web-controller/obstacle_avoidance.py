@@ -12,7 +12,7 @@ threshold:
 * Lost depth is recoverable: a short grace period allows the depth to come
   back; longer dropouts trigger a slow scan instead of a permanent stop.
 * When blocked, the avoider actively pivots toward the side with the most
-  clearance instead of stalling, with a ladder of attempts before giving up.
+  clearance instead of stalling, and keeps retrying while avoidance is enabled.
 * Stop distance scales with cruise throttle and the configured top speed so
   the rover always has room to point-turn in the gap it stops in.
 """
@@ -49,7 +49,7 @@ class AvoidanceConfig:
     min_valid_pixels: int = 60
 
     reverse_seconds: float = 0.7
-    pivot_step_s: float = 0.6
+    pivot_step_s: float = 2.0
     no_depth_grace_s: float = 1.0
     no_depth_search_s: float = 3.0
     max_pivot_attempts: int = 4
@@ -239,12 +239,6 @@ class CorridorAvoider:
                 self.attempts = 0
                 self.pivot_side = None
                 return self._snapshot(cfg.cruise_throttle, 0.0)
-            if self.attempts >= cfg.max_pivot_attempts:
-                self.state = "stuck"
-                self.reason = (
-                    f"no clear corridor after {self.attempts} attempts"
-                )
-                return self._snapshot()
             # Take a small reverse step before the next pivot — gives us room
             # to swing without clipping the obstacle we just rotated past.
             return self._begin_reverse(
@@ -286,14 +280,11 @@ class CorridorAvoider:
             ):
                 return self._snapshot(cfg.slow_throttle, 0.0)
             self.state = "cruising"
-            self.reason = f"clear: worst band {worst:.2f} m"
+            self.reason = self._clear_reason(left, center, right, worst)
             return self._snapshot(cfg.cruise_throttle, 0.0)
 
         self.state = "cruising"
-        if worst is not None:
-            self.reason = f"clear: worst band {worst:.2f} m"
-        else:
-            self.reason = "clear"
+        self.reason = self._clear_reason(left, center, right, worst)
         return self._snapshot(cfg.cruise_throttle, 0.0)
 
     # -- internals ------------------------------------------------------------
@@ -307,6 +298,26 @@ class CorridorAvoider:
             pivot_side=self.pivot_side,
             attempts=self.attempts,
         )
+
+    def _clear_reason(
+        self,
+        left: Optional[float],
+        center: Optional[float],
+        right: Optional[float],
+        worst: Optional[float],
+    ) -> str:
+        blind_sides = []
+        if left is None:
+            blind_sides.append("left")
+        if right is None:
+            blind_sides.append("right")
+        if center is not None and len(blind_sides) == 1:
+            visible_side = right if blind_sides[0] == "left" else left
+            if visible_side is not None:
+                return f"{blind_sides[0]} depth missing — proceeding"
+        if worst is not None:
+            return f"clear: worst band {worst:.2f} m"
+        return "clear"
 
     def _update_clear_side_cache(
         self, left: Optional[float], right: Optional[float]
@@ -355,12 +366,6 @@ class CorridorAvoider:
     ) -> AvoidanceCommand:
         cfg = self.config
         self.attempts += 1
-        if self.attempts > cfg.max_pivot_attempts:
-            self.state = "stuck"
-            self.reason = (
-                f"no clear corridor after {self.attempts - 1} attempts"
-            )
-            return self._snapshot()
         if reading is not None:
             self.pivot_side = self._choose_pivot_side(reading)
         else:
@@ -374,10 +379,6 @@ class CorridorAvoider:
         cfg = self.config
         if since > cfg.no_depth_search_s:
             self.attempts += 1
-            if self.attempts > cfg.max_pivot_attempts:
-                self.state = "stuck"
-                self.reason = "no depth recovered after scanning"
-                return self._snapshot()
             self.pivot_side = (
                 self.pivot_side or self._last_clear_side or "left"
             )
