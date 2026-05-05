@@ -7,7 +7,10 @@ import os
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Iterator, Mapping, Optional
+
+from dotenv import load_dotenv
 
 try:
     import cv2
@@ -26,6 +29,7 @@ except Exception:  # pragma: no cover - RealSense is optional in development
 
 
 _log = logging.getLogger("web-controller.camera")
+load_dotenv(dotenv_path=Path(__file__).with_name(".env"), override=False)
 
 _PLACEHOLDER_JPEG = base64.b64decode(
     b"/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////"
