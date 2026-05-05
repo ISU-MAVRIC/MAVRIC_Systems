@@ -45,6 +45,7 @@ def make_avoider(**overrides):
         no_depth_grace_s=1.0,
         no_depth_search_s=3.0,
         max_pivot_attempts=4,
+        forward_probe_s=0.5,
         stale_seconds=0.3,
         reaction_factor=0.4,
         recovery_verify_s=0.3,
@@ -120,26 +121,97 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertEqual(command.throttle, 0.0)
         self.assertAlmostEqual(abs(command.turn), 0.2)
 
-    def test_no_depth_after_search_timeout_escalates_to_searching(self):
+    def test_no_depth_after_search_timeout_starts_bounded_scan(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
         command = avoider.command(make_blind_reading(ts=14.0), now=14.0)
-        self.assertEqual(command.state, "searching")
+        self.assertEqual(command.state, "scanning_depth")
         self.assertEqual(command.attempts, 1)
         self.assertAlmostEqual(abs(command.turn), 0.35)
 
-    def test_no_depth_scanning_continues_past_old_attempt_limit(self):
+    def test_valid_depth_interrupts_depth_scan_immediately(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
 
-        for step in range(6):
-            now = 14.0 + (step * 2.5)
-            command = avoider.command(make_blind_reading(ts=now), now=now)
+        scanning = avoider.command(make_blind_reading(ts=14.0), now=14.0)
+        self.assertEqual(scanning.state, "scanning_depth")
+        self.assertNotEqual(scanning.turn, 0.0)
 
-        self.assertEqual(command.state, "searching")
-        self.assertGreater(command.attempts, 4)
+        reading = CorridorReading(
+            left=make_band(2.5),
+            center=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            right=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            timestamp=14.5,
+        )
+        command = avoider.command(reading, now=14.5)
+        self.assertEqual(command.state, "slowing")
+        self.assertEqual(command.throttle, 0.12)
+        self.assertEqual(command.turn, 0.0)
+
+    def test_depth_scan_deadline_does_not_slide_on_blind_frames(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        start = avoider.command(make_blind_reading(ts=14.0), now=14.0)
+        self.assertEqual(start.state, "scanning_depth")
+        deadline = avoider._state_until
+
+        still_scanning = avoider.command(make_blind_reading(ts=15.5), now=15.5)
+        self.assertEqual(still_scanning.state, "scanning_depth")
+        self.assertEqual(avoider._state_until, deadline)
+
+        probing = avoider.command(make_blind_reading(ts=16.1), now=16.1)
+        self.assertEqual(probing.state, "probing_forward")
+        self.assertEqual(probing.throttle, 0.12)
+        self.assertEqual(probing.turn, 0.0)
+
+    def test_scan_expiry_with_no_depth_probes_forward(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        avoider.command(make_blind_reading(ts=14.0), now=14.0)
+        command = avoider.command(make_blind_reading(ts=16.1), now=16.1)
+
+        self.assertEqual(command.state, "probing_forward")
+        self.assertEqual(command.throttle, 0.12)
+        self.assertEqual(command.turn, 0.0)
+
+    def test_probe_cycles_back_to_scan_if_depth_stays_blind(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        avoider.command(make_blind_reading(ts=14.0), now=14.0)
+        avoider.command(make_blind_reading(ts=16.1), now=16.1)
+        command = avoider.command(make_blind_reading(ts=16.7), now=16.7)
+
+        self.assertEqual(command.state, "scanning_depth")
+        self.assertGreater(command.attempts, 1)
         self.assertNotEqual(command.state, "stuck")
         self.assertAlmostEqual(abs(command.turn), 0.35)
+
+    def test_blocked_depth_during_depth_scan_enters_obstacle_search(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        avoider.command(make_blind_reading(ts=14.0), now=14.0)
+        command = avoider.command(make_reading(0.7, 0.7, 0.7, ts=14.5), now=14.5)
+
+        self.assertEqual(command.state, "searching")
+        self.assertEqual(command.throttle, 0.0)
+        self.assertNotEqual(command.turn, 0.0)
+
+    def test_clear_depth_interrupts_obstacle_search_immediately(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        searching = avoider.command(make_reading(0.7, 0.7, 0.7, ts=10.1), now=10.1)
+        self.assertEqual(searching.state, "searching")
+        self.assertNotEqual(searching.turn, 0.0)
+
+        command = avoider.command(make_reading(2.5, 2.5, 2.5, ts=10.2), now=10.2)
+        self.assertEqual(command.state, "cruising")
+        self.assertEqual(command.throttle, 0.25)
+        self.assertEqual(command.turn, 0.0)
 
     def test_hysteresis_does_not_flap_between_cruising_and_slowing(self):
         avoider = make_avoider()

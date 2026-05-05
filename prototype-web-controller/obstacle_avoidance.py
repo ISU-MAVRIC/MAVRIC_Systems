@@ -53,6 +53,7 @@ class AvoidanceConfig:
     no_depth_grace_s: float = 1.0
     no_depth_search_s: float = 3.0
     max_pivot_attempts: int = 4
+    forward_probe_s: float = 0.5
 
     stale_seconds: float = 0.3
     reaction_factor: float = 0.4
@@ -210,8 +211,6 @@ class CorridorAvoider:
             return self._begin_search(now, reading)
 
         if self.state == "searching":
-            if now < self._state_until:
-                return self._snapshot(0.0, self._pivot_turn_value())
             stop_thr = self.effective_stop_distance()
             chosen_side = self.pivot_side
             chosen_dist = (
@@ -239,11 +238,16 @@ class CorridorAvoider:
                 self.attempts = 0
                 self.pivot_side = None
                 return self._snapshot(cfg.cruise_throttle, 0.0)
+            if now < self._state_until:
+                return self._snapshot(0.0, self._pivot_turn_value())
             # Take a small reverse step before the next pivot — gives us room
             # to swing without clipping the obstacle we just rotated past.
             return self._begin_reverse(
                 now, worst if worst is not None else cfg.reverse_distance_m
             )
+
+        if self.state in ("scanning_depth", "probing_forward"):
+            self.pivot_side = None
 
         if self.state == "recovering":
             # Stage the transition through slowing so the rover doesn't snap
@@ -377,15 +381,20 @@ class CorridorAvoider:
 
     def _handle_no_depth(self, now: float, since: float) -> AvoidanceCommand:
         cfg = self.config
+        if self.state == "probing_forward":
+            if now < self._state_until:
+                self.reason = "no valid depth — probing forward"
+                return self._snapshot(cfg.slow_throttle, 0.0)
+            return self._begin_depth_scan(now)
+
+        if self.state == "scanning_depth":
+            if now < self._state_until:
+                self.reason = "no valid depth — scanning"
+                return self._snapshot(0.0, self._pivot_turn_value())
+            return self._begin_forward_probe(now)
+
         if since > cfg.no_depth_search_s:
-            self.attempts += 1
-            self.pivot_side = (
-                self.pivot_side or self._last_clear_side or "left"
-            )
-            self.state = "searching"
-            self.reason = "no valid depth — scanning"
-            self._state_until = now + cfg.pivot_step_s
-            return self._snapshot(0.0, self._pivot_turn_value())
+            return self._begin_depth_scan(now)
 
         if since > cfg.no_depth_grace_s:
             side = self.pivot_side or self._last_clear_side or "left"
@@ -402,3 +411,20 @@ class CorridorAvoider:
         self.state = "recovering"
         self.reason = "no valid depth — holding"
         return self._snapshot(0.0, 0.0)
+
+    def _begin_depth_scan(self, now: float) -> AvoidanceCommand:
+        cfg = self.config
+        self.attempts += 1
+        self.pivot_side = self.pivot_side or self._last_clear_side or "left"
+        self.state = "scanning_depth"
+        self.reason = "no valid depth — scanning"
+        self._state_until = now + cfg.pivot_step_s
+        return self._snapshot(0.0, self._pivot_turn_value())
+
+    def _begin_forward_probe(self, now: float) -> AvoidanceCommand:
+        cfg = self.config
+        self.state = "probing_forward"
+        self.reason = "no valid depth — probing forward"
+        self.pivot_side = None
+        self._state_until = now + cfg.forward_probe_s
+        return self._snapshot(cfg.slow_throttle, 0.0)

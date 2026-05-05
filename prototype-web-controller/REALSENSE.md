@@ -141,6 +141,8 @@ instead of trusting fabricated depth.
 | `searching` | 0 | `±pivot_rate` | Center below the speed-aware stop threshold; pivots toward the side with more clearance. |
 | `reversing` | `reverse_throttle` | 0 | Any band below `reverse_distance_m`, or pivot completed without opening the path. |
 | `recovering` | 0 (or 0/`±recovery_pivot_rate`) | depends | All bands blind for less than `no_depth_search_s`; rotates slowly after the grace window. |
+| `scanning_depth` | 0 | `±pivot_rate` | All bands blind past `no_depth_search_s`; spins for one fixed `pivot_step_s` window. |
+| `probing_forward` | `slow_throttle` | 0 | Depth scan expired while still blind; cautiously tests forward motion before scanning again. |
 | `stuck` | 0 | 0 | Compatibility state; normal retry exhaustion no longer enters it. |
 
 Key behaviors:
@@ -157,16 +159,18 @@ Key behaviors:
   depth.
 - **Informed pivot.** When the path is blocked, the avoider compares the left
   and right band distances and pivots toward whichever has more clearance,
-  caching the last-clear side as a tie-breaker.
+  caching the last-clear side as a tie-breaker. If a timed pivot sees a clear
+  corridor before its window ends, it stops turning immediately and drives.
 - **Recoverable lost depth.** A short dropout (`no_depth_grace_s`, default
   1 s) just holds position. A longer dropout starts a slow rotation to
   reacquire view (`recovery_pivot_rate`). Only after `no_depth_search_s`
-  (default 3 s) does the rover escalate to a full pivot search. Full pivot
-  searches last `pivot_step_s` (default 2 s) and continue without an attempt
-  limit while avoidance remains enabled. When depth recovers, the
-  avoider does **not** snap from 0 throttle straight to cruise — it routes
-  through `slowing` for at least `recovery_verify_s` (default 0.3 s) and only
-  promotes to `cruising` once the slowing→clear hysteresis is satisfied.
+  (default 3 s) does the rover enter a bounded depth scan. Depth scans last
+  `pivot_step_s` (default 2 s), do not slide forward on every blind frame, and
+  stop immediately when any trusted band returns. If a scan expires while all
+  bands are still blind, the rover probes forward at `slow_throttle` for
+  `forward_probe_s` (default 0.5 s), then scans again. If depth returns during
+  the early `recovering` state, the avoider routes through `slowing` for at
+  least `recovery_verify_s` (default 0.3 s) before promoting to `cruising`.
 - **Escape escalation.** Each pivot that doesn't open the path is followed by
   a short reverse, and the chosen side is re-evaluated for the next attempt.
   Attempts remain in status for operator visibility, but they no longer stop
