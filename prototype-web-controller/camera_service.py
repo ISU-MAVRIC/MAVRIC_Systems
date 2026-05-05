@@ -6,7 +6,7 @@ import math
 import threading
 import time
 from dataclasses import dataclass
-from typing import Iterable, Iterator, Optional, Sequence, Tuple
+from typing import Iterable, Iterator, Optional
 
 try:
     import cv2
@@ -56,11 +56,9 @@ class CameraGeometry:
     """Physical geometry of the rover and camera mount.
 
     Coordinate convention follows pyrealsense2: +x right, +y down, +z forward.
-    The camera is assumed to sit on the rover centerline (no horizontal offset)
-    and to look forward with negligible roll. ``camera_pitch_deg`` and
-    ``camera_forward_offset_m`` are accepted as configuration but are not yet
-    applied to the corridor projection — they exist so callers can record the
-    actual geometry and we can wire them in once measured on hardware.
+    The camera is assumed to sit on the rover centerline with negligible roll.
+    The corridor sampler rotates camera points by ``camera_pitch_deg`` into the
+    rover frame, then evaluates the swept rover footprint from near to far.
     """
 
     rover_width_m: float = 0.7
@@ -68,6 +66,9 @@ class CameraGeometry:
     camera_forward_offset_m: float = 0.1
     camera_pitch_deg: float = 0.0
     lookahead_m: float = 1.0
+    min_depth_m: float = 0.15
+    max_depth_m: float = 2.0
+    width_margin_m: float = 0.08
     floor_clip_m: float = 0.05
     ceiling_clip_m: float = 0.4
 
@@ -132,16 +133,6 @@ def _min_of(values: Iterable[Optional[float]]) -> Optional[float]:
     return round(min(valid), 3)
 
 
-def _project_point(intrinsics, point: Sequence[float]) -> Optional[Tuple[float, float]]:
-    if rs is None or intrinsics is None:
-        return None
-    try:
-        px, py = rs.rs2_project_point_to_pixel(intrinsics, list(point))
-    except Exception:
-        return None
-    return float(px), float(py)
-
-
 def _band_metrics(depth_band) -> BandReading:
     """Reduce a 2D depth slice (meters) to a BandReading."""
     if np is None or depth_band.size == 0:
@@ -159,6 +150,56 @@ def _band_metrics(depth_band) -> BandReading:
     )
 
 
+def _intrinsics_values(intrinsics) -> Optional[tuple[float, float, float, float]]:
+    if intrinsics is None:
+        return None
+    try:
+        fx = float(intrinsics.fx)
+        fy = float(intrinsics.fy)
+        ppx = float(intrinsics.ppx)
+        ppy = float(intrinsics.ppy)
+    except Exception:
+        return None
+    if fx <= 0.0 or fy <= 0.0:
+        return None
+    return fx, fy, ppx, ppy
+
+
+def _fallback_corridor_from_image_thirds(depth_m, timestamp: float) -> CorridorReading:
+    height, width = depth_m.shape[:2]
+    if width < 3 or height < 1:
+        return CorridorReading(_EMPTY_BAND, _EMPTY_BAND, _EMPTY_BAND, timestamp)
+
+    third = max(1, width // 3)
+    left_slice = depth_m[:, :third]
+    center_slice = depth_m[:, third : third * 2]
+    right_slice = depth_m[:, third * 2 :]
+    return CorridorReading(
+        left=_band_metrics(left_slice),
+        center=_band_metrics(center_slice),
+        right=_band_metrics(right_slice),
+        timestamp=timestamp,
+    )
+
+
+def _band_metrics_from_masked_depths(depth_m, mask) -> BandReading:
+    if np is None:
+        return _EMPTY_BAND
+    candidate_count = int(mask.sum())
+    if candidate_count == 0:
+        return _EMPTY_BAND
+    valid_depths = depth_m[mask]
+    valid = valid_depths[(valid_depths > 0.0) & (valid_depths < 10.0)]
+    valid_ratio = float(valid.size) / float(candidate_count)
+    if valid.size == 0:
+        return BandReading(min_m=None, mean_m=None, valid_ratio=valid_ratio)
+    return BandReading(
+        min_m=round(float(np.percentile(valid, 10)), 3),
+        mean_m=round(float(valid.mean()), 3),
+        valid_ratio=valid_ratio,
+    )
+
+
 def compute_corridor_from_depth(
     depth_m,
     intrinsics,
@@ -168,9 +209,10 @@ def compute_corridor_from_depth(
 ) -> CorridorReading:
     """Compute a CorridorReading from a numpy depth array (meters).
 
-    Falls back to splitting the full image into thirds when intrinsics are not
-    available, so the same helper works for both the live RealSense pipeline
-    and synthetic test data.
+    With intrinsics, every valid depth pixel is deprojected into camera-space,
+    rotated into the rover frame, and tested against the swept rover footprint.
+    Without intrinsics, this falls back to splitting the full image into thirds
+    so synthetic tests and simulated data keep working.
     """
     if timestamp is None:
         timestamp = time.time()
@@ -178,43 +220,96 @@ def compute_corridor_from_depth(
     if np is None or depth_m.size == 0:
         return CorridorReading(_EMPTY_BAND, _EMPTY_BAND, _EMPTY_BAND, timestamp)
 
+    values = _intrinsics_values(intrinsics)
+    if values is None:
+        return _fallback_corridor_from_image_thirds(depth_m, timestamp)
+
     height, width = depth_m.shape[:2]
-
-    look = max(geometry.lookahead_m, 0.05)
-    half_w = geometry.rover_width_m / 2.0
-    left_proj = _project_point(intrinsics, (-half_w, 0.0, look))
-    right_proj = _project_point(intrinsics, (half_w, 0.0, look))
-    top_proj = _project_point(intrinsics, (0.0, -geometry.ceiling_clip_m, look))
-    bottom_y_world = max(geometry.camera_height_m - geometry.floor_clip_m, 0.01)
-    bottom_proj = _project_point(intrinsics, (0.0, bottom_y_world, look))
-
-    if left_proj is None or right_proj is None:
-        x_left, x_right = 0, width
-    else:
-        x_left = int(max(0, math.floor(min(left_proj[0], right_proj[0]))))
-        x_right = int(min(width, math.ceil(max(left_proj[0], right_proj[0]))))
-
-    if top_proj is None or bottom_proj is None:
-        y_top, y_bottom = 0, height
-    else:
-        y_top = int(max(0, math.floor(min(top_proj[1], bottom_proj[1]))))
-        y_bottom = int(min(height, math.ceil(max(top_proj[1], bottom_proj[1]))))
-
-    if x_right - x_left < 3 or y_bottom - y_top < 1:
+    if width < 3 or height < 1:
         return CorridorReading(_EMPTY_BAND, _EMPTY_BAND, _EMPTY_BAND, timestamp)
 
-    band_w = x_right - x_left
-    third = max(1, band_w // 3)
-    left_slice = depth_m[y_top:y_bottom, x_left : x_left + third]
-    center_slice = depth_m[y_top:y_bottom, x_left + third : x_left + 2 * third]
-    right_slice = depth_m[y_top:y_bottom, x_left + 2 * third : x_right]
+    fx, fy, ppx, ppy = values
+    ys, xs = np.indices((height, width), dtype="float32")
+    z_cam = depth_m.astype("float32", copy=False)
+
+    pitch = math.radians(geometry.camera_pitch_deg)
+    cos_p = math.cos(pitch)
+    sin_p = math.sin(pitch)
+
+    half_width = max(geometry.rover_width_m / 2.0 + geometry.width_margin_m, 0.01)
+    min_depth = max(geometry.min_depth_m, 0.01)
+    max_depth = max(geometry.max_depth_m, geometry.lookahead_m, min_depth)
+    ground_y = float(geometry.camera_height_m)
+    y_min = -float(geometry.ceiling_clip_m)
+    y_max = max(ground_y - float(geometry.floor_clip_m), y_min)
+
+    valid_depth = (z_cam > 0.0) & (z_cam < 10.0)
+    sample_depth = max(min(geometry.lookahead_m, max_depth), min_depth)
+    sample_z_cam = max(sample_depth - geometry.camera_forward_offset_m, 0.01)
+    z_for_mask = np.where(valid_depth, z_cam, sample_z_cam).astype("float32")
+    x_for_mask = (xs - ppx) / fx * z_for_mask
+    y_for_mask = (ys - ppy) / fy * z_for_mask
+    y_rover = (cos_p * y_for_mask) - (sin_p * z_for_mask)
+    z_rover = (
+        (sin_p * y_for_mask)
+        + (cos_p * z_for_mask)
+        + geometry.camera_forward_offset_m
+    )
+
+    corridor = (
+        (z_rover >= min_depth)
+        & (z_rover <= max_depth)
+        & (np.abs(x_for_mask) <= half_width)
+        & (y_rover >= y_min)
+        & (y_rover <= y_max)
+    )
+    if int(corridor.sum()) == 0:
+        return CorridorReading(_EMPTY_BAND, _EMPTY_BAND, _EMPTY_BAND, timestamp)
+
+    center_half_width = half_width / 3.0
+    left_mask = corridor & (x_for_mask < -center_half_width)
+    center_mask = (
+        corridor
+        & (x_for_mask >= -center_half_width)
+        & (x_for_mask <= center_half_width)
+    )
+    right_mask = corridor & (x_for_mask > center_half_width)
 
     return CorridorReading(
-        left=_band_metrics(left_slice),
-        center=_band_metrics(center_slice),
-        right=_band_metrics(right_slice),
+        left=_band_metrics_from_masked_depths(depth_m, left_mask),
+        center=_band_metrics_from_masked_depths(depth_m, center_mask),
+        right=_band_metrics_from_masked_depths(depth_m, right_mask),
         timestamp=timestamp,
     )
+
+
+def _set_sensor_option(depth_sensor, option, value: float, label: str) -> str:
+    if depth_sensor is None or option is None:
+        return f"{label}=unsupported"
+    try:
+        if not depth_sensor.supports(option):
+            return f"{label}=unsupported"
+        depth_sensor.set_option(option, value)
+        try:
+            actual = depth_sensor.get_option(option)
+        except Exception:
+            actual = value
+        return f"{label}={actual:g}"
+    except Exception as exc:
+        _log.warning("Unable to set RealSense %s to %s: %s", label, value, exc)
+        return f"{label}=error"
+
+
+def configure_indoor_depth_sensor(depth_sensor, laser_power: float = 300.0) -> str:
+    """Enable D400 active IR settings when the attached device supports them."""
+    option = getattr(rs, "option", None) if rs is not None else None
+    emitter = getattr(option, "emitter_enabled", None) if option is not None else None
+    laser = getattr(option, "laser_power", None) if option is not None else None
+    settings = [
+        _set_sensor_option(depth_sensor, emitter, 1.0, "emitter"),
+        _set_sensor_option(depth_sensor, laser, float(laser_power), "laser"),
+    ]
+    return ", ".join(settings)
 
 
 def _distance_from_corridor(reading: CorridorReading) -> DistanceReading:
@@ -320,9 +415,17 @@ class RealSenseCameraService:
             depth_sensor = profile.get_device().first_depth_sensor()
             depth_scale = float(depth_sensor.get_depth_scale())
         except Exception:
+            depth_sensor = None
             depth_scale = 0.001  # D435 default: 1 mm per unit
 
-        self._set_status(CameraStatus(True, False, "RealSense D435 stream active."))
+        sensor_status = configure_indoor_depth_sensor(depth_sensor)
+        self._set_status(
+            CameraStatus(
+                True,
+                False,
+                f"RealSense D435 stream active ({sensor_status}).",
+            )
+        )
         try:
             while not self._stop.is_set():
                 frames = pipeline.wait_for_frames(timeout_ms=1000)
