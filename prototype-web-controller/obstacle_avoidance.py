@@ -307,10 +307,10 @@ class CorridorAvoider:
         if left is None and right is None:
             return
         if left is None:
-            self._last_clear_side = "right"
+            self._last_clear_side = "left"
             return
         if right is None:
-            self._last_clear_side = "left"
+            self._last_clear_side = "right"
             return
         delta = left - right
         if abs(delta) < self.config.pivot_clearance_delta_m:
@@ -324,9 +324,9 @@ class CorridorAvoider:
         if left is None and right is None:
             return "left"
         if left is None:
-            return "right"
-        if right is None:
             return "left"
+        if right is None:
+            return "right"
         delta = left - right
         if delta >= cfg.pivot_clearance_delta_m:
             return "left"

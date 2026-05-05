@@ -100,13 +100,27 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertEqual(command.pivot_side, "left")
         self.assertLess(command.turn, 0.0)
 
-    def test_blocked_center_chooses_only_valid_side(self):
+    def test_blocked_center_prefers_left_blind_side_over_valid_right(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
         reading = CorridorReading(
             left=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
             center=make_band(0.8),
             right=make_band(2.1),
+            timestamp=10.0,
+        )
+        command = avoider.command(reading, now=10.1)
+        self.assertEqual(command.state, "searching")
+        self.assertEqual(command.pivot_side, "left")
+        self.assertLess(command.turn, 0.0)
+
+    def test_blocked_center_prefers_right_blind_side_over_valid_left(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+        reading = CorridorReading(
+            left=make_band(2.1),
+            center=make_band(0.8),
+            right=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
             timestamp=10.0,
         )
         command = avoider.command(reading, now=10.1)
@@ -201,6 +215,41 @@ class TestCorridorAvoider(unittest.TestCase):
         avoider.set_enabled(True, now=10.0)
 
         command = avoider.command(make_reading(2.0, 0.8, 2.3, ts=10.0), now=10.1)
+        self.assertEqual(command.pivot_side, "right")
+        self.assertEqual(avoider._last_clear_side, "right")
+
+    def test_forward_blind_side_updates_side_preference(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+        reading = CorridorReading(
+            left=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            center=make_band(2.5),
+            right=make_band(2.5),
+            timestamp=10.0,
+        )
+
+        command = avoider.command(reading, now=10.1)
+
+        self.assertEqual(command.state, "cruising")
+        self.assertEqual(avoider._last_clear_side, "left")
+
+    def test_rotation_blind_side_does_not_flip_forward_side_preference(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        command = avoider.command(make_reading(2.0, 0.8, 2.3, ts=10.0), now=10.1)
+        self.assertEqual(command.pivot_side, "right")
+        self.assertEqual(avoider._last_clear_side, "right")
+
+        reading = CorridorReading(
+            left=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            center=make_band(0.8),
+            right=make_band(2.0),
+            timestamp=10.2,
+        )
+        command = avoider.command(reading, now=10.2)
+
+        self.assertEqual(command.state, "searching")
         self.assertEqual(command.pivot_side, "right")
         self.assertEqual(avoider._last_clear_side, "right")
 

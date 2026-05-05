@@ -156,11 +156,13 @@ Key behaviors:
   depth.
 - **Stable pivot direction.** When the path is blocked, ambiguous side
   clearance defaults to a left pivot. If both side bands are trusted, one side
-  must be at least 0.20 m clearer to override that default; if exactly one side
-  is trusted, the rover pivots toward that side. Direction preference is based
-  on forward-path readings, not readings collected while already rotating. If
-  a timed pivot sees a clear corridor before its window ends, it stops turning
-  immediately and drives.
+  must be at least 0.20 m clearer to override that default. If exactly one side
+  is blind while the other side is trusted, the blind side is treated as likely
+  open and gets the pivot preference. If both side bands are blind in a
+  partial-depth blocked decision, the rover defaults left. Direction preference
+  is based on forward-path readings, not readings collected while already
+  rotating. If a timed pivot sees a clear corridor before its window ends, it
+  stops turning immediately and drives.
 - **Fully blind means assumed clear.** If all three bands are blind, the
   reading is missing, or the reading is stale, the prototype assumes forward
   space is available and commands `cruise_throttle` with zero turn. This keeps
