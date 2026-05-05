@@ -66,6 +66,36 @@ class FakeDistance:
         }
 
 
+class FakeBand:
+    def __init__(self, value):
+        self.min_m = value
+        self.mean_m = value
+        self.valid_ratio = 1.0
+
+    def as_dict(self):
+        return {
+            "min_m": self.min_m,
+            "mean_m": self.mean_m,
+            "valid_ratio": self.valid_ratio,
+        }
+
+
+class FakeCorridor:
+    def __init__(self):
+        self.left = FakeBand(2.5)
+        self.center = FakeBand(2.5)
+        self.right = FakeBand(2.5)
+        self.timestamp = 1.0
+
+    def as_dict(self):
+        return {
+            "left": self.left.as_dict(),
+            "center": self.center.as_dict(),
+            "right": self.right.as_dict(),
+            "timestamp": self.timestamp,
+        }
+
+
 class FakeCamera:
     def __init__(self):
         self.started = False
@@ -82,6 +112,9 @@ class FakeCamera:
 
     def distance(self):
         return FakeDistance()
+
+    def corridor(self):
+        return FakeCorridor()
 
     def mjpeg_frames(self):
         yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\nfake\r\n"

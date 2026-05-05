@@ -9,7 +9,7 @@ from typing import Any
 from SparkCANLib.SparkCAN import SparkBus
 from camera_service import RealSenseCameraService
 from joystick_drive.skid_steer_drive import DriveConfig, SkidSteerDrive
-from obstacle_avoidance import DumbObstacleAvoider
+from obstacle_avoidance import CorridorAvoider
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -33,7 +33,7 @@ _drive = None
 _drive_lock = threading.Lock()
 _last_heartbeat = time.time()
 _camera = RealSenseCameraService()
-_avoider = DumbObstacleAvoider()
+_avoider = CorridorAvoider(max_linear_velocity=1.0)
 
 
 def _init_drive(max_velocity: float, max_rpm: float) -> None:
@@ -55,6 +55,10 @@ def _init_drive(max_velocity: float, max_rpm: float) -> None:
             max_rpm,
             getattr(_bus, "simulated", False),
         )
+    # Keep the avoider's speed-aware stop margin in sync with the drive.
+    _avoider.max_linear_velocity = float(max_velocity)
+    if _avoider.enabled:
+        _avoider.stop()
 
 
 def _refresh_heartbeat() -> None:
@@ -191,6 +195,7 @@ async def _telemetry() -> None:
 
         await manager.broadcast({"type": "camera_status", **_camera.status().as_dict()})
         await manager.broadcast({"type": "distance_update", **_camera.distance().as_dict()})
+        await manager.broadcast({"type": "corridor_update", **_camera.corridor().as_dict()})
         await manager.broadcast({"type": "avoidance_status", **_avoider.status()})
 
 
@@ -200,10 +205,8 @@ async def _obstacle_avoidance_loop() -> None:
         if not _avoider.enabled:
             continue
 
-        distance = _camera.distance()
-        age = time.time() - distance.timestamp
-        center_m = distance.center_m if age <= _avoider.config.stale_seconds else None
-        command = _avoider.command(center_m)
+        reading = _camera.corridor()
+        command = _avoider.command(reading)
 
         with _drive_lock:
             if _drive is None:

@@ -115,6 +115,19 @@ function setCenterDistance(centerM) {
     document.querySelectorAll('.js-center-distance').forEach(el => el.textContent = text);
 }
 
+function formatBand(band) {
+    if (!band) return '--';
+    const value = band.min_m;
+    if (value === null || value === undefined) return '--';
+    return Number(value).toFixed(2);
+}
+
+function setCorridor(data) {
+    document.querySelectorAll('.js-band-left').forEach(el   => el.textContent = formatBand(data.left));
+    document.querySelectorAll('.js-band-center').forEach(el => el.textContent = formatBand(data.center));
+    document.querySelectorAll('.js-band-right').forEach(el  => el.textContent = formatBand(data.right));
+}
+
 function setCameraStatus(data) {
     const label = data.simulated ? `Simulated: ${data.message}` : data.message;
     document.querySelectorAll('.js-camera-status').forEach(el => {
@@ -133,6 +146,16 @@ function setAvoidanceStatus(data) {
     });
     document.querySelectorAll('.js-avoidance-state').forEach(el => {
         el.textContent = `${data.state}: ${data.reason}`;
+    });
+    const pivotText = data.pivot_side ? data.pivot_side : '—';
+    document.querySelectorAll('.js-avoidance-pivot').forEach(el => {
+        el.textContent = pivotText;
+    });
+    const attemptsText = (data.attempts === undefined || data.attempts === null)
+        ? '0'
+        : String(data.attempts);
+    document.querySelectorAll('.js-avoidance-attempts').forEach(el => {
+        el.textContent = attemptsText;
     });
 }
 
@@ -155,6 +178,7 @@ socket.on('disconnect', () => {
 socket.on('rpm_update', (data) => setRpm(data.left, data.right));
 socket.on('camera_status', setCameraStatus);
 socket.on('distance_update', (data) => setCenterDistance(data.center_m));
+socket.on('corridor_update', setCorridor);
 socket.on('avoidance_status', setAvoidanceStatus);
 
 socket.on('config_applied', (data) => {

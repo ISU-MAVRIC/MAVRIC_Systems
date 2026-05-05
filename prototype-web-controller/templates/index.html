@@ -460,6 +460,12 @@
             <input id="m-avoidance-toggle" class="js-avoidance-toggle" type="checkbox">
           </label>
           <div>Mode: <span class="js-avoidance-state">manual</span></div>
+          <div id="m-corridor">
+            L <span class="js-band-left">--</span>
+            · C <span class="js-band-center">--</span>
+            · R <span class="js-band-right">--</span> m
+          </div>
+          <div>Pivot: <span class="js-avoidance-pivot">—</span> &nbsp; Tries: <span class="js-avoidance-attempts">0</span></div>
         </div>
         <div id="m-pivot-btns">
           <button id="pivot-l" class="m-btn">◄ Pivot L</button>
@@ -499,6 +505,9 @@
       <div class="row"><span>Left RPM</span>  <span class="val"><span class="js-left-rpm">—</span></span></div>
       <div class="row"><span>Right RPM</span> <span class="val"><span class="js-right-rpm">—</span></span></div>
       <div class="row"><span>Center Distance</span> <span class="val"><span class="js-center-distance">--</span> m</span></div>
+      <div class="row"><span>Corridor L / C / R</span> <span class="val">
+        <span class="js-band-left">--</span> / <span class="js-band-center">--</span> / <span class="js-band-right">--</span> m
+      </span></div>
       <div class="row"><span>Camera</span> <span class="val js-camera-status warn">Initializing</span></div>
     </div>
 
@@ -514,6 +523,8 @@
         <input id="desktop-avoidance-toggle" class="js-avoidance-toggle" type="checkbox">
       </label>
       <div class="row"><span>Mode</span> <span class="val js-avoidance-state">manual</span></div>
+      <div class="row"><span>Pivot side</span> <span class="val js-avoidance-pivot">—</span></div>
+      <div class="row"><span>Escape attempts</span> <span class="val js-avoidance-attempts">0</span></div>
     </div>
 
     <div class="panel">

@@ -1,20 +1,60 @@
+"""Corridor-aware dumb obstacle avoidance.
+
+The avoider consumes a :class:`camera_service.CorridorReading` (three depth
+bands covering the rover's footprint at the look-ahead distance) and emits an
+:class:`AvoidanceCommand` describing the desired throttle/turn for the drive
+loop. It is intentionally simple — there is no map, no path planning, no
+heading estimate — but it is markedly more robust than a single center-pixel
+threshold:
+
+* Any band can veto forward motion, so the rover doesn't clip its corners on
+  obstacles the camera sees but the center pixel misses.
+* Lost depth is recoverable: a short grace period allows the depth to come
+  back; longer dropouts trigger a slow scan instead of a permanent stop.
+* When blocked, the avoider actively pivots toward the side with the most
+  clearance instead of stalling, with a ladder of attempts before giving up.
+* Stop distance scales with cruise throttle and the configured top speed so
+  the rover always has room to point-turn in the gap it stops in.
+"""
+
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
 from typing import Optional
 
+from camera_service import BandReading, CorridorReading
+
 
 @dataclass(frozen=True)
 class AvoidanceConfig:
-    stop_threshold_m: float = 0.6
-    clear_threshold_m: float = 0.9
-    forward_throttle: float = 0.25
-    reverse_throttle: float = -0.2
-    pivot_rate: float = 0.3
+    """Tunable thresholds and timings for :class:`CorridorAvoider`.
+
+    Distance values are in meters; durations are in seconds. Defaults assume a
+    ~0.7 m wide rover moving at conservative throttles. Tune on hardware.
+    """
+
+    cruise_throttle: float = 0.25
+    slow_throttle: float = 0.12
+    reverse_throttle: float = -0.18
+    pivot_rate: float = 0.35
+    recovery_pivot_rate: float = 0.2
+
+    stop_distance_m: float = 1.0
+    caution_distance_m: float = 1.6
+    clear_distance_m: float = 2.0
+    reverse_distance_m: float = 0.55
+
+    min_valid_ratio: float = 0.35
+
     reverse_seconds: float = 0.7
-    pivot_seconds: float = 0.9
+    pivot_step_s: float = 0.6
+    no_depth_grace_s: float = 1.0
+    no_depth_search_s: float = 3.0
+    max_pivot_attempts: int = 4
+
     stale_seconds: float = 0.75
+    reaction_factor: float = 0.4
 
 
 @dataclass(frozen=True)
@@ -23,78 +63,314 @@ class AvoidanceCommand:
     reason: str
     throttle: float = 0.0
     turn: float = 0.0
+    pivot_side: Optional[str] = None
+    attempts: int = 0
 
 
-class DumbObstacleAvoider:
-    def __init__(self, config: AvoidanceConfig | None = None) -> None:
+def _band_dist(band: BandReading, min_valid_ratio: float) -> Optional[float]:
+    """Trusted distance for a band, or ``None`` if too few valid pixels."""
+    if band.valid_ratio < min_valid_ratio or band.min_m is None:
+        return None
+    return float(band.min_m)
+
+
+def _band_blind(band: BandReading, min_valid_ratio: float) -> bool:
+    return _band_dist(band, min_valid_ratio) is None
+
+
+class CorridorAvoider:
+    def __init__(
+        self,
+        config: Optional[AvoidanceConfig] = None,
+        max_linear_velocity: float = 1.0,
+    ) -> None:
         self.config = config or AvoidanceConfig()
+        self.max_linear_velocity = float(max_linear_velocity)
         self.enabled = False
         self.state = "manual"
         self.reason = "manual control"
+        self.attempts = 0
+        self.pivot_side: Optional[str] = None
         self._state_until = 0.0
-        self._pivot_direction = 1.0
+        self._last_depth_at: Optional[float] = None
+        self._last_clear_side: Optional[str] = None
 
-    def set_enabled(self, enabled: bool, now: Optional[float] = None) -> AvoidanceCommand:
+    # -- public API -----------------------------------------------------------
+
+    def effective_stop_distance(self) -> float:
+        cfg = self.config
+        return cfg.stop_distance_m + cfg.reaction_factor * cfg.cruise_throttle * max(
+            self.max_linear_velocity, 0.0
+        )
+
+    def set_enabled(
+        self, enabled: bool, now: Optional[float] = None
+    ) -> AvoidanceCommand:
         now = time.time() if now is None else now
         self.enabled = enabled
         if enabled:
-            self.state = "active"
+            self.state = "cruising"
             self.reason = "avoidance enabled"
             self._state_until = now
+            self.attempts = 0
+            self.pivot_side = None
+            self._last_depth_at = now
         else:
             self.state = "manual"
             self.reason = "manual control"
-            self._state_until = now
-        return AvoidanceCommand(self.state, self.reason)
+            self.attempts = 0
+            self.pivot_side = None
+        return self._snapshot()
 
     def stop(self) -> AvoidanceCommand:
         self.enabled = False
         self.state = "manual"
         self.reason = "stopped"
+        self.attempts = 0
+        self.pivot_side = None
         return AvoidanceCommand("manual", "stopped")
-
-    def command(self, center_m: Optional[float], now: Optional[float] = None) -> AvoidanceCommand:
-        now = time.time() if now is None else now
-        if not self.enabled:
-            return AvoidanceCommand("manual", self.reason)
-
-        if center_m is None:
-            self.state = "stopped"
-            self.reason = "no valid depth reading"
-            return AvoidanceCommand(self.state, self.reason)
-
-        if self.state == "reversing":
-            if now < self._state_until:
-                return AvoidanceCommand("reversing", "obstacle detected", self.config.reverse_throttle, 0.0)
-            self.state = "pivoting"
-            self.reason = "turning away"
-            self._state_until = now + self.config.pivot_seconds
-            self._pivot_direction *= -1.0
-
-        if self.state == "pivoting":
-            if now < self._state_until:
-                return AvoidanceCommand("pivoting", self.reason, 0.0, self._pivot_direction * self.config.pivot_rate)
-            self.state = "active"
-            self.reason = "checking path"
-
-        if center_m < self.config.stop_threshold_m:
-            self.state = "reversing"
-            self.reason = f"obstacle at {center_m:.2f} m"
-            self._state_until = now + self.config.reverse_seconds
-            return AvoidanceCommand("reversing", self.reason, self.config.reverse_throttle, 0.0)
-
-        if center_m < self.config.clear_threshold_m:
-            self.state = "blocked"
-            self.reason = f"path not clear: {center_m:.2f} m"
-            return AvoidanceCommand("blocked", self.reason)
-
-        self.state = "active"
-        self.reason = f"path clear: {center_m:.2f} m"
-        return AvoidanceCommand("active", self.reason, self.config.forward_throttle, 0.0)
 
     def status(self) -> dict:
         return {
             "enabled": self.enabled,
             "state": self.state,
             "reason": self.reason,
+            "attempts": self.attempts,
+            "pivot_side": self.pivot_side,
         }
+
+    def command(
+        self,
+        reading: Optional[CorridorReading],
+        now: Optional[float] = None,
+    ) -> AvoidanceCommand:
+        now = time.time() if now is None else now
+        if not self.enabled:
+            return self._snapshot()
+        if self.state == "stuck":
+            # Stay stuck until operator toggles avoidance off and on again.
+            return self._snapshot()
+
+        cfg = self.config
+        stale = (
+            reading is None
+            or (now - reading.timestamp) > cfg.stale_seconds
+        )
+
+        if not stale and reading is not None:
+            left = _band_dist(reading.left, cfg.min_valid_ratio)
+            center = _band_dist(reading.center, cfg.min_valid_ratio)
+            right = _band_dist(reading.right, cfg.min_valid_ratio)
+        else:
+            left = center = right = None
+
+        all_blind = stale or (left is None and center is None and right is None)
+        if all_blind:
+            since = (
+                now - self._last_depth_at
+                if self._last_depth_at is not None
+                else float("inf")
+            )
+            return self._handle_no_depth(now, since)
+
+        self._last_depth_at = now
+        self._update_clear_side_cache(left, right)
+
+        valid_dists = [d for d in (left, center, right) if d is not None]
+        worst = min(valid_dists) if valid_dists else None
+
+        # Emergency: any band shows a near obstacle.
+        if worst is not None and worst < cfg.reverse_distance_m:
+            return self._begin_reverse(now, worst)
+
+        # In-progress timed states finish out their windows before re-deciding.
+        if self.state == "reversing":
+            if now < self._state_until:
+                return self._snapshot(cfg.reverse_throttle, 0.0)
+            return self._begin_search(now, reading)
+
+        if self.state == "searching":
+            if now < self._state_until:
+                return self._snapshot(0.0, self._pivot_turn_value())
+            stop_thr = self.effective_stop_distance()
+            chosen_side = self.pivot_side
+            chosen_dist = (
+                left if chosen_side == "left"
+                else right if chosen_side == "right"
+                else None
+            )
+            opened = (
+                center is not None
+                and center >= cfg.clear_distance_m
+                and worst is not None
+                and worst >= stop_thr
+            ) or (
+                chosen_dist is not None
+                and chosen_dist >= cfg.clear_distance_m
+                and (center is None or center >= stop_thr)
+            )
+            if opened:
+                self.state = "cruising"
+                self.reason = (
+                    f"path opened: center {center:.2f} m"
+                    if center is not None
+                    else "path opened toward chosen side"
+                )
+                self.attempts = 0
+                self.pivot_side = None
+                return self._snapshot(cfg.cruise_throttle, 0.0)
+            if self.attempts >= cfg.max_pivot_attempts:
+                self.state = "stuck"
+                self.reason = (
+                    f"no clear corridor after {self.attempts} attempts"
+                )
+                return self._snapshot()
+            # Take a small reverse step before the next pivot — gives us room
+            # to swing without clipping the obstacle we just rotated past.
+            return self._begin_reverse(
+                now, worst if worst is not None else cfg.reverse_distance_m
+            )
+
+        if self.state == "recovering":
+            self.state = "cruising"
+            self.reason = "depth recovered"
+
+        # Forward-flow: cruising or slowing.
+        stop_thr = self.effective_stop_distance()
+        if center is not None and center < stop_thr:
+            return self._begin_search(now, reading)
+        if worst is not None and worst < stop_thr:
+            return self._begin_search(now, reading)
+
+        # Center band missing but sides ok — be cautious, don't trust forward.
+        if center is None:
+            self.state = "slowing"
+            self.reason = "center depth missing — slowing"
+            return self._snapshot(cfg.slow_throttle, 0.0)
+
+        # Hysteresis: enter slowing at caution_distance, only return to
+        # cruising once everything clears clear_distance_m.
+        if worst is not None and worst < cfg.caution_distance_m:
+            self.state = "slowing"
+            self.reason = f"caution: worst band {worst:.2f} m"
+            return self._snapshot(cfg.slow_throttle, 0.0)
+
+        if self.state == "slowing":
+            if worst is None or worst < cfg.clear_distance_m:
+                return self._snapshot(cfg.slow_throttle, 0.0)
+            self.state = "cruising"
+            self.reason = f"clear: worst band {worst:.2f} m"
+            return self._snapshot(cfg.cruise_throttle, 0.0)
+
+        self.state = "cruising"
+        if worst is not None:
+            self.reason = f"clear: worst band {worst:.2f} m"
+        else:
+            self.reason = "clear"
+        return self._snapshot(cfg.cruise_throttle, 0.0)
+
+    # -- internals ------------------------------------------------------------
+
+    def _snapshot(self, throttle: float = 0.0, turn: float = 0.0) -> AvoidanceCommand:
+        return AvoidanceCommand(
+            state=self.state,
+            reason=self.reason,
+            throttle=throttle,
+            turn=turn,
+            pivot_side=self.pivot_side,
+            attempts=self.attempts,
+        )
+
+    def _update_clear_side_cache(
+        self, left: Optional[float], right: Optional[float]
+    ) -> None:
+        if left is None and right is None:
+            return
+        if left is None:
+            self._last_clear_side = "right"
+            return
+        if right is None:
+            self._last_clear_side = "left"
+            return
+        if abs(left - right) < 0.05:
+            return
+        self._last_clear_side = "left" if left > right else "right"
+
+    def _choose_pivot_side(self, reading: CorridorReading) -> str:
+        cfg = self.config
+        left = _band_dist(reading.left, cfg.min_valid_ratio)
+        right = _band_dist(reading.right, cfg.min_valid_ratio)
+        if left is None and right is None:
+            return self._last_clear_side or "left"
+        if left is None:
+            return "right"
+        if right is None:
+            return "left"
+        if abs(left - right) < 0.05:
+            return self._last_clear_side or "left"
+        return "left" if left > right else "right"
+
+    def _pivot_turn_value(self) -> float:
+        # Convention matches arcade(): positive turn yaws right. So to pivot
+        # toward the left side we use a negative turn value.
+        rate = self.config.pivot_rate
+        return -rate if self.pivot_side == "left" else rate
+
+    def _begin_reverse(self, now: float, worst: float) -> AvoidanceCommand:
+        cfg = self.config
+        self.state = "reversing"
+        self.reason = f"obstacle at {worst:.2f} m, backing off"
+        self._state_until = now + cfg.reverse_seconds
+        return self._snapshot(cfg.reverse_throttle, 0.0)
+
+    def _begin_search(
+        self, now: float, reading: Optional[CorridorReading]
+    ) -> AvoidanceCommand:
+        cfg = self.config
+        self.attempts += 1
+        if self.attempts > cfg.max_pivot_attempts:
+            self.state = "stuck"
+            self.reason = (
+                f"no clear corridor after {self.attempts - 1} attempts"
+            )
+            return self._snapshot()
+        if reading is not None:
+            self.pivot_side = self._choose_pivot_side(reading)
+        else:
+            self.pivot_side = self.pivot_side or self._last_clear_side or "left"
+        self.state = "searching"
+        self.reason = f"scanning {self.pivot_side} for opening"
+        self._state_until = now + cfg.pivot_step_s
+        return self._snapshot(0.0, self._pivot_turn_value())
+
+    def _handle_no_depth(self, now: float, since: float) -> AvoidanceCommand:
+        cfg = self.config
+        if since > cfg.no_depth_search_s:
+            self.attempts += 1
+            if self.attempts > cfg.max_pivot_attempts:
+                self.state = "stuck"
+                self.reason = "no depth recovered after scanning"
+                return self._snapshot()
+            self.pivot_side = (
+                self.pivot_side or self._last_clear_side or "left"
+            )
+            self.state = "searching"
+            self.reason = "no valid depth — scanning"
+            self._state_until = now + cfg.pivot_step_s
+            return self._snapshot(0.0, self._pivot_turn_value())
+
+        if since > cfg.no_depth_grace_s:
+            side = self.pivot_side or self._last_clear_side or "left"
+            self.pivot_side = side
+            self.state = "recovering"
+            self.reason = "no valid depth — rotating slowly"
+            turn = (
+                -cfg.recovery_pivot_rate
+                if side == "left"
+                else cfg.recovery_pivot_rate
+            )
+            return self._snapshot(0.0, turn)
+
+        self.state = "recovering"
+        self.reason = "no valid depth — holding"
+        return self._snapshot(0.0, 0.0)

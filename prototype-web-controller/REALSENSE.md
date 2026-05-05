@@ -5,7 +5,7 @@ This controller uses `pyrealsense2` directly inside the FastAPI
 typical ROS 2 integration, where a `realsense2_camera` node publishes color and
 depth topics and the web app subscribes through ROS/rosbridge.
 
-For this prototype, direct `pyrealsense2` keeps the live view, center-distance
+For this prototype, direct `pyrealsense2` keeps the live view, banded depth
 readout, and dumb obstacle-avoidance toggle close to the standalone FastAPI/raw
 WebSocket controller. A production rover integration should consider moving the
 camera into ROS topics so other nodes can consume the same depth data.
@@ -39,12 +39,122 @@ docker compose -f compose.yaml -f compose/dev.yaml up -d --build
 ## Runtime Behavior
 
 - The video stream is available at `/camera/stream` as MJPEG.
-- Distance telemetry reports the center/crosshair depth in meters.
+- The web UI shows the legacy single-pixel center distance and three corridor
+  band distances (`L / C / R`) reflecting the rover's projected footprint at
+  the configured look-ahead distance.
 - If no D435 is attached, or the RealSense Python/OpenCV dependencies are not
-  available, the app uses a simulated camera stream and synthetic distance data.
-- Obstacle avoidance is deliberately simple: it drives slowly forward when the
-  center distance is clear, reverses briefly when blocked, pivots, and retries.
-  It is not a safety system.
+  available, the app uses a simulated camera stream that emits drifting per-band
+  distances so the UI and avoider can be exercised end-to-end without hardware.
+- Obstacle avoidance is deliberately simple but defensive. It is **not** a
+  safety system; it is a best-effort assist that can fail silently if the
+  camera lies (sun glare, glass, low-texture, etc.).
+
+## Corridor Depth Model
+
+The avoider does not look at one center pixel. It consumes a `CorridorReading`
+with three `BandReading`s (left/center/right) covering the rover's projected
+footprint at `lookahead_m` meters in front of the camera.
+
+```
+                 +--------+--------+--------+
+   image plane:  |  LEFT  | CENTER |  RIGHT |   <- vertically clipped to skip
+                 +--------+--------+--------+      ceiling and bumper-blind floor
+                  ^                        ^
+                  |    rover footprint     |
+                  +----------+-------------+
+                             |
+                             v
+                       look-ahead (default 1.0 m)
+```
+
+`CameraGeometry` (in `camera_service.py`) sets the projection. Defaults:
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `rover_width_m` | 0.7 | Effective chassis width. Pad for overhang. |
+| `camera_height_m` | 0.5 | Camera optical center above the ground. |
+| `camera_forward_offset_m` | 0.1 | Informational; not yet wired into projection. |
+| `camera_pitch_deg` | 0.0 | Informational; flat is assumed. |
+| `lookahead_m` | 1.0 | Distance ahead at which the rover footprint is sized. |
+| `floor_clip_m` | 0.05 | Ignore pixels closer than this above the ground. |
+| `ceiling_clip_m` | 0.4 | Ignore pixels above this height above the camera. |
+
+For each band the service reports `min_m` (10th percentile of valid pixels —
+robust to single-pixel noise), `mean_m`, and `valid_ratio` (fraction of pixels
+in the band that returned a valid depth). A band with `valid_ratio` below
+`AvoidanceConfig.min_valid_ratio` is treated as **blind** and contributes no
+distance to the avoider's decision.
+
+## RealSense Filter Chain
+
+Raw D435 depth has many invalid pixels. The pipeline applies the standard
+post-processing filter chain once per frame, in order:
+
+1. `decimation_filter(2)` — 2x downsample, also reduces noise per pixel.
+2. `spatial_filter()` — edge-preserving smoothing within a frame.
+3. `temporal_filter()` — exponential smoothing across frames.
+4. `hole_filling_filter(1)` — fill remaining invalid pixels with the
+   farthest-from-around heuristic so the corridor reading still has data when
+   the raw stream has dropouts.
+
+Intrinsics are read from the *post-decimation* depth profile so projection math
+matches the actual pixel grid we sample.
+
+## Avoidance State Machine
+
+`CorridorAvoider` (in `obstacle_avoidance.py`) is a small state machine:
+
+| State | Throttle | Turn | Triggered when |
+| --- | --- | --- | --- |
+| `manual` | 0 | 0 | Avoidance disabled. |
+| `cruising` | `cruise_throttle` | 0 | All bands clear, hysteresis satisfied. |
+| `slowing` | `slow_throttle` | 0 | Worst band below `caution_distance_m`, or center band blind while sides are valid. |
+| `searching` | 0 | `±pivot_rate` | Center below the speed-aware stop threshold; pivots toward the side with more clearance. |
+| `reversing` | `reverse_throttle` | 0 | Any band below `reverse_distance_m`, or pivot completed without opening the path. |
+| `recovering` | 0 (or 0/`±recovery_pivot_rate`) | depends | All bands blind for less than `no_depth_search_s`; rotates slowly after the grace window. |
+| `stuck` | 0 | 0 | `max_pivot_attempts` failed. Operator must toggle avoidance off then on to retry. |
+
+Key behaviors:
+
+- **Footprint-aware blocking.** Any band can veto forward motion. The rover no
+  longer walks its corners into obstacles the center pixel happened to miss.
+- **Speed-aware stop margin.** Effective stop distance is
+  `stop_distance_m + reaction_factor * cruise_throttle * max_linear_velocity`,
+  so faster top speeds give the rover more room to point-turn in the gap.
+- **Hysteresis.** Distinct `caution_distance_m` and `clear_distance_m`
+  thresholds keep the rover from flapping between cruising and slowing on noisy
+  depth.
+- **Informed pivot.** When the path is blocked, the avoider compares the left
+  and right band distances and pivots toward whichever has more clearance,
+  caching the last-clear side as a tie-breaker.
+- **Recoverable lost depth.** A short dropout (`no_depth_grace_s`, default
+  1 s) just holds position. A longer dropout starts a slow rotation to
+  reacquire view (`recovery_pivot_rate`). Only after `no_depth_search_s`
+  (default 3 s) does the rover escalate to a full pivot search, and only after
+  `max_pivot_attempts` of those does it give up.
+- **Escape escalation.** Each pivot that doesn't open the path is followed by
+  a short reverse, and the chosen side is re-evaluated for the next attempt.
+  After `max_pivot_attempts` the avoider transitions to `stuck` and broadcasts
+  a clear reason rather than silently grinding.
+
+## Tuning on Hardware
+
+`AvoidanceConfig` and `CameraGeometry` are the two knobs. Reasonable starting
+points are wired in. Once you are on hardware:
+
+1. Measure the **actual rover width** (including any overhang) and update
+   `CameraGeometry.rover_width_m`.
+2. Measure the **camera mounting height** to the optical center and update
+   `camera_height_m`. If the camera is meaningfully tilted, capture pitch and
+   we can wire it into the projection.
+3. Find the **min effective range** of your D435 in the operating environment
+   and set `AvoidanceConfig.reverse_distance_m` slightly above that.
+4. Pick a `cruise_throttle` you trust, then set `stop_distance_m` to the
+   distance the rover travels in roughly 1 second at that throttle. The
+   speed-aware margin will add headroom on top.
+5. Bump `min_valid_ratio` up if you see false "all clear" readings on
+   low-texture surfaces; bump it down if the avoider is constantly
+   "no valid depth" outdoors.
 
 ## Why This Is Not The Typical ROS D435 Setup
 
@@ -58,3 +168,32 @@ The tradeoff is that other ROS nodes cannot reuse this depth stream. When the
 prototype behavior is validated on hardware, the next step should be a ROS node
 or `realsense2_camera` launch integration with obstacle avoidance consuming ROS
 topics instead of direct web-app-owned camera frames.
+
+## Residual D435 Limitations
+
+Even with the corridor model and the filter chain, the D435 will still lie:
+
+- **Minimum range.** Below ~0.105 m the D435 returns invalid depth. Anything
+  closer than ~0.2 m is unreliable in practice. Mount the camera so the
+  rover's bumper is at least that far ahead of any obstacle the avoider must
+  see.
+- **Bumper-blind floor.** A forward-facing camera cannot see the patch of
+  ground directly under the rover's nose. Low obstacles right at the bumper
+  may be invisible.
+- **Sun and IR oversaturation.** Direct sunlight saturates the IR projector
+  and fills the depth image with holes. The recovery state helps, but in
+  bright sun the avoider will spend more time slowing/recovering.
+- **Specular and transparent surfaces.** Glass, mirrors, polished metal, and
+  water often return zero or wildly incorrect depth. Treat the avoider's
+  output as advisory in environments with these surfaces.
+- **Negative obstacles.** The avoider does not detect drop-offs, ledges, or
+  holes — only positive obstacles within the corridor.
+- **No 360° awareness.** Anything behind or beside the rover is invisible.
+  Reverse moves are timed; they do not check that the path behind is clear.
+
+## Out of Scope
+
+- ROS 2 integration via `realsense2_camera` (still TODO above).
+- IMU/odometry-based heading estimation.
+- Persistent local cost-map or SLAM-driven planning.
+- Detection of negative obstacles (drop-offs).
