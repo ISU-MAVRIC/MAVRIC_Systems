@@ -42,6 +42,7 @@ def make_avoider(**overrides):
         reverse_seconds=0.7,
         pivot_step_s=2.0,
         max_pivot_attempts=4,
+        pivot_clearance_delta_m=0.20,
         stale_seconds=0.3,
         reaction_factor=0.4,
     )
@@ -84,12 +85,48 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertLess(command.turn, 0.0)
         self.assertEqual(command.throttle, 0.0)
 
-    def test_blocked_center_pivots_right_when_right_clearer(self):
+    def test_blocked_center_pivots_right_when_right_clearly_clearer(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
-        command = avoider.command(make_reading(1.4, 0.8, 2.5, ts=10.0), now=10.1)
+        command = avoider.command(make_reading(2.0, 0.8, 2.3, ts=10.0), now=10.1)
         self.assertEqual(command.pivot_side, "right")
         self.assertGreater(command.turn, 0.0)
+
+    def test_blocked_center_defaults_left_when_sides_are_ambiguous(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+        command = avoider.command(make_reading(2.0, 0.8, 2.1, ts=10.0), now=10.1)
+        self.assertEqual(command.state, "searching")
+        self.assertEqual(command.pivot_side, "left")
+        self.assertLess(command.turn, 0.0)
+
+    def test_blocked_center_chooses_only_valid_side(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+        reading = CorridorReading(
+            left=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            center=make_band(0.8),
+            right=make_band(2.1),
+            timestamp=10.0,
+        )
+        command = avoider.command(reading, now=10.1)
+        self.assertEqual(command.state, "searching")
+        self.assertEqual(command.pivot_side, "right")
+        self.assertGreater(command.turn, 0.0)
+
+    def test_blocked_center_defaults_left_when_both_sides_blind(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+        reading = CorridorReading(
+            left=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            center=make_band(0.8),
+            right=BandReading(min_m=None, mean_m=None, valid_ratio=0.1),
+            timestamp=10.0,
+        )
+        command = avoider.command(reading, now=10.1)
+        self.assertEqual(command.state, "searching")
+        self.assertEqual(command.pivot_side, "left")
+        self.assertLess(command.turn, 0.0)
 
     def test_emergency_distance_reverses(self):
         avoider = make_avoider()
@@ -158,6 +195,36 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertEqual(command.state, "cruising")
         self.assertEqual(command.throttle, 0.25)
         self.assertEqual(command.turn, 0.0)
+
+    def test_rotation_reading_does_not_flip_forward_side_preference(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        command = avoider.command(make_reading(2.0, 0.8, 2.3, ts=10.0), now=10.1)
+        self.assertEqual(command.pivot_side, "right")
+        self.assertEqual(avoider._last_clear_side, "right")
+
+        # This reading arrives while the rover is already rotating. It should
+        # not update the forward-observed side preference.
+        command = avoider.command(make_reading(2.4, 0.8, 2.0, ts=10.2), now=10.2)
+        self.assertEqual(command.state, "searching")
+        self.assertEqual(command.pivot_side, "right")
+        self.assertEqual(avoider._last_clear_side, "right")
+
+    def test_ambiguous_retry_after_reverse_defaults_left(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        first = avoider.command(make_reading(2.0, 0.8, 2.3, ts=10.0), now=10.1)
+        self.assertEqual(first.pivot_side, "right")
+
+        reversing = avoider.command(make_reading(2.0, 0.8, 2.1, ts=12.2), now=12.2)
+        self.assertEqual(reversing.state, "reversing")
+
+        retry = avoider.command(make_reading(2.0, 0.8, 2.1, ts=13.0), now=13.0)
+        self.assertEqual(retry.state, "searching")
+        self.assertEqual(retry.pivot_side, "left")
+        self.assertLess(retry.turn, 0.0)
 
     def test_hysteresis_does_not_flap_between_cruising_and_slowing(self):
         avoider = make_avoider()

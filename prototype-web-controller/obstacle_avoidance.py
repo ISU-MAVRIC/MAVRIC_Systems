@@ -53,6 +53,7 @@ class AvoidanceConfig:
     no_depth_grace_s: float = 1.0
     no_depth_search_s: float = 3.0
     max_pivot_attempts: int = 4
+    pivot_clearance_delta_m: float = 0.20
 
     stale_seconds: float = 0.3
     reaction_factor: float = 0.4
@@ -181,7 +182,8 @@ class CorridorAvoider:
             return self._assume_clear_no_depth()
 
         self._last_depth_at = now
-        self._update_clear_side_cache(left, right)
+        if self.state not in ("searching", "reversing"):
+            self._update_clear_side_cache(left, right)
 
         valid_dists = [d for d in (left, center, right) if d is not None]
         worst = min(valid_dists) if valid_dists else None
@@ -310,23 +312,27 @@ class CorridorAvoider:
         if right is None:
             self._last_clear_side = "left"
             return
-        if abs(left - right) < 0.05:
+        delta = left - right
+        if abs(delta) < self.config.pivot_clearance_delta_m:
             return
-        self._last_clear_side = "left" if left > right else "right"
+        self._last_clear_side = "left" if delta > 0.0 else "right"
 
     def _choose_pivot_side(self, reading: CorridorReading) -> str:
         cfg = self.config
         left = _band_dist(reading.left, cfg.min_valid_ratio, cfg.min_valid_pixels)
         right = _band_dist(reading.right, cfg.min_valid_ratio, cfg.min_valid_pixels)
         if left is None and right is None:
-            return self._last_clear_side or "left"
+            return "left"
         if left is None:
             return "right"
         if right is None:
             return "left"
-        if abs(left - right) < 0.05:
-            return self._last_clear_side or "left"
-        return "left" if left > right else "right"
+        delta = left - right
+        if delta >= cfg.pivot_clearance_delta_m:
+            return "left"
+        if delta <= -cfg.pivot_clearance_delta_m:
+            return "right"
+        return "left"
 
     def _pivot_turn_value(self) -> float:
         # Convention matches arcade(): positive turn yaws right. So to pivot
@@ -349,7 +355,7 @@ class CorridorAvoider:
         if reading is not None:
             self.pivot_side = self._choose_pivot_side(reading)
         else:
-            self.pivot_side = self.pivot_side or self._last_clear_side or "left"
+            self.pivot_side = self.pivot_side or "left"
         self.state = "searching"
         self.reason = f"scanning {self.pivot_side} for opening"
         self._state_until = now + cfg.pivot_step_s
