@@ -171,6 +171,27 @@ function setAvoidanceStatus(data) {
     document.querySelectorAll('.js-avoidance-attempts').forEach(el => {
         el.textContent = attemptsText;
     });
+
+    const amState    = document.getElementById('am-state');
+    const amPivot    = document.getElementById('am-pivot');
+    const amAttempts = document.getElementById('am-attempts');
+    if (amState)    amState.textContent    = `${data.state}: ${data.reason}`;
+    if (amPivot)    amPivot.textContent    = pivotText;
+    if (amAttempts) amAttempts.textContent = attemptsText;
+
+    if (isMobile) {
+        const modal  = document.getElementById('avoidance-modal');
+        const camera = document.getElementById('am-camera');
+        if (modal && camera) {
+            if (data.enabled) {
+                camera.src = '/camera/stream';
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+                camera.src = '';
+            }
+        }
+    }
 }
 
 function updateDisplay(throttle, turn) {
@@ -187,6 +208,10 @@ socket.on('disconnect', () => {
     keys.clear();
     resetJoy();
     updateDisplay(0, 0);
+    const modal  = document.getElementById('avoidance-modal');
+    const camera = document.getElementById('am-camera');
+    if (modal)  modal.classList.add('hidden');
+    if (camera) camera.src = '';
 });
 
 socket.on('rpm_update', (data) => setRpm(data.left, data.right));
@@ -341,6 +366,12 @@ if (isMobile) {
     document.getElementById('m-cfg-btn').addEventListener('click', () => {
         document.getElementById('settings-modal').classList.remove('hidden');
     });
+
+    // Avoidance modal STOP button
+    document.getElementById('am-stop-btn').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        socket.emit('stop', {});
+    }, { passive: false });
 }
 
 // Desktop settings button

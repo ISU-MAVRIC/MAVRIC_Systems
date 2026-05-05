@@ -468,6 +468,75 @@
         font-size: 17px;
       }
     }
+
+    /* Avoidance modal (mobile-only overlay) */
+    #avoidance-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      z-index: 200;
+      padding: 14px;
+    }
+    #avoidance-modal.hidden { display: none; }
+    #avoidance-modal-content {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    #am-title {
+      font-size: 16px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #ffb74d;
+      text-align: center;
+      display: block;
+    }
+    #am-camera {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background: #111;
+      display: block;
+    }
+    #am-status {
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #202020;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+    }
+    #am-stop-btn {
+      background: #b71c1c;
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      padding: 0;
+      min-height: 64px;
+      border-radius: 6px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      touch-action: none;
+      width: 100%;
+    }
+    #am-stop-btn:active { background: #e53935; }
   </style>
 </head>
 <body>
@@ -605,6 +674,25 @@
       <button id="apply-btn">Apply</button>
       <div id="cfg-status"></div>
       <button id="settings-close-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Avoidance modal (mobile only) -->
+  <div id="avoidance-modal" class="hidden">
+    <div id="avoidance-modal-content">
+      <span id="am-title">Obstacle Avoidance Active</span>
+      <img id="am-camera" src="" alt="Camera feed">
+      <div id="am-status">
+        <div>Mode: <span id="am-state">—</span></div>
+        <div>
+          <span class="js-depth-health-dot" title="Depth health"></span>
+          L <span class="js-band-left">--</span>
+          · C <span class="js-band-center">--</span>
+          · R <span class="js-band-right">--</span> m
+        </div>
+        <div>Pivot: <span id="am-pivot">—</span> &nbsp; Tries: <span id="am-attempts">0</span></div>
+      </div>
+      <button id="am-stop-btn">■ STOP</button>
     </div>
   </div>
 
