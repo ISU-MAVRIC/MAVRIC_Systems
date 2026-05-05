@@ -69,7 +69,7 @@ class CameraGeometry:
     camera_forward_offset_m: float = 0.1
     camera_pitch_deg: float = 0.0
     lookahead_m: float = 1.0
-    min_depth_m: float = 0.15
+    min_depth_m: float = 0.20
     max_depth_m: float = 2.0
     width_margin_m: float = 0.08
     floor_clip_m: float = 0.05
@@ -139,6 +139,29 @@ def load_camera_geometry_from_env(
 
     geometry = CameraGeometry(**values, measured=True)
     _log.info("Loaded measured camera geometry: %s", geometry.summary())
+
+    # Bumper-blind sanity check: anything closer than ``min_depth_m`` from the
+    # camera lens cannot be sensed; the rover's reference point sits
+    # ``camera_forward_offset_m`` *behind* the camera. So obstacles within
+    # (min_depth - camera_forward_offset) m of the rover front are invisible.
+    bumper_blind = max(geometry.min_depth_m - geometry.camera_forward_offset_m, 0.0)
+    if bumper_blind > 0.05:
+        _log.warning(
+            "Bumper-blind region is %.2f m ahead of the rover reference point "
+            "(min_depth_m=%.2f, camera_forward_offset_m=%.2f). Obstacles inside "
+            "this distance will not be sensed; ensure the rover bumper extends "
+            "no further forward.",
+            bumper_blind,
+            geometry.min_depth_m,
+            geometry.camera_forward_offset_m,
+        )
+    if geometry.lookahead_m < geometry.min_depth_m + 0.1:
+        _log.warning(
+            "lookahead_m=%.2f is too close to min_depth_m=%.2f; the corridor "
+            "sampler may have very few valid pixels at the configured look-ahead.",
+            geometry.lookahead_m,
+            geometry.min_depth_m,
+        )
     return geometry
 
 
@@ -149,16 +172,18 @@ class BandReading:
     min_m: Optional[float]
     mean_m: Optional[float]
     valid_ratio: float
+    valid_pixels: int = 0
 
     def as_dict(self) -> dict:
         return {
             "min_m": self.min_m,
             "mean_m": self.mean_m,
             "valid_ratio": round(self.valid_ratio, 3),
+            "valid_pixels": int(self.valid_pixels),
         }
 
 
-_EMPTY_BAND = BandReading(min_m=None, mean_m=None, valid_ratio=0.0)
+_EMPTY_BAND = BandReading(min_m=None, mean_m=None, valid_ratio=0.0, valid_pixels=0)
 
 
 @dataclass(frozen=True)
@@ -170,12 +195,21 @@ class CorridorReading:
     right: BandReading
     timestamp: float
 
+    def depth_health(self) -> float:
+        """Worst-band valid_ratio in [0, 1]; the operator-facing health metric."""
+        return float(min(
+            self.left.valid_ratio,
+            self.center.valid_ratio,
+            self.right.valid_ratio,
+        ))
+
     def as_dict(self) -> dict:
         return {
             "left": self.left.as_dict(),
             "center": self.center.as_dict(),
             "right": self.right.as_dict(),
             "timestamp": self.timestamp,
+            "depth_health": round(self.depth_health(), 3),
         }
 
 
@@ -208,14 +242,21 @@ def _band_metrics(depth_band) -> BandReading:
         return _EMPTY_BAND
     valid = depth_band[(depth_band > 0.0) & (depth_band < 10.0)]
     valid_ratio = float(valid.size) / float(depth_band.size)
+    valid_pixels = int(valid.size)
     if valid.size == 0:
-        return BandReading(min_m=None, mean_m=None, valid_ratio=valid_ratio)
+        return BandReading(
+            min_m=None,
+            mean_m=None,
+            valid_ratio=valid_ratio,
+            valid_pixels=valid_pixels,
+        )
     min_m = float(np.percentile(valid, 10))
     mean_m = float(valid.mean())
     return BandReading(
         min_m=round(min_m, 3),
         mean_m=round(mean_m, 3),
         valid_ratio=valid_ratio,
+        valid_pixels=valid_pixels,
     )
 
 
@@ -260,12 +301,19 @@ def _band_metrics_from_masked_depths(depth_m, mask) -> BandReading:
     valid_depths = depth_m[mask]
     valid = valid_depths[(valid_depths > 0.0) & (valid_depths < 10.0)]
     valid_ratio = float(valid.size) / float(candidate_count)
+    valid_pixels = int(valid.size)
     if valid.size == 0:
-        return BandReading(min_m=None, mean_m=None, valid_ratio=valid_ratio)
+        return BandReading(
+            min_m=None,
+            mean_m=None,
+            valid_ratio=valid_ratio,
+            valid_pixels=valid_pixels,
+        )
     return BandReading(
         min_m=round(float(np.percentile(valid, 10)), 3),
         mean_m=round(float(valid.mean()), 3),
         valid_ratio=valid_ratio,
+        valid_pixels=valid_pixels,
     )
 
 
@@ -474,7 +522,7 @@ class RealSenseCameraService:
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._frame_jpeg = _PLACEHOLDER_JPEG
-        seed_band = BandReading(min_m=1.5, mean_m=1.5, valid_ratio=1.0)
+        seed_band = BandReading(min_m=1.5, mean_m=1.5, valid_ratio=1.0, valid_pixels=10000)
         now = time.time()
         self._corridor = CorridorReading(seed_band, seed_band, seed_band, now)
         self._distance = _distance_from_corridor(self._corridor)
@@ -643,7 +691,7 @@ class RealSenseCameraService:
             right = max(0.25, base + 0.4 * math.sin(now / 2.7 - 1.4))
             center = max(0.25, base)
             self._set_simulated_frame(center)
-            band = lambda v: BandReading(round(v, 2), round(v, 2), 1.0)
+            band = lambda v: BandReading(round(v, 2), round(v, 2), 1.0, 10000)
             reading = CorridorReading(
                 left=band(left),
                 center=band(center),

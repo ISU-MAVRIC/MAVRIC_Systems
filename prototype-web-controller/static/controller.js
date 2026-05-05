@@ -122,10 +122,25 @@ function formatBand(band) {
     return Number(value).toFixed(2);
 }
 
+function depthHealthColor(health) {
+    if (health === null || health === undefined) return '#555';
+    if (health >= 0.5) return '#4caf50';
+    if (health >= 0.2) return '#ffb74d';
+    return '#f44336';
+}
+
 function setCorridor(data) {
     document.querySelectorAll('.js-band-left').forEach(el   => el.textContent = formatBand(data.left));
     document.querySelectorAll('.js-band-center').forEach(el => el.textContent = formatBand(data.center));
     document.querySelectorAll('.js-band-right').forEach(el  => el.textContent = formatBand(data.right));
+    const color = depthHealthColor(data.depth_health);
+    const title = (data.depth_health === null || data.depth_health === undefined)
+        ? 'Depth health: unknown'
+        : `Depth health: ${(data.depth_health * 100).toFixed(0)}% worst-band valid pixels`;
+    document.querySelectorAll('.js-depth-health-dot').forEach(el => {
+        el.style.background = color;
+        el.title = title;
+    });
 }
 
 function setCameraStatus(data) {

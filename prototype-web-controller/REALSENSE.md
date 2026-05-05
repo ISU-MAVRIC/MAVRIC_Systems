@@ -80,17 +80,31 @@ environment variables. Defaults are used only for simulation and local tests.
 | `MAVRIC_CAMERA_FORWARD_OFFSET_M` | required | Camera optical center ahead of the rover reference point. |
 | `MAVRIC_CAMERA_PITCH_DEG` | required | Camera pitch used by the rover-frame projection. |
 | `MAVRIC_LOOKAHEAD_M` | required | Distance ahead at which the rover footprint is sized. |
-| `MAVRIC_MIN_DEPTH_M` | 0.15 | Optional minimum depth considered by the corridor sampler. |
+| `MAVRIC_MIN_DEPTH_M` | 0.20 | Optional minimum depth considered by the corridor sampler. Set to the D435's reliable lower bound; tighter values let near-range stereo noise into the mask. |
 | `MAVRIC_MAX_DEPTH_M` | 2.0 | Optional maximum depth considered by the corridor sampler. |
 | `MAVRIC_WIDTH_MARGIN_M` | 0.08 | Optional extra clearance on each side. |
 | `MAVRIC_FLOOR_CLIP_M` | 0.05 | Optional floor clipping threshold. |
 | `MAVRIC_CEILING_CLIP_M` | 0.4 | Optional ceiling clipping threshold. |
 
+At startup the camera service warns if `min_depth_m - camera_forward_offset_m`
+exceeds ~5 cm (rover front edge sits in the camera's bumper-blind zone) or if
+`lookahead_m` is too close to `min_depth_m` to leave room for valid sampled
+pixels. Heed those warnings before enabling avoidance on hardware.
+
 For each band the service reports `min_m` (10th percentile of valid pixels —
-robust to single-pixel noise), `mean_m`, and `valid_ratio` (fraction of pixels
-in the band that returned a valid depth). A band with `valid_ratio` below
-`AvoidanceConfig.min_valid_ratio` is treated as **blind** and contributes no
-distance to the avoider's decision.
+robust to single-pixel noise), `mean_m`, `valid_ratio` (fraction of in-corridor
+pixels that returned a valid depth), and `valid_pixels` (the absolute count of
+those valid pixels). A band is treated as **blind** if either gate fails:
+`valid_ratio < AvoidanceConfig.min_valid_ratio` (default 0.35) **or**
+`valid_pixels < AvoidanceConfig.min_valid_pixels` (default 60). The absolute
+count guards against the failure mode where a high ratio is satisfied by a tiny
+cluster of valid pixels — e.g. a single bright edge on a glass wall — which can
+otherwise produce a confidently wrong `min_m`.
+
+The aggregated `CorridorReading.depth_health` is the worst-band `valid_ratio`,
+broadcast in the `corridor_update` telemetry message and rendered in the UI as
+a colored dot next to the L/C/R band readout (green > 0.5, amber 0.2–0.5,
+red < 0.2). Use it to spot degradation before the avoider trips.
 
 ## RealSense Settings And Filter Chain
 
@@ -146,7 +160,10 @@ Key behaviors:
   1 s) just holds position. A longer dropout starts a slow rotation to
   reacquire view (`recovery_pivot_rate`). Only after `no_depth_search_s`
   (default 3 s) does the rover escalate to a full pivot search, and only after
-  `max_pivot_attempts` of those does it give up.
+  `max_pivot_attempts` of those does it give up. When depth recovers, the
+  avoider does **not** snap from 0 throttle straight to cruise — it routes
+  through `slowing` for at least `recovery_verify_s` (default 0.3 s) and only
+  promotes to `cruising` once the slowing→clear hysteresis is satisfied.
 - **Escape escalation.** Each pivot that doesn't open the path is followed by
   a short reverse, and the chosen side is re-evaluated for the next attempt.
   After `max_pivot_attempts` the avoider transitions to `stuck` and broadcasts
@@ -173,13 +190,25 @@ Once you are on hardware:
    `MAVRIC_CAMERA_HEIGHT_M`. If the camera is meaningfully tilted, measure
    pitch and set `MAVRIC_CAMERA_PITCH_DEG`.
 3. Find the **min effective range** of your D435 in the operating environment
-   and set `AvoidanceConfig.reverse_distance_m` slightly above that.
+   and set `AvoidanceConfig.reverse_distance_m` slightly above that. The
+   default `min_depth_m=0.20` matches the D435's reliable lower bound; do not
+   lower it without first confirming your camera/environment justifies it.
 4. Pick a `cruise_throttle` you trust, then set `stop_distance_m` to the
    distance the rover travels in roughly 1 second at that throttle. The
-   speed-aware margin will add headroom on top.
-5. Bump `min_valid_ratio` up if you see false "all clear" readings on
-   low-texture surfaces; bump it down if the avoider is constantly
-   "no valid depth" outdoors.
+   speed-aware margin will add headroom on top. The default `stop_distance_m=
+   0.7` paired with `caution=1.2` and `clear=1.5` is sized for indoor
+   corridors ~1.5–2.0 m wide; widen all three if the rover operates in larger
+   spaces.
+5. Bump `min_valid_ratio` (default 0.35) up if you see false "all clear"
+   readings on low-texture surfaces; bump it down if the avoider is constantly
+   "no valid depth" outdoors. Adjust `min_valid_pixels` (default 60) along
+   with it — the absolute-count gate exists so a high ratio satisfied by a
+   tiny cluster of pixels (e.g. one bright edge on glass) doesn't get
+   trusted.
+6. The default `stale_seconds=0.3` rejects readings older than 300 ms. At
+   30 fps with a 50 ms control loop the depth feed should be well within that
+   window; if you see frequent transitions to `recovering` while the camera is
+   visibly streaming, raise this to ~0.5 s and check pipeline backpressure.
 
 ## Why This Is Not The Typical ROS D435 Setup
 

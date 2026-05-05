@@ -40,12 +40,13 @@ class AvoidanceConfig:
     pivot_rate: float = 0.35
     recovery_pivot_rate: float = 0.2
 
-    stop_distance_m: float = 1.0
-    caution_distance_m: float = 1.6
-    clear_distance_m: float = 2.0
+    stop_distance_m: float = 0.7
+    caution_distance_m: float = 1.2
+    clear_distance_m: float = 1.5
     reverse_distance_m: float = 0.55
 
     min_valid_ratio: float = 0.35
+    min_valid_pixels: int = 60
 
     reverse_seconds: float = 0.7
     pivot_step_s: float = 0.6
@@ -53,8 +54,9 @@ class AvoidanceConfig:
     no_depth_search_s: float = 3.0
     max_pivot_attempts: int = 4
 
-    stale_seconds: float = 0.75
+    stale_seconds: float = 0.3
     reaction_factor: float = 0.4
+    recovery_verify_s: float = 0.3
 
 
 @dataclass(frozen=True)
@@ -67,15 +69,31 @@ class AvoidanceCommand:
     attempts: int = 0
 
 
-def _band_dist(band: BandReading, min_valid_ratio: float) -> Optional[float]:
-    """Trusted distance for a band, or ``None`` if too few valid pixels."""
-    if band.valid_ratio < min_valid_ratio or band.min_m is None:
+def _band_dist(
+    band: BandReading,
+    min_valid_ratio: float,
+    min_valid_pixels: int = 0,
+) -> Optional[float]:
+    """Trusted distance for a band, or ``None`` if too few valid pixels.
+
+    Both gates apply: the ratio rejects bands where the corridor is mostly
+    invalid (a sane sensor with mostly-noise input), and the absolute count
+    rejects bands where a high ratio is satisfied by a tiny pixel cluster
+    (e.g. one bright edge on a glass wall).
+    """
+    if band.min_m is None or band.valid_ratio < min_valid_ratio:
+        return None
+    if band.valid_pixels < min_valid_pixels:
         return None
     return float(band.min_m)
 
 
-def _band_blind(band: BandReading, min_valid_ratio: float) -> bool:
-    return _band_dist(band, min_valid_ratio) is None
+def _band_blind(
+    band: BandReading,
+    min_valid_ratio: float,
+    min_valid_pixels: int = 0,
+) -> bool:
+    return _band_dist(band, min_valid_ratio, min_valid_pixels) is None
 
 
 class CorridorAvoider:
@@ -94,6 +112,7 @@ class CorridorAvoider:
         self._state_until = 0.0
         self._last_depth_at: Optional[float] = None
         self._last_clear_side: Optional[str] = None
+        self._verify_until = 0.0
 
     # -- public API -----------------------------------------------------------
 
@@ -112,6 +131,7 @@ class CorridorAvoider:
             self.state = "cruising"
             self.reason = "avoidance enabled"
             self._state_until = now
+            self._verify_until = 0.0
             self.attempts = 0
             self.pivot_side = None
             self._last_depth_at = now
@@ -158,9 +178,9 @@ class CorridorAvoider:
         )
 
         if not stale and reading is not None:
-            left = _band_dist(reading.left, cfg.min_valid_ratio)
-            center = _band_dist(reading.center, cfg.min_valid_ratio)
-            right = _band_dist(reading.right, cfg.min_valid_ratio)
+            left = _band_dist(reading.left, cfg.min_valid_ratio, cfg.min_valid_pixels)
+            center = _band_dist(reading.center, cfg.min_valid_ratio, cfg.min_valid_pixels)
+            right = _band_dist(reading.right, cfg.min_valid_ratio, cfg.min_valid_pixels)
         else:
             left = center = right = None
 
@@ -232,8 +252,11 @@ class CorridorAvoider:
             )
 
         if self.state == "recovering":
-            self.state = "cruising"
-            self.reason = "depth recovered"
+            # Stage the transition through slowing so the rover doesn't snap
+            # from 0 throttle to cruise on the same frame depth returns.
+            self.state = "slowing"
+            self.reason = "depth recovered — verifying"
+            self._verify_until = now + cfg.recovery_verify_s
 
         # Forward-flow: cruising or slowing.
         stop_thr = self.effective_stop_distance()
@@ -256,7 +279,11 @@ class CorridorAvoider:
             return self._snapshot(cfg.slow_throttle, 0.0)
 
         if self.state == "slowing":
-            if worst is None or worst < cfg.clear_distance_m:
+            if (
+                worst is None
+                or worst < cfg.clear_distance_m
+                or now < self._verify_until
+            ):
                 return self._snapshot(cfg.slow_throttle, 0.0)
             self.state = "cruising"
             self.reason = f"clear: worst band {worst:.2f} m"
@@ -298,8 +325,8 @@ class CorridorAvoider:
 
     def _choose_pivot_side(self, reading: CorridorReading) -> str:
         cfg = self.config
-        left = _band_dist(reading.left, cfg.min_valid_ratio)
-        right = _band_dist(reading.right, cfg.min_valid_ratio)
+        left = _band_dist(reading.left, cfg.min_valid_ratio, cfg.min_valid_pixels)
+        right = _band_dist(reading.right, cfg.min_valid_ratio, cfg.min_valid_pixels)
         if left is None and right is None:
             return self._last_clear_side or "left"
         if left is None:

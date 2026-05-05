@@ -1,4 +1,5 @@
 import itertools
+import logging
 import time
 import unittest
 
@@ -215,6 +216,27 @@ class TestRealSenseCameraService(unittest.TestCase):
         self.assertAlmostEqual(geometry.lookahead_m, 1.4)
         self.assertAlmostEqual(geometry.width_margin_m, 0.12)
 
+    def test_geometry_warns_when_bumper_blind_zone_is_large(self):
+        # camera_forward_offset=0.0 + min_depth=0.20 -> 0.20 m bumper-blind.
+        with self.assertLogs("web-controller.camera", level="WARNING") as logs:
+            load_camera_geometry_from_env(
+                {
+                    "MAVRIC_ROVER_WIDTH_M": "0.7",
+                    "MAVRIC_CAMERA_HEIGHT_M": "0.46",
+                    "MAVRIC_CAMERA_FORWARD_OFFSET_M": "0.0",
+                    "MAVRIC_CAMERA_PITCH_DEG": "0",
+                    "MAVRIC_LOOKAHEAD_M": "1.0",
+                }
+            )
+        self.assertTrue(
+            any("Bumper-blind region" in line for line in logs.output),
+            f"expected bumper-blind warning, got {logs.output!r}",
+        )
+
+    def test_default_min_depth_matches_d435_reliable_floor(self):
+        geometry = CameraGeometry()
+        self.assertAlmostEqual(geometry.min_depth_m, 0.20)
+
 
 @unittest.skipIf(camera_service.np is None, "numpy is required for this test")
 class TestComputeCorridorFromDepth(unittest.TestCase):
@@ -336,6 +358,28 @@ class TestComputeCorridorFromDepth(unittest.TestCase):
 
         self.assertIsNotNone(reading.center.min_m)
         self.assertLess(reading.center.valid_ratio, 1.0)
+
+    def test_band_metrics_populate_valid_pixels(self):
+        depth = self.np.full((10, 30), 1.5, dtype="float32")
+        depth[:, :10] = 0.0  # left band entirely invalid
+        reading = compute_corridor_from_depth(
+            depth, intrinsics=None, geometry=CameraGeometry()
+        )
+        self.assertEqual(reading.left.valid_pixels, 0)
+        self.assertGreater(reading.center.valid_pixels, 0)
+        self.assertGreater(reading.right.valid_pixels, 0)
+
+    def test_corridor_as_dict_includes_depth_health(self):
+        depth = self.np.full((10, 30), 1.5, dtype="float32")
+        depth[:, :10] = 0.0  # left band invalid -> worst-band valid_ratio = 0
+        reading = compute_corridor_from_depth(
+            depth, intrinsics=None, geometry=CameraGeometry()
+        )
+        as_dict = reading.as_dict()
+        self.assertIn("depth_health", as_dict)
+        self.assertAlmostEqual(as_dict["depth_health"], 0.0)
+        self.assertIn("valid_pixels", as_dict["center"])
+        self.assertGreater(as_dict["center"]["valid_pixels"], 0)
 
     def test_pitch_changes_vertical_corridor_mask(self):
         depth = self.np.full((7, 9), 2.0, dtype="float32")

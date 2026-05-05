@@ -104,6 +104,16 @@
       flex-shrink: 0;
     }
 
+    .js-depth-health-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #555;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
     /* ── Mobile layout ──────────────────────────────────────────────────────── */
     #mobile-ui {
       display: none;
@@ -461,6 +471,7 @@
           </label>
           <div>Mode: <span class="js-avoidance-state">manual</span></div>
           <div id="m-corridor">
+            <span class="js-depth-health-dot" title="Depth health"></span>
             L <span class="js-band-left">--</span>
             · C <span class="js-band-center">--</span>
             · R <span class="js-band-right">--</span> m
@@ -506,6 +517,7 @@
       <div class="row"><span>Right RPM</span> <span class="val"><span class="js-right-rpm">—</span></span></div>
       <div class="row"><span>Center Distance</span> <span class="val"><span class="js-center-distance">--</span> m</span></div>
       <div class="row"><span>Corridor L / C / R</span> <span class="val">
+        <span class="js-depth-health-dot" title="Depth health"></span>
         <span class="js-band-left">--</span> / <span class="js-band-center">--</span> / <span class="js-band-right">--</span> m
       </span></div>
       <div class="row"><span>Camera</span> <span class="val js-camera-status warn">Initializing</span></div>
