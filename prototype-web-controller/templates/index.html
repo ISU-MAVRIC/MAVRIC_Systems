@@ -170,7 +170,9 @@
     }
 
     @media (orientation: portrait) {
-      #m-main { flex-direction: column; }
+      #m-main {
+        flex-direction: column;
+      }
     }
 
     @media (orientation: landscape) {
@@ -227,8 +229,6 @@
       max-width: 240px;
     }
 
-    #m-pivot-btns { display: flex; gap: 8px; }
-
     .m-btn {
       padding: 14px 8px;
       font-size: 14px;
@@ -253,6 +253,36 @@
       letter-spacing: 1px;
     }
     #stop-btn.pressed { background: #e53935; }
+
+    @media (pointer: coarse) and (orientation: portrait) {
+      #m-main {
+        justify-content: flex-start;
+        padding-top: 36px;
+      }
+
+      #joy-zone {
+        width: min(84vw, 350px);
+        height: min(84vw, 350px);
+      }
+
+      #joy-knob {
+        width: 88px;
+        height: 88px;
+      }
+
+      #m-controls {
+        flex: 0 1 auto;
+        width: min(86vw, 280px);
+        max-width: 280px;
+      }
+
+      #stop-btn {
+        flex: 0 0 auto;
+        padding: 10px 8px;
+        font-size: 13px;
+        min-height: 42px;
+      }
+    }
 
     /* Speed slider */
     #m-speed-ctrl { display: flex; flex-direction: column; gap: 6px; }
@@ -477,10 +507,6 @@
             · R <span class="js-band-right">--</span> m
           </div>
           <div>Pivot: <span class="js-avoidance-pivot">—</span> &nbsp; Tries: <span class="js-avoidance-attempts">0</span></div>
-        </div>
-        <div id="m-pivot-btns">
-          <button id="pivot-l" class="m-btn">◄ Pivot L</button>
-          <button id="pivot-r" class="m-btn">Pivot R ►</button>
         </div>
         <button id="stop-btn" class="m-btn">■ STOP</button>
         <div id="m-speed-ctrl">

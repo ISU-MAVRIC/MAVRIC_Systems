@@ -91,8 +91,6 @@ let avoidanceEnabled = false;
 let joyActive = false;
 let touchThrottle = 0;
 let touchTurn = 0;
-let touchPivotSide = null;
-const JOY_RADIUS = 68; // px — zone radius (100) minus knob radius (32)
 
 // ── Multi-element updaters (desktop + mobile share class-based elements) ───────
 
@@ -251,7 +249,6 @@ window.addEventListener('gamepaddisconnected', ()  => { gamepadIndex = null; });
 
 function safeStop() {
     keys.clear();
-    touchPivotSide = null;
     resetJoy();
     socket.emit('stop', {});
     avoidanceEnabled = false;
@@ -275,6 +272,12 @@ function applyDeadband(v) { return Math.abs(v) < DEADBAND ? 0 : v; }
 
 const joyKnob = document.getElementById('joy-knob');
 
+function getJoyRadius(joyZone) {
+    const zoneRect = joyZone.getBoundingClientRect();
+    const knobRect = joyKnob.getBoundingClientRect();
+    return Math.max(1, (Math.min(zoneRect.width, zoneRect.height) - Math.max(knobRect.width, knobRect.height)) / 2);
+}
+
 function resetJoy() {
     joyActive = false;
     touchThrottle = 0;
@@ -292,12 +295,13 @@ if (isMobile) {
 
     function moveJoy(cx, cy) {
         const r = joyZone.getBoundingClientRect();
+        const joyRadius = getJoyRadius(joyZone);
         let dx = cx - (r.left + r.width  / 2);
         let dy = cy - (r.top  + r.height / 2);
         const dist = Math.hypot(dx, dy);
-        if (dist > JOY_RADIUS) { dx = dx / dist * JOY_RADIUS; dy = dy / dist * JOY_RADIUS; }
-        touchTurn     =  dx / JOY_RADIUS;
-        touchThrottle = -dy / JOY_RADIUS;
+        if (dist > joyRadius) { dx = dx / dist * joyRadius; dy = dy / dist * joyRadius; }
+        touchTurn     =  dx / joyRadius;
+        touchThrottle = -dy / joyRadius;
         joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     }
 
@@ -317,20 +321,9 @@ if (isMobile) {
     joyZone.addEventListener('touchend',    (e) => { e.preventDefault(); resetJoy(); }, { passive: false });
     joyZone.addEventListener('touchcancel', (e) => { e.preventDefault(); resetJoy(); }, { passive: false });
 
-    // Pivot buttons: hold = pivot, release = stop pivoting
-    function attachPivot(id, side) {
-        const el = document.getElementById(id);
-        el.addEventListener('touchstart',  (e) => { e.preventDefault(); touchPivotSide = side; }, { passive: false });
-        el.addEventListener('touchend',    (e) => { e.preventDefault(); touchPivotSide = null; }, { passive: false });
-        el.addEventListener('touchcancel', (e) => { e.preventDefault(); touchPivotSide = null; }, { passive: false });
-    }
-    attachPivot('pivot-l', 'right'); // pivot left  = right side stationary
-    attachPivot('pivot-r', 'left');  // pivot right = left  side stationary
-
     // Stop button
     document.getElementById('stop-btn').addEventListener('touchstart', (e) => {
         e.preventDefault();
-        touchPivotSide = null;
         resetJoy();
         socket.emit('stop', {});
         avoidanceEnabled = false;
@@ -395,7 +388,6 @@ document.querySelectorAll('.js-avoidance-toggle').forEach((el) => {
         socket.emit('set_avoidance', { enabled: avoidanceEnabled });
         if (avoidanceEnabled) {
             keys.clear();
-            touchPivotSide = null;
             resetJoy();
             lastType = 'avoidance';
             updateDisplay(0, 0);
@@ -448,9 +440,8 @@ setInterval(() => {
     throttle = applyDeadband(throttle);
     turn     = applyDeadband(turn);
 
-    // Pivot: mobile touch buttons take priority, then keyboard Q/E
-    const pivotSide = touchPivotSide
-        || (keys.has('q') ? 'right' : keys.has('e') ? 'left' : null);
+    // Pivot: keyboard Q/E
+    const pivotSide = keys.has('q') ? 'right' : keys.has('e') ? 'left' : null;
 
     if (pivotSide && throttle !== 0) {
         if (lastType !== 'pivot' || lastPivotSide !== pivotSide || lastThrottle !== throttle) {
