@@ -140,9 +140,6 @@ instead of trusting fabricated depth.
 | `slowing` | `slow_throttle` | 0 | Worst band below `caution_distance_m`, or center band blind while sides are valid. |
 | `searching` | 0 | `±pivot_rate` | Center below the speed-aware stop threshold; pivots toward the side with more clearance. |
 | `reversing` | `reverse_throttle` | 0 | Any band below `reverse_distance_m`, or pivot completed without opening the path. |
-| `recovering` | 0 (or 0/`±recovery_pivot_rate`) | depends | All bands blind for less than `no_depth_search_s`; rotates slowly after the grace window. |
-| `scanning_depth` | 0 | `±pivot_rate` | All bands blind past `no_depth_search_s`; spins for one fixed `pivot_step_s` window. |
-| `probing_forward` | `slow_throttle` | 0 | Depth scan expired while still blind; cautiously tests forward motion before scanning again. |
 | `stuck` | 0 | 0 | Compatibility state; normal retry exhaustion no longer enters it. |
 
 Key behaviors:
@@ -161,16 +158,11 @@ Key behaviors:
   and right band distances and pivots toward whichever has more clearance,
   caching the last-clear side as a tie-breaker. If a timed pivot sees a clear
   corridor before its window ends, it stops turning immediately and drives.
-- **Recoverable lost depth.** A short dropout (`no_depth_grace_s`, default
-  1 s) just holds position. A longer dropout starts a slow rotation to
-  reacquire view (`recovery_pivot_rate`). Only after `no_depth_search_s`
-  (default 3 s) does the rover enter a bounded depth scan. Depth scans last
-  `pivot_step_s` (default 2 s), do not slide forward on every blind frame, and
-  stop immediately when any trusted band returns. If a scan expires while all
-  bands are still blind, the rover probes forward at `slow_throttle` for
-  `forward_probe_s` (default 0.5 s), then scans again. If depth returns during
-  the early `recovering` state, the avoider routes through `slowing` for at
-  least `recovery_verify_s` (default 0.3 s) before promoting to `cruising`.
+- **Fully blind means assumed clear.** If all three bands are blind, the
+  reading is missing, or the reading is stale, the prototype assumes forward
+  space is available and commands `cruise_throttle` with zero turn. This keeps
+  the rover from spinning on depth holes, but it also means fully unsensed
+  obstacles are not blocked by this prototype policy.
 - **Escape escalation.** Each pivot that doesn't open the path is followed by
   a short reverse, and the chosen side is re-evaluated for the next attempt.
   Attempts remain in status for operator visibility, but they no longer stop
@@ -206,16 +198,16 @@ Once you are on hardware:
    0.7` paired with `caution=1.2` and `clear=1.5` is sized for indoor
    corridors ~1.5–2.0 m wide; widen all three if the rover operates in larger
    spaces.
-5. Bump `min_valid_ratio` (default 0.35) up if you see false "all clear"
-   readings on low-texture surfaces; bump it down if the avoider is constantly
-   "no valid depth" outdoors. Adjust `min_valid_pixels` (default 60) along
+5. Bump `min_valid_ratio` (default 0.35) up if you see noisy pixels being
+   trusted as obstacles or clear space; bump it down if too many partial bands
+   are rejected. When every band is rejected, the current prototype policy
+   treats the corridor as clear. Adjust `min_valid_pixels` (default 60) along
    with it — the absolute-count gate exists so a high ratio satisfied by a
-   tiny cluster of pixels (e.g. one bright edge on glass) doesn't get
-   trusted.
+   tiny cluster of pixels (e.g. one bright edge on glass) doesn't get trusted.
 6. The default `stale_seconds=0.3` rejects readings older than 300 ms. At
    30 fps with a 50 ms control loop the depth feed should be well within that
-   window; if you see frequent transitions to `recovering` while the camera is
-   visibly streaming, raise this to ~0.5 s and check pipeline backpressure.
+   window; stale readings are treated the same as fully blind readings, so the
+   rover assumes clear forward space if the feed falls behind.
 
 ## Why This Is Not The Typical ROS D435 Setup
 
@@ -242,8 +234,8 @@ Even with the corridor model and the filter chain, the D435 will still lie:
   ground directly under the rover's nose. Low obstacles right at the bumper
   may be invisible.
 - **Sun and IR oversaturation.** Direct sunlight saturates the IR projector
-  and fills the depth image with holes. The recovery state helps, but in
-  bright sun the avoider will spend more time slowing/recovering.
+  and fills the depth image with holes. Under the current prototype policy,
+  fully blind frames are treated as clear forward space.
 - **Specular and transparent surfaces.** Glass, mirrors, polished metal, and
   water often return zero or wildly incorrect depth. Treat the avoider's
   output as advisory in environments with these surfaces.
