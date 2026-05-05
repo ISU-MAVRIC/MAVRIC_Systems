@@ -3,10 +3,11 @@ from __future__ import annotations
 import base64
 import logging
 import math
+import os
 import threading
 import time
 from dataclasses import dataclass
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator, Mapping, Optional
 
 try:
     import cv2
@@ -41,12 +42,14 @@ _PLACEHOLDER_JPEG = base64.b64decode(
 class CameraStatus:
     available: bool
     simulated: bool
+    avoidance_usable: bool
     message: str
 
     def as_dict(self) -> dict:
         return {
             "available": self.available,
             "simulated": self.simulated,
+            "avoidance_usable": self.avoidance_usable,
             "message": self.message,
         }
 
@@ -71,6 +74,72 @@ class CameraGeometry:
     width_margin_m: float = 0.08
     floor_clip_m: float = 0.05
     ceiling_clip_m: float = 0.4
+    measured: bool = False
+
+    def summary(self) -> str:
+        measured = "measured" if self.measured else "defaults-unmeasured"
+        return (
+            f"{measured}: width={self.rover_width_m:g}m, "
+            f"height={self.camera_height_m:g}m, "
+            f"forward_offset={self.camera_forward_offset_m:g}m, "
+            f"pitch={self.camera_pitch_deg:g}deg, "
+            f"lookahead={self.lookahead_m:g}m"
+        )
+
+
+_REQUIRED_GEOMETRY_ENV = {
+    "rover_width_m": "MAVRIC_ROVER_WIDTH_M",
+    "camera_height_m": "MAVRIC_CAMERA_HEIGHT_M",
+    "camera_forward_offset_m": "MAVRIC_CAMERA_FORWARD_OFFSET_M",
+    "camera_pitch_deg": "MAVRIC_CAMERA_PITCH_DEG",
+    "lookahead_m": "MAVRIC_LOOKAHEAD_M",
+}
+
+_OPTIONAL_GEOMETRY_ENV = {
+    "min_depth_m": "MAVRIC_MIN_DEPTH_M",
+    "max_depth_m": "MAVRIC_MAX_DEPTH_M",
+    "width_margin_m": "MAVRIC_WIDTH_MARGIN_M",
+    "floor_clip_m": "MAVRIC_FLOOR_CLIP_M",
+    "ceiling_clip_m": "MAVRIC_CEILING_CLIP_M",
+}
+
+
+def load_camera_geometry_from_env(
+    environ: Optional[Mapping[str, str]] = None,
+) -> CameraGeometry:
+    """Load measured rover/camera geometry from environment variables.
+
+    Real-hardware avoidance is fail-closed unless all required measured values
+    are present and valid. Simulated camera mode can still run with defaults.
+    """
+    env = os.environ if environ is None else environ
+    missing = [name for name in _REQUIRED_GEOMETRY_ENV.values() if name not in env]
+    if missing:
+        _log.warning(
+            "Measured camera geometry is incomplete; avoidance will be disabled "
+            "for real depth. Missing: %s",
+            ", ".join(missing),
+        )
+        return CameraGeometry(measured=False)
+
+    values = {}
+    try:
+        for field, env_name in _REQUIRED_GEOMETRY_ENV.items():
+            values[field] = float(env[env_name])
+        for field, env_name in _OPTIONAL_GEOMETRY_ENV.items():
+            if env_name in env:
+                values[field] = float(env[env_name])
+    except (TypeError, ValueError) as exc:
+        _log.warning(
+            "Measured camera geometry contains an invalid value; avoidance will "
+            "be disabled for real depth: %s",
+            exc,
+        )
+        return CameraGeometry(measured=False)
+
+    geometry = CameraGeometry(**values, measured=True)
+    _log.info("Loaded measured camera geometry: %s", geometry.summary())
+    return geometry
 
 
 @dataclass(frozen=True)
@@ -300,16 +369,81 @@ def _set_sensor_option(depth_sensor, option, value: float, label: str) -> str:
         return f"{label}=error"
 
 
+def _clamp_sensor_option(depth_sensor, option, value: float) -> float:
+    if depth_sensor is None or option is None:
+        return float(value)
+    try:
+        option_range = depth_sensor.get_option_range(option)
+        minimum = float(option_range.min)
+        maximum = float(option_range.max)
+        return min(max(float(value), minimum), maximum)
+    except Exception:
+        return float(value)
+
+
+def _option_value_by_name(option, name: str):
+    if option is None:
+        return None
+    return getattr(option, name, None)
+
+
+def _high_accuracy_visual_preset_value() -> float:
+    preset_enum = getattr(rs, "rs400_visual_preset", None) if rs is not None else None
+    high_accuracy = getattr(preset_enum, "high_accuracy", None)
+    if high_accuracy is None:
+        return 3.0
+    for converter in (int, float):
+        try:
+            return float(converter(high_accuracy))
+        except (TypeError, ValueError):
+            pass
+    value = getattr(high_accuracy, "value", None)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 3.0
+
+
 def configure_indoor_depth_sensor(depth_sensor, laser_power: float = 300.0) -> str:
-    """Enable D400 active IR settings when the attached device supports them."""
+    """Configure D400 active IR and high-accuracy settings for indoor rover use."""
     option = getattr(rs, "option", None) if rs is not None else None
-    emitter = getattr(option, "emitter_enabled", None) if option is not None else None
-    laser = getattr(option, "laser_power", None) if option is not None else None
+    emitter = _option_value_by_name(option, "emitter_enabled")
+    laser = _option_value_by_name(option, "laser_power")
+    auto_exposure = _option_value_by_name(option, "enable_auto_exposure")
+    visual_preset = _option_value_by_name(option, "visual_preset")
+    clamped_laser_power = _clamp_sensor_option(depth_sensor, laser, laser_power)
     settings = [
+        _set_sensor_option(
+            depth_sensor,
+            visual_preset,
+            _high_accuracy_visual_preset_value(),
+            "visual_preset",
+        ),
+        _set_sensor_option(depth_sensor, auto_exposure, 1.0, "auto_exposure"),
         _set_sensor_option(depth_sensor, emitter, 1.0, "emitter"),
-        _set_sensor_option(depth_sensor, laser, float(laser_power), "laser"),
+        _set_sensor_option(depth_sensor, laser, clamped_laser_power, "laser"),
     ]
     return ", ".join(settings)
+
+
+def _set_filter_option(processing_block, option, value: float, label: str) -> str:
+    if processing_block is None or option is None:
+        return f"{label}=unsupported"
+    try:
+        if hasattr(processing_block, "supports") and not processing_block.supports(option):
+            return f"{label}=unsupported"
+        processing_block.set_option(option, value)
+        return f"{label}={processing_block.get_option(option):g}"
+    except Exception as exc:
+        _log.warning("Unable to set RealSense filter %s to %s: %s", label, value, exc)
+        return f"{label}=error"
+
+
+def configure_navigation_filters(temporal_filter) -> str:
+    """Disable temporal persistence so control depth does not invent holes."""
+    option = getattr(rs, "option", None) if rs is not None else None
+    holes_fill = _option_value_by_name(option, "holes_fill")
+    return _set_filter_option(temporal_filter, holes_fill, 0.0, "temporal_persistence")
 
 
 def _distance_from_corridor(reading: CorridorReading) -> DistanceReading:
@@ -322,15 +456,20 @@ def _distance_from_corridor(reading: CorridorReading) -> DistanceReading:
 class RealSenseCameraService:
     def __init__(
         self,
-        width: int = 640,
+        width: int = 848,
         height: int = 480,
         fps: int = 30,
         geometry: Optional[CameraGeometry] = None,
+        color_width: int = 640,
+        color_height: int = 480,
     ) -> None:
         self.width = width
         self.height = height
         self.fps = fps
-        self.geometry = geometry or CameraGeometry()
+        self.color_width = color_width
+        self.color_height = color_height
+        self.geometry = geometry or load_camera_geometry_from_env()
+        _log.info("Camera geometry: %s", self.geometry.summary())
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -342,6 +481,7 @@ class RealSenseCameraService:
         self._status = CameraStatus(
             available=True,
             simulated=True,
+            avoidance_usable=False,
             message="Simulated camera stream; no RealSense frame has been read.",
         )
 
@@ -390,9 +530,14 @@ class RealSenseCameraService:
             return
 
         pipeline = rs.pipeline()
-        align = rs.align(rs.stream.color)
         config = rs.config()
-        config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, self.fps)
+        config.enable_stream(
+            rs.stream.color,
+            self.color_width,
+            self.color_height,
+            rs.format.bgr8,
+            self.fps,
+        )
         config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, self.fps)
 
         try:
@@ -402,14 +547,14 @@ class RealSenseCameraService:
             self._run_simulated(f"RealSense unavailable: {exc}")
             return
 
-        # Standard D400-series filter chain. Order matters: decimate first so
-        # downstream filters touch fewer pixels; spatial smooths within a frame;
-        # temporal smooths across frames; hole-fill is the last resort for
-        # pixels that are still invalid.
+        # D400 navigation filter chain. Holes remain holes for control; the
+        # avoider treats low-validity bands as blind instead of trusting guesses.
         decimate = rs.decimation_filter(2)
+        depth_to_disparity = rs.disparity_transform(True)
         spatial = rs.spatial_filter()
         temporal = rs.temporal_filter()
-        hole_fill = rs.hole_filling_filter(1)
+        disparity_to_depth = rs.disparity_transform(False)
+        filter_status = configure_navigation_filters(temporal)
 
         try:
             depth_sensor = profile.get_device().first_depth_sensor()
@@ -419,24 +564,39 @@ class RealSenseCameraService:
             depth_scale = 0.001  # D435 default: 1 mm per unit
 
         sensor_status = configure_indoor_depth_sensor(depth_sensor)
+        avoidance_usable = self.geometry.measured
+        geometry_status = (
+            "geometry=measured"
+            if avoidance_usable
+            else "geometry=missing measured env; avoidance disabled"
+        )
         self._set_status(
             CameraStatus(
                 True,
                 False,
-                f"RealSense D435 stream active ({sensor_status}).",
+                avoidance_usable,
+                (
+                    "RealSense D435 stream active "
+                    f"({sensor_status}, {filter_status}, {geometry_status})."
+                ),
             )
         )
         try:
             while not self._stop.is_set():
                 frames = pipeline.wait_for_frames(timeout_ms=1000)
-                aligned = align.process(frames)
-                color_frame = aligned.get_color_frame()
-                depth_frame = aligned.get_depth_frame()
+                color_frame = frames.get_color_frame()
+                depth_frame = frames.get_depth_frame()
                 if not color_frame or not depth_frame:
                     continue
 
                 filtered = depth_frame
-                for stage in (decimate, spatial, temporal, hole_fill):
+                for stage in (
+                    decimate,
+                    depth_to_disparity,
+                    spatial,
+                    temporal,
+                    disparity_to_depth,
+                ):
                     filtered = stage.process(filtered)
 
                 try:
@@ -475,7 +635,7 @@ class RealSenseCameraService:
             pipeline.stop()
 
     def _run_simulated(self, message: str) -> None:
-        self._set_status(CameraStatus(True, True, message))
+        self._set_status(CameraStatus(True, True, False, message))
         while not self._stop.is_set():
             now = time.time()
             base = 1.6 + 0.6 * math.sin(now / 4.0)
@@ -501,13 +661,19 @@ class RealSenseCameraService:
                 self._frame_jpeg = _PLACEHOLDER_JPEG
             return
 
-        image = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        image = np.zeros((self.color_height, self.color_width, 3), dtype=np.uint8)
         image[:] = (35, 35, 35)
         color = (80, 180, 80) if center_m >= 1.0 else (70, 70, 210)
-        cv2.rectangle(image, (0, 0), (self.width - 1, self.height - 1), color, 8)
+        cv2.rectangle(
+            image,
+            (0, 0),
+            (self.color_width - 1, self.color_height - 1),
+            color,
+            8,
+        )
         cv2.drawMarker(
             image,
-            (self.width // 2, self.height // 2),
+            (self.color_width // 2, self.color_height // 2),
             (240, 240, 240),
             cv2.MARKER_CROSS,
             42,

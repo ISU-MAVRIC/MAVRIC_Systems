@@ -119,9 +119,13 @@ def handle_client_message(data: dict[str, Any]) -> dict[str, Any] | None:
 
     if message_type == "set_avoidance":
         enabled = bool(data.get("enabled"))
-        if enabled and not _camera.status().available:
-            _stop_drive_and_avoidance("camera unavailable")
-            return {"type": "avoidance_status", "enabled": False, "state": "stopped", "reason": "camera unavailable"}
+        camera_status = _camera.status()
+        if enabled and not camera_status.avoidance_usable:
+            _stop_drive_and_avoidance("camera not usable for avoidance")
+            return {
+                "type": "avoidance_status",
+                **_avoider.status(),
+            }
 
         command = _avoider.set_enabled(enabled)
         if not enabled or (command.throttle == 0.0 and command.turn == 0.0):
@@ -203,6 +207,11 @@ async def _obstacle_avoidance_loop() -> None:
     while True:
         await asyncio.sleep(0.05)
         if not _avoider.enabled:
+            continue
+
+        if not _camera.status().avoidance_usable:
+            _stop_drive_and_avoidance("camera not usable for avoidance")
+            await manager.broadcast({"type": "avoidance_status", **_avoider.status()})
             continue
 
         reading = _camera.corridor()

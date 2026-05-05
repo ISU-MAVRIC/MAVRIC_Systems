@@ -6,8 +6,10 @@ import camera_service
 from camera_service import (
     CameraGeometry,
     RealSenseCameraService,
+    configure_navigation_filters,
     configure_indoor_depth_sensor,
     compute_corridor_from_depth,
+    load_camera_geometry_from_env,
 )
 
 
@@ -22,8 +24,11 @@ class FakeIntrinsics:
 
 
 class FakeOptions:
+    visual_preset = object()
+    enable_auto_exposure = object()
     emitter_enabled = object()
     laser_power = object()
+    holes_fill = object()
 
 
 class FakeRs:
@@ -31,6 +36,31 @@ class FakeRs:
 
 
 class FakeDepthSensor:
+    def __init__(self, supported, option_ranges=None):
+        self.supported = set(supported)
+        self.option_ranges = option_ranges or {}
+        self.values = {}
+
+    def supports(self, option):
+        return option in self.supported
+
+    def set_option(self, option, value):
+        self.values[option] = value
+
+    def get_option(self, option):
+        return self.values[option]
+
+    def get_option_range(self, option):
+        return self.option_ranges[option]
+
+
+class FakeOptionRange:
+    def __init__(self, minimum, maximum):
+        self.min = minimum
+        self.max = maximum
+
+
+class FakeProcessingBlock:
     def __init__(self, supported):
         self.supported = set(supported)
         self.values = {}
@@ -52,6 +82,14 @@ class TestRealSenseCameraService(unittest.TestCase):
 
         self.assertTrue(status.available)
         self.assertTrue(status.simulated)
+        self.assertFalse(status.avoidance_usable)
+
+    def test_default_depth_profile_is_d435_navigation_profile(self):
+        service = RealSenseCameraService()
+
+        self.assertEqual(service.width, 848)
+        self.assertEqual(service.height, 480)
+        self.assertEqual(service.fps, 30)
 
     def test_simulated_mode_runs_without_realsense_dependencies(self):
         original_rs = camera_service.rs
@@ -76,6 +114,7 @@ class TestRealSenseCameraService(unittest.TestCase):
 
         self.assertTrue(status.available)
         self.assertTrue(status.simulated)
+        self.assertFalse(status.avoidance_usable)
         self.assertIsNotNone(distance.center_m)
         self.assertIsNotNone(corridor.center.min_m)
         self.assertIn(b"Content-Type: image/jpeg", chunk)
@@ -84,17 +123,42 @@ class TestRealSenseCameraService(unittest.TestCase):
         original_rs = camera_service.rs
         camera_service.rs = FakeRs()
         sensor = FakeDepthSensor(
-            [FakeOptions.emitter_enabled, FakeOptions.laser_power]
+            [
+                FakeOptions.visual_preset,
+                FakeOptions.enable_auto_exposure,
+                FakeOptions.emitter_enabled,
+                FakeOptions.laser_power,
+            ],
+            {FakeOptions.laser_power: FakeOptionRange(0.0, 360.0)},
         )
         try:
             status = configure_indoor_depth_sensor(sensor, laser_power=275.0)
         finally:
             camera_service.rs = original_rs
 
+        self.assertEqual(sensor.values[FakeOptions.visual_preset], 3.0)
+        self.assertEqual(sensor.values[FakeOptions.enable_auto_exposure], 1.0)
         self.assertEqual(sensor.values[FakeOptions.emitter_enabled], 1.0)
         self.assertEqual(sensor.values[FakeOptions.laser_power], 275.0)
+        self.assertIn("visual_preset=3", status)
+        self.assertIn("auto_exposure=1", status)
         self.assertIn("emitter=1", status)
         self.assertIn("laser=275", status)
+
+    def test_indoor_depth_sensor_laser_power_is_clamped_to_supported_range(self):
+        original_rs = camera_service.rs
+        camera_service.rs = FakeRs()
+        sensor = FakeDepthSensor(
+            [FakeOptions.laser_power],
+            {FakeOptions.laser_power: FakeOptionRange(0.0, 240.0)},
+        )
+        try:
+            status = configure_indoor_depth_sensor(sensor, laser_power=300.0)
+        finally:
+            camera_service.rs = original_rs
+
+        self.assertEqual(sensor.values[FakeOptions.laser_power], 240.0)
+        self.assertIn("laser=240", status)
 
     def test_indoor_depth_sensor_options_ignore_unsupported_controls(self):
         original_rs = camera_service.rs
@@ -106,7 +170,50 @@ class TestRealSenseCameraService(unittest.TestCase):
             camera_service.rs = original_rs
 
         self.assertEqual(sensor.values, {})
-        self.assertEqual(status, "emitter=unsupported, laser=unsupported")
+        self.assertEqual(
+            status,
+            (
+                "visual_preset=unsupported, auto_exposure=unsupported, "
+                "emitter=unsupported, laser=unsupported"
+            ),
+        )
+
+    def test_navigation_filters_disable_temporal_persistence(self):
+        original_rs = camera_service.rs
+        camera_service.rs = FakeRs()
+        temporal = FakeProcessingBlock([FakeOptions.holes_fill])
+        try:
+            status = configure_navigation_filters(temporal)
+        finally:
+            camera_service.rs = original_rs
+
+        self.assertEqual(temporal.values[FakeOptions.holes_fill], 0.0)
+        self.assertEqual(status, "temporal_persistence=0")
+
+    def test_geometry_env_requires_all_measured_values(self):
+        geometry = load_camera_geometry_from_env({})
+
+        self.assertFalse(geometry.measured)
+
+    def test_geometry_env_loads_measured_values(self):
+        geometry = load_camera_geometry_from_env(
+            {
+                "MAVRIC_ROVER_WIDTH_M": "0.82",
+                "MAVRIC_CAMERA_HEIGHT_M": "0.46",
+                "MAVRIC_CAMERA_FORWARD_OFFSET_M": "0.18",
+                "MAVRIC_CAMERA_PITCH_DEG": "-8",
+                "MAVRIC_LOOKAHEAD_M": "1.4",
+                "MAVRIC_WIDTH_MARGIN_M": "0.12",
+            }
+        )
+
+        self.assertTrue(geometry.measured)
+        self.assertAlmostEqual(geometry.rover_width_m, 0.82)
+        self.assertAlmostEqual(geometry.camera_height_m, 0.46)
+        self.assertAlmostEqual(geometry.camera_forward_offset_m, 0.18)
+        self.assertAlmostEqual(geometry.camera_pitch_deg, -8.0)
+        self.assertAlmostEqual(geometry.lookahead_m, 1.4)
+        self.assertAlmostEqual(geometry.width_margin_m, 0.12)
 
 
 @unittest.skipIf(camera_service.np is None, "numpy is required for this test")

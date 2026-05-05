@@ -132,10 +132,11 @@ function setCameraStatus(data) {
     const label = data.simulated ? `Simulated: ${data.message}` : data.message;
     document.querySelectorAll('.js-camera-status').forEach(el => {
         el.textContent = label;
-        el.classList.toggle('warn', data.simulated || !data.available);
+        el.classList.toggle('warn', data.simulated || !data.avoidance_usable);
     });
     document.querySelectorAll('.js-avoidance-toggle').forEach(el => {
-        el.disabled = !data.available;
+        el.disabled = !data.avoidance_usable;
+        if (!data.avoidance_usable) el.checked = false;
     });
 }
 

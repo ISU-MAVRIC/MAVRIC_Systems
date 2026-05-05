@@ -44,10 +44,12 @@ docker compose -f compose.yaml -f compose/dev.yaml up -d --build
   the configured look-ahead distance.
 - If no D435 is attached, or the RealSense Python/OpenCV dependencies are not
   available, the app uses a simulated camera stream that emits drifting per-band
-  distances so the UI and avoider can be exercised end-to-end without hardware.
+  distances so the UI can be exercised without hardware. Simulated depth is
+  **not** usable for obstacle avoidance; the server blocks avoidance unless a
+  real, non-simulated RealSense stream is active.
 - Obstacle avoidance is deliberately simple but defensive. It is **not** a
-  safety system; it is a best-effort assist that can fail silently if the
-  camera lies (sun glare, glass, low-texture, etc.).
+  safety system; it is a low-speed best-effort assist that can fail silently if
+  the camera lies (sun glare, glass, low-texture, etc.).
 
 ## Corridor Depth Model
 
@@ -67,17 +69,22 @@ footprint at `lookahead_m` meters in front of the camera.
                        look-ahead (default 1.0 m)
 ```
 
-`CameraGeometry` (in `camera_service.py`) sets the projection. Defaults:
+`CameraGeometry` (in `camera_service.py`) sets the projection. Real-hardware
+avoidance is fail-closed until measured geometry is provided through
+environment variables. Defaults are used only for simulation and local tests.
 
 | Field | Default | Notes |
 | --- | --- | --- |
-| `rover_width_m` | 0.7 | Effective chassis width. Pad for overhang. |
-| `camera_height_m` | 0.5 | Camera optical center above the ground. |
-| `camera_forward_offset_m` | 0.1 | Informational; not yet wired into projection. |
-| `camera_pitch_deg` | 0.0 | Informational; flat is assumed. |
-| `lookahead_m` | 1.0 | Distance ahead at which the rover footprint is sized. |
-| `floor_clip_m` | 0.05 | Ignore pixels closer than this above the ground. |
-| `ceiling_clip_m` | 0.4 | Ignore pixels above this height above the camera. |
+| `MAVRIC_ROVER_WIDTH_M` | required | Effective chassis width. Pad for overhang. |
+| `MAVRIC_CAMERA_HEIGHT_M` | required | Camera optical center above the ground. |
+| `MAVRIC_CAMERA_FORWARD_OFFSET_M` | required | Camera optical center ahead of the rover reference point. |
+| `MAVRIC_CAMERA_PITCH_DEG` | required | Camera pitch used by the rover-frame projection. |
+| `MAVRIC_LOOKAHEAD_M` | required | Distance ahead at which the rover footprint is sized. |
+| `MAVRIC_MIN_DEPTH_M` | 0.15 | Optional minimum depth considered by the corridor sampler. |
+| `MAVRIC_MAX_DEPTH_M` | 2.0 | Optional maximum depth considered by the corridor sampler. |
+| `MAVRIC_WIDTH_MARGIN_M` | 0.08 | Optional extra clearance on each side. |
+| `MAVRIC_FLOOR_CLIP_M` | 0.05 | Optional floor clipping threshold. |
+| `MAVRIC_CEILING_CLIP_M` | 0.4 | Optional ceiling clipping threshold. |
 
 For each band the service reports `min_m` (10th percentile of valid pixels —
 robust to single-pixel noise), `mean_m`, and `valid_ratio` (fraction of pixels
@@ -85,20 +92,28 @@ in the band that returned a valid depth). A band with `valid_ratio` below
 `AvoidanceConfig.min_valid_ratio` is treated as **blind** and contributes no
 distance to the avoider's decision.
 
-## RealSense Filter Chain
+## RealSense Settings And Filter Chain
 
-Raw D435 depth has many invalid pixels. The pipeline applies the standard
-post-processing filter chain once per frame, in order:
+The prototype requests the D435 indoor navigation profile recommended by
+RealSense tuning guidance: depth at `848x480 @ 30fps`, auto-exposure on, IR
+emitter on, clamped laser power, and the High Accuracy visual preset when the
+attached sensor exposes those options.
+
+Raw D435 depth has many invalid pixels. For control, the pipeline applies a
+navigation-conservative post-processing chain once per frame, in order:
 
 1. `decimation_filter(2)` — 2x downsample, also reduces noise per pixel.
-2. `spatial_filter()` — edge-preserving smoothing within a frame.
-3. `temporal_filter()` — exponential smoothing across frames.
-4. `hole_filling_filter(1)` — fill remaining invalid pixels with the
-   farthest-from-around heuristic so the corridor reading still has data when
-   the raw stream has dropouts.
+2. `disparity_transform(True)` — convert depth to disparity for D400 stereo filtering.
+3. `spatial_filter()` — edge-preserving smoothing within a frame.
+4. `temporal_filter()` — exponential smoothing across frames, with persistence disabled.
+5. `disparity_transform(False)` — convert filtered disparity back to depth.
 
 Intrinsics are read from the *post-decimation* depth profile so projection math
 matches the actual pixel grid we sample.
+
+The control stream intentionally does **not** use final hole filling. Holes and
+low-validity regions remain invalid so the avoider can hold, slow, or scan
+instead of trusting fabricated depth.
 
 ## Avoidance State Machine
 
@@ -139,14 +154,24 @@ Key behaviors:
 
 ## Tuning on Hardware
 
-`AvoidanceConfig` and `CameraGeometry` are the two knobs. Reasonable starting
-points are wired in. Once you are on hardware:
+`AvoidanceConfig` and `CameraGeometry` are the two knobs. Before real-hardware
+avoidance can be enabled, export measured geometry:
+
+```bash
+export MAVRIC_ROVER_WIDTH_M=0.82
+export MAVRIC_CAMERA_HEIGHT_M=0.46
+export MAVRIC_CAMERA_FORWARD_OFFSET_M=0.18
+export MAVRIC_CAMERA_PITCH_DEG=-8
+export MAVRIC_LOOKAHEAD_M=1.4
+```
+
+Once you are on hardware:
 
 1. Measure the **actual rover width** (including any overhang) and update
    `CameraGeometry.rover_width_m`.
 2. Measure the **camera mounting height** to the optical center and update
-   `camera_height_m`. If the camera is meaningfully tilted, capture pitch and
-   we can wire it into the projection.
+   `MAVRIC_CAMERA_HEIGHT_M`. If the camera is meaningfully tilted, measure
+   pitch and set `MAVRIC_CAMERA_PITCH_DEG`.
 3. Find the **min effective range** of your D435 in the operating environment
    and set `AvoidanceConfig.reverse_distance_m` slightly above that.
 4. Pick a `cruise_throttle` you trust, then set `stop_distance_m` to the
@@ -190,6 +215,8 @@ Even with the corridor model and the filter chain, the D435 will still lie:
   holes — only positive obstacles within the corridor.
 - **No 360° awareness.** Anything behind or beside the rover is invisible.
   Reverse moves are timed; they do not check that the path behind is clear.
+  Keep reverse disabled or very short during indoor trials until rear clearance
+  is sensed independently.
 
 ## Out of Scope
 

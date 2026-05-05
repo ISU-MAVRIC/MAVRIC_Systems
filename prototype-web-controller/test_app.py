@@ -41,14 +41,23 @@ class FakeDrive:
 
 
 class FakeStatus:
-    available = True
-    simulated = True
-    message = "fake camera"
+    def __init__(
+        self,
+        available=True,
+        simulated=False,
+        avoidance_usable=True,
+        message="fake camera",
+    ):
+        self.available = available
+        self.simulated = simulated
+        self.avoidance_usable = avoidance_usable
+        self.message = message
 
     def as_dict(self):
         return {
             "available": self.available,
             "simulated": self.simulated,
+            "avoidance_usable": self.avoidance_usable,
             "message": self.message,
         }
 
@@ -97,9 +106,10 @@ class FakeCorridor:
 
 
 class FakeCamera:
-    def __init__(self):
+    def __init__(self, status=None):
         self.started = False
         self.stopped = False
+        self._status = status or FakeStatus()
 
     def start(self):
         self.started = True
@@ -108,7 +118,7 @@ class FakeCamera:
         self.stopped = True
 
     def status(self):
-        return FakeStatus()
+        return self._status
 
     def distance(self):
         return FakeDistance()
@@ -185,16 +195,33 @@ class TestClientMessageHandling(unittest.TestCase):
         self.assertEqual(response["type"], "config_error")
 
     def test_set_avoidance_enables_mode(self):
-        response = controller_app.handle_client_message({"type": "set_avoidance", "enabled": True})
+        fake_camera = FakeCamera()
+        with patch.object(controller_app, "_camera", fake_camera):
+            response = controller_app.handle_client_message({"type": "set_avoidance", "enabled": True})
 
         self.assertEqual(response["type"], "avoidance_status")
         self.assertTrue(response["enabled"])
 
-    def test_manual_commands_ignored_while_avoidance_enabled(self):
-        controller_app.handle_client_message({"type": "set_avoidance", "enabled": True})
-        response = controller_app.handle_client_message(
-            {"type": "drive", "throttle": 0.8, "turn": 0.2}
+    def test_set_avoidance_blocks_simulated_camera(self):
+        fake_camera = FakeCamera(
+            FakeStatus(simulated=True, avoidance_usable=False, message="simulated")
         )
+        with patch.object(controller_app, "_camera", fake_camera):
+            response = controller_app.handle_client_message(
+                {"type": "set_avoidance", "enabled": True}
+            )
+
+        self.assertEqual(response["type"], "avoidance_status")
+        self.assertFalse(response["enabled"])
+        self.assertEqual(response["reason"], "camera not usable for avoidance")
+
+    def test_manual_commands_ignored_while_avoidance_enabled(self):
+        fake_camera = FakeCamera()
+        with patch.object(controller_app, "_camera", fake_camera):
+            controller_app.handle_client_message({"type": "set_avoidance", "enabled": True})
+            response = controller_app.handle_client_message(
+                {"type": "drive", "throttle": 0.8, "turn": 0.2}
+            )
 
         self.assertEqual(response["type"], "avoidance_status")
         self.assertEqual(controller_app._drive.arcade_calls, [])

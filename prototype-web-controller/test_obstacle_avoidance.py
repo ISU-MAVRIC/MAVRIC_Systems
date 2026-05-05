@@ -149,6 +149,19 @@ class TestCorridorAvoider(unittest.TestCase):
         self.assertEqual(command.state, "slowing")
         self.assertEqual(command.throttle, 0.12)
 
+    def test_low_validity_bands_are_blind_not_clear(self):
+        avoider = make_avoider()
+        avoider.set_enabled(True, now=10.0)
+
+        command = avoider.command(
+            make_reading(2.5, 2.5, 2.5, ts=10.1, valid_ratio=0.2),
+            now=10.5,
+        )
+
+        self.assertEqual(command.state, "recovering")
+        self.assertEqual(command.throttle, 0.0)
+        self.assertEqual(command.turn, 0.0)
+
     def test_pivot_ladder_escalates_to_stuck(self):
         avoider = make_avoider()
         avoider.set_enabled(True, now=10.0)
